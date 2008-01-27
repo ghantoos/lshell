@@ -2,6 +2,8 @@
 #
 #    Limited command Shell (lshell)
 #  
+#    $Id: lshell.py,v 1.2 2008-01-27 01:09:33 ghantoos Exp $
+#
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: admin@ghantoos.org
 #

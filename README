@@ -1,0 +1,110 @@
+#####################################
+#  LSHELL - Limited Shell - README  #
+#####################################
+Contact: ghantoos@ghantoos.org
+http://sourceforge.net/projects/lshell/
+#####################################
+
+I've commented the source file (lshell.py) and the template configuration 
+file (lshell.conf) as much as thought would enough. But Here's a readme file 
+anyways.
+
+###
+1- Installation:
+###
+	Extract the files in the wanted directory (tar xvfz lshell.tar.gz)
+	Included files:
+		* lshell.py
+		* lshell.conf
+		* COPYING
+		* README
+
+	lshell.py must be executable:
+		$>chmod +x lshell.py
+
+###
+2- Configuration:
+###
+	lshell.conf presents a template configuration file. Fields to fill by 
+	user are:
+		* allowed: a list a the allowed commands
+		* forbidden: a list of forbidden character or commands
+		* warning_counter: number of warnings when user enters a 
+		  forbidden value before getting exited from lshell.
+		  The 'forbidden variable part is to avoid execute other 
+		  commands. (e.g. ssh ..;vi .ssh/authorized_keys)
+		* timer: a value in seconds for the session timer
+		* passwd: password of specific user
+
+###
+3- Usage:
+###
+	To launch the Limited Shell, just execute lshell.py specifying the 
+	location of your configuration file:
+	$> cd /path/to/lshell
+	$> ./lshell.py /path/to/configuration/file
+	In case lshell.py and lshell.conf (or whatever you want to call it)
+	are in the same folder, just type: ./lshell.py lshell.conf
+
+###
+4- Use case: OpenSSH & authorized_keys
+###
+	The primary goal of lshell, was to be able to create shell accounts 
+	with ssh access	and restrict their environment to a couple a needed 
+	commands. 
+	For example User 'bla' who #_only_# needs to ssh from my server to 
+	another machine.
+	His 'allowed' variable in the configuration file will be only ['ssh'].
+	In this case, my configuration file will look something like this:
+
+	# START
+	[bla]
+	passwd          : blabla
+	allowed         : ['ssh']
+	forbidden       : [';', '&', '|'] 
+	warning_counter : 2
+	timer           : 0
+	# END
+	
+	In order to launch lshell limited to the 'ssh' command, I used ssh's 
+	authorized_keys:
+	$> vi /home/bla/.ssh/authorized_keys
+	and add :
+		command="/path/to/lshell.py /path/to/lshell.conf",no-port-for
+		warding,no-X11-forwarding,no-agent-forwarding,no-pty
+	just before the "ssh-dss blablablabla" part.
+
+	This will have the effect of executing lshell upon user's connection.
+	The great thing about it, is that when the user exist lshell, the ssh 
+	session is automatically ended! : )
+
+	Your authorized_keys should look something like this:
+
+	no-port-forwarding,no-X11-forwarding,no-agent-forwarding,command=
+	"/path/to/lshell.py /path/to/lshell.conf" ssh-dss AAAAHadWj4caz5T
+	AA6Xgonf2FjpmpgpquvN+6cQsGTEOwm6R+oEaFBU1VyfuwlEklqn3TWnWzACBAKNJ
+	cJFr6pJsECEz5LZFtGu7b4tYNu8/vne11SjZBrOqm7WuQiWpOguzyldk6IJSnIKrn
+	WoT/fGgXeED2UingA65bKIvOh0B3NzaC1kc3McsrBEDjQ3NAAAAFQDP6OHwkLNSA1
+	PyKqIMzqiCpAmJE7gRgFu8Pxc7i1TZvmiXSCjdXRaXZNncxPj6eOUng4QFDAoZc6n
+	N8iUYCwKJ2pl2ryMqC/hnBVL5SRne+FqcRKbzWXkh7NI6KtJ4XxI32NI/OIpZAo2e
+	G/8rdCgShZflCbpFZL865fKmUH2pefSZwl/12VXWDqQmukNp6+XrA3LPXdElIeQAA
+	ACAHoQ3GpC4/BcxuHj1TBNg7Hw3KxZMeL1vQNVF2+cfJ22U1hERNBcRuUjqe5Gv9Q
+	GoCMcsNpG8/FtV5Pnoq8nPPWuUkrBeBxY6KSgzaZ/DTSd+WvPOwNonntRkEwxpSdk
+	lSqXpmqNlw2fPodg6QAAAIEVdZiSZZ9EoH+4MJjKDSvE= bla@somewhere.somet
+	hing
+
+	Now, when "sshing" to your machine, with the bla user, he will be 
+	forced to lshell! And when quitting lshell, the ssh session is
+	automatically ended! : )
+
+###
+5- Contact
+###
+	If you want to contribute to this project, please do not hesitate.
+	Send me a patch, or just your new lshell.py so I can check it out.
+	You can use the interface on sourceforge.net: 
+	http://sourceforge.net/projects/lshell/
+	Here is my mail again: ghantoos@ghantoos.org
+
+	Cheers,
+	Ignace Mouzannar (-ghantoos-)

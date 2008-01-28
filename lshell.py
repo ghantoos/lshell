@@ -2,10 +2,10 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.2 2008-01-27 01:09:33 ghantoos Exp $
+#    $Id: lshell.py,v 1.3 2008-01-28 16:20:35 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
-#    Email: admin@ghantoos.org
+#    Email: ghantoos@ghantoos.org
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -237,6 +237,7 @@ if __name__=='__main__':
 		cli = shell_cmd()
 		cli.cmdloop()
 
-	except KeyboardInterrupt:
+	except (KeyboardInterrupt, EOFError):
+		print '\nExited on user request\n'
 		sys.exit(0)
 

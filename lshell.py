@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.3 2008-01-28 16:20:35 ghantoos Exp $
+#    $Id: lshell.py,v 1.4 2008-01-28 17:55:08 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -44,7 +44,7 @@ class shell_cmd(cmd.Cmd,object):
 			t.start()
 		cmd.Cmd.__init__(self)
 		self.prompt = username+':-$ '
-		self.intro = 'Welcome to lshell!'		
+		self.intro = '------------------\nWelcome to lshell!\n------------------'		
 
 	def __getattr__(self, attr):
 		"""This is the heart of lshell!
@@ -58,7 +58,7 @@ class shell_cmd(cmd.Cmd,object):
 		"""
 		if self.check_secure(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.g_cmd in ['quit', 'exit', 'EOF']:
-			print '\nExiting..'
+			self.stdout.write('\nExiting..\n')
 			sys.exit(1)
 		elif self.g_cmd in allowed:
 			os.system(self.g_line)
@@ -81,10 +81,10 @@ class shell_cmd(cmd.Cmd,object):
 				global warning_counter
 				warning_counter -= 1
 				if warning_counter == 0: 
-					print 'I warned you.. See ya!'
+					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
 				else:
-					print 'WARNING: What are you trying to do??'
+					self.stdout.write('WARNING: What are you trying to do??\n')
 				return 0
 
 	def default(self, line):
@@ -135,25 +135,30 @@ class shell_cmd(cmd.Cmd,object):
 		if self.lastcmd:
 			return 0
 
-	def mytimer():
+	def mytimer(self):
 		""" This function is suppose to kick you out the the lshell after the 'timer' variable
 		exprires. 'timer' is set in seconds.
 
 		This function is still bugged as it creates a thread with the timer, then only kills 
 		the thread and not the whole process.HELP!
 		"""  
-		print "Time's up! Exiting..\n"
-		exit(2)
-
-	def getconfig(user):
-		return 0
+		self.stdout.write("Time's up! Exiting..\n")
+		exit(0)
 
 
 class check_config():
 
-	def __init__(self):
+	def __init__(self, stdin=None, stdout=None):
 		""" Force the calling of the methods below
 		""" 
+		if stdin is None:
+			self.stdin = sys.stdin
+		else:
+			self.stdin = stdin
+		if stdout is None:
+			self.stdout = sys.stdout
+		else:
+			self.stdout = stdout
 		self.usage()
 		self.check_file()
 		self.check_config_user()
@@ -163,16 +168,16 @@ class check_config():
 		""" This method checks the usage. lshell.py must be called with a configuration file.
 		"""
 		if len(sys.argv) != 2:
-		    print "Usage: ./lshell.py /path/to/config/file"
-		    exit(0)
+		    self.stdout.write('Usage: ./lshell.py /path/to/config/file\n')
+		    sys.exit(0)
 
 	def check_file(self):
 		""" This method checks the existence of the "argumently" given configuration file.
 		"""
 		self.config_file = sys.argv[1]
 		if os.path.exists(self.config_file) is False : 
-			print "Error: Config file doesn't exist"
-			exit(0)
+			self.stdout.write("Error: Config file doesn't exist\n")
+			sys.exit(0)
 		else: self.config = ConfigParser.ConfigParser()
 
 	def check_config_user(self):
@@ -183,7 +188,7 @@ class check_config():
 		self.config.read(self.config_file)
 		self.user = getuser() # to use getpass._raw_input('Enter username: '), 'username' must be entered in list_config
 		if self.config.has_section(self.user) is False:
-			print 'Error: Unknown user!'
+			self.stdout.write('Error: Unknown user!\n')
 			sys.exit(0)
 		else:
 			self.check_user_integrity()
@@ -197,7 +202,7 @@ class check_config():
 		quit = 0
 		for item in config_list:
 			if self.config.has_option(self.user, item) is False:
-				print 'Error: Missing parameter "' + item + '" for user ' + self.user
+				self.stdout.write('Error: Missing parameter "' + item + '" for user ' + self.user + '\n')
 				quit = 1
 		if quit is 1: sys.exit(0)
 
@@ -212,8 +217,8 @@ class check_config():
 		else:
 			password = getpass("Enter password :")
 			if password != passwd:
-				print 'Error: Wrong password \nExiting..'
-				exit(0)
+				self.stdout.write('Error: Wrong password \nExiting..\n')
+				sys.exit(0)
 
 	def get_config_user(self):
 		""" Once all the checks above have passed, the configuration files values are entered
@@ -238,6 +243,6 @@ if __name__=='__main__':
 		cli.cmdloop()
 
 	except (KeyboardInterrupt, EOFError):
-		print '\nExited on user request\n'
+		sys.stdout.write('\nExited on user request\n')
 		sys.exit(0)
 

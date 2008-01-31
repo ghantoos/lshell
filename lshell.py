@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.5 2008-01-31 19:21:15 ghantoos Exp $
+#    $Id: lshell.py,v 1.6 2008-01-31 19:56:50 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -217,7 +217,7 @@ class check_config():
 		""" This method checks the usage. lshell.py must be called with a configuration file.
 		"""
 		if len(sys.argv) < 2:
-			self.stdout.write('No config file specified. Using default file.\n')
+			#self.stdout.write('No config file specified. Using default file.\n')
 			return 'lshell.conf'
 		elif len(sys.argv) > 2 or sys.argv[1] in ['-h', '--help']:
 			self.stdout.write(help)
@@ -267,7 +267,7 @@ class check_config():
 		passwd = self.config.get(self.user, 'passwd')
 		if passwd is '' : return 0
 		else:
-			password = getpass("Enter password :")
+			password = getpass("Enter "+self.user+"'s password: ")
 			if password != passwd:
 				self.stdout.write('Error: Wrong password \nExiting..\n')
 				sys.exit(0)

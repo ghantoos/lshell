@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.4 2008-01-28 17:55:08 ghantoos Exp $
+#    $Id: lshell.py,v 1.5 2008-01-31 19:21:15 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -32,6 +32,25 @@ from getpass import getpass, getuser
 # Global Variable config_list listing the required configuration fields per user
 config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer']
 
+# help text
+help = """------------------------------------------------------------------------
+Limited Shell (lshell):
+ - Specify a configuration file using: ./lshell.py /path/to/config/file
+ - Else, lshell.conf will be used by default
+
+For more specifications, please refer to the README.
+------------------------------------------------------------------------
+"""
+
+help_help = """Limited Shell (lshell) limited help.
+Cheers.
+"""
+
+# Intro Text
+intro = """------------------
+Welcome to lshell!
+------------------
+Type '?' or 'help' to get the list of allowed commands"""
 
 class shell_cmd(cmd.Cmd,object): 
 
@@ -44,7 +63,7 @@ class shell_cmd(cmd.Cmd,object):
 			t.start()
 		cmd.Cmd.__init__(self)
 		self.prompt = username+':-$ '
-		self.intro = '------------------\nWelcome to lshell!\n------------------'		
+		self.intro = intro
 
 	def __getattr__(self, attr):
 		"""This is the heart of lshell!
@@ -62,7 +81,7 @@ class shell_cmd(cmd.Cmd,object):
 			sys.exit(1)
 		elif self.g_cmd in allowed:
 			os.system(self.g_line)
-		elif self.g_cmd != '' : self.stdout.write('*** Unknown syntax: %s\n'%self.g_cmd) 
+		elif self.g_cmd not in ['','?','help'] : self.stdout.write('*** Unknown syntax: %s\n'%self.g_cmd) 
 		self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
 		return object.__getattribute__(self, attr)
 
@@ -128,12 +147,41 @@ class shell_cmd(cmd.Cmd,object):
 			return func(arg)
 
 	def emptyline(self):
-		"""This method overrides the original emptyline method, so i doesn't repeat the 
+		""" This method overrides the original emptyline method, so i doesn't repeat the 
 		last command if last command was empty.
 		I just found this annoying..
 		"""
 		if self.lastcmd:
 			return 0
+
+	def do_help(self, arg):
+		""" This method overrides the original do_help method. Instead of printing out the
+		that are documented or not, it returns the list of allowed commands when '?' or
+		'help' is entered. Of course, it doesn't override the help function: any help_*
+		method will be called (e.g. help_help(self) )
+		""" 
+		if arg:
+			try:
+				func = getattr(self, 'help_' + arg)
+			except AttributeError:
+				try:
+					doc=getattr(self, 'do_' + arg).__doc__
+					if doc:
+						self.stdout.write("%s\n"%str(doc))
+						return
+				except AttributeError:
+					pass
+				self.stdout.write("%s\n"%str(self.nohelp % (arg,)))
+				return
+			func()
+		else:
+			# Get list of allowed commands, removes duplicate 'help' then sorts it
+			list_tmp = dict.fromkeys(self.completenames('')).keys()
+			list_tmp.sort()
+			self.columnize(list_tmp)
+
+	def help_help(self):
+		self.stdout.write(help_help)
 
 	def mytimer(self):
 		""" This function is suppose to kick you out the the lshell after the 'timer' variable
@@ -159,22 +207,26 @@ class check_config():
 			self.stdout = sys.stdout
 		else:
 			self.stdout = stdout
-		self.usage()
-		self.check_file()
+
+		self.config_file = self.usage()
+		self.check_file(self.config_file)
 		self.check_config_user()
 		self.get_config_user()
 
 	def usage(self):
 		""" This method checks the usage. lshell.py must be called with a configuration file.
 		"""
-		if len(sys.argv) != 2:
-		    self.stdout.write('Usage: ./lshell.py /path/to/config/file\n')
-		    sys.exit(0)
+		if len(sys.argv) < 2:
+			self.stdout.write('No config file specified. Using default file.\n')
+			return 'lshell.conf'
+		elif len(sys.argv) > 2 or sys.argv[1] in ['-h', '--help']:
+			self.stdout.write(help)
+			sys.exit(0)
+		else: return sys.argv[1]
 
-	def check_file(self):
+	def check_file(self, config_file):
 		""" This method checks the existence of the "argumently" given configuration file.
 		"""
-		self.config_file = sys.argv[1]
 		if os.path.exists(self.config_file) is False : 
 			self.stdout.write("Error: Config file doesn't exist\n")
 			sys.exit(0)

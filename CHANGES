@@ -1,0 +1,20 @@
+#####################################
+#  LSHELL - Limited Shell - CHANGES #
+#####################################
+#
+# $Id: CHANGES,v 1.1 2008-02-05 19:52:34 ghantoos Exp $
+
+Contact: ghantoos@ghantoos.org
+http://sourceforge.net/projects/lshell/
+#####################################
+
+=== 05/02/2008 ===
+	* added a path variable to restrict the user's geographic actions
+	* MAJOR: added SCP support (also configurable through the config file)
+
+=== 31/01/2008 ===
+	* MAJOR: Added the 'help' method
+	* Did some code cleanup
+
+=== 28/01/2008 ===
+	* Initial release of lshell

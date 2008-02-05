@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.6 2008-01-31 19:56:50 ghantoos Exp $
+#    $Id: lshell.py,v 1.7 2008-02-05 19:51:41 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -27,10 +27,11 @@ import os
 import ConfigParser
 from threading import Timer
 from getpass import getpass, getuser
+import termios
 
 
 # Global Variable config_list listing the required configuration fields per user
-config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer']
+config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer','path','scp']
 
 # help text
 help = """------------------------------------------------------------------------
@@ -76,6 +77,7 @@ class shell_cmd(cmd.Cmd,object):
 		added a do_uname in the shell_cmd class!
 		"""
 		if self.check_secure(self.g_line) == 0: return object.__getattribute__(self, attr)
+		if self.check_path(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.g_cmd in ['quit', 'exit', 'EOF']:
 			self.stdout.write('\nExiting..\n')
 			sys.exit(1)
@@ -93,18 +95,29 @@ class shell_cmd(cmd.Cmd,object):
 		Feel free to update the list. Emptying it would be quite useless..: )
 
 		A warining counter has been added, to kick out of lshell a user if he
-		is warned more than X time. X beeing the 'forbidden_counter' global variable)
+		is warned more than X time (X beeing the 'forbidden_counter' global variable).
 		"""
 		for item in forbidden:
-			if item in self.g_line:
+			if item in line:
 				global warning_counter
 				warning_counter -= 1
-				if warning_counter == 0: 
+				if warning_counter <= 0: 
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
 				else:
 					self.stdout.write('WARNING: What are you trying to do??\n')
 				return 0
+
+	def check_path(self, line):
+		import string, re
+		line = line.strip().split(' ')
+		for item in line:
+			if '/' in item:
+				path_re = re.compile('('+string.join(path,'|')+')')
+				match = path_re.match(item)
+				if not match : 
+					self.check_secure(forbidden[0])
+					return 0
 
 	def default(self, line):
 		""" This method overrides the original default method. This method was originally used to
@@ -212,6 +225,9 @@ class check_config():
 		self.check_file(self.config_file)
 		self.check_config_user()
 		self.get_config_user()
+		self.check_user_integrity()
+		self.check_scp()
+		self.check_passwd()
 
 	def usage(self):
 		""" This method checks the usage. lshell.py must be called with a configuration file.
@@ -240,11 +256,8 @@ class check_config():
 		self.config.read(self.config_file)
 		self.user = getuser() # to use getpass._raw_input('Enter username: '), 'username' must be entered in list_config
 		if self.config.has_section(self.user) is False:
-			self.stdout.write('Error: Unknown user!\n')
+			self.stdout.write('Error: Unknown user "'+self.user+'"\n')
 			sys.exit(0)
-		else:
-			self.check_user_integrity()
-			self.check_passwd()
 
 	def check_user_integrity(self):
 		""" This method checks if all the required fields by user are present for the present user.
@@ -257,6 +270,43 @@ class check_config():
 				self.stdout.write('Error: Missing parameter "' + item + '" for user ' + self.user + '\n')
 				quit = 1
 		if quit is 1: sys.exit(0)
+
+	def get_config_user(self):
+		""" Once all the checks above have passed, the configuration files values are entered
+		in global variables to be used by the command line it self. The lshell command line
+		is then launched!
+		"""
+		self.config.read(self.config_file)
+		global username, allowed, forbidden, warning_counter, timer, path, scp
+		username = self.user
+		allowed = eval(self.config.get(self.user, 'allowed'))
+		allowed.extend(['quit', 'EOF'])
+		forbidden = eval(self.config.get(self.user, 'forbidden'))
+		warning_counter = eval(self.config.get(self.user, 'warning_counter'))
+		timer = eval(self.config.get(self.user, 'timer'))
+		path = eval(self.config.get(self.user, 'path'))
+		scp = eval(self.config.get(self.user, 'scp'))
+
+	def check_scp(self):
+		""" This method checks if the user is trying to SCP a file onto the server.
+		If this is the case, it checks if the user is allowed to use SCP or not, and
+		acts as requested. : )
+		The detection part is a bit weird, but it works! (I still need your help if you've 
+		got any idea). Actually, if I'm not wrong 'fd' the value of the file descriptor 
+		associated with the stream, and termios.tcgetattr should return a list containing 
+		the tty attributes for my file descriptor. In the case of scp, no there no tty attributes,
+		so the command returns an error wich gets us to the except part, which deals with the scp.
+		"""
+		try:
+			fd = sys.stdin.fileno()
+			test = termios.tcgetattr(fd)
+		except termios.error:
+			if scp is 1: 
+				os.system('scp -t .')
+				sys.exit(0)
+			else:
+				self.stdout.write('Sorry..You are not allowed to use SCP.\n')
+				sys.exit(0)
 
 	def check_passwd(self):
 		""" As a passwd field is required by user. This method checks in the configuration file
@@ -271,20 +321,6 @@ class check_config():
 			if password != passwd:
 				self.stdout.write('Error: Wrong password \nExiting..\n')
 				sys.exit(0)
-
-	def get_config_user(self):
-		""" Once all the checks above have passed, the configuration files values are entered
-		in global variables to be used by the command line it self. The lshell command line
-		is then launched!
-		"""
-		self.config.read(self.config_file)
-		global allowed, forbidden, warning_counter, timer, username
-		allowed = eval(self.config.get(self.user, 'allowed'))
-		allowed.extend(['quit', 'EOF'])
-		forbidden = eval(self.config.get(self.user, 'forbidden'))
-		warning_counter = eval(self.config.get(self.user, 'warning_counter'))
-		timer = eval(self.config.get(self.user, 'timer'))
-		username = self.user
 
 
 if __name__=='__main__':

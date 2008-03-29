@@ -2,11 +2,15 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.1 2008-02-05 19:52:34 ghantoos Exp $
+# $Id: CHANGES,v 1.2 2008-03-29 14:15:57 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== 29/03/2008 ===
+	* Corrected class declaration bug and configuration file location
+	* Updated the README file with another usage of lshell
 
 === 05/02/2008 ===
 	* added a path variable to restrict the user's geographic actions

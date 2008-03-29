@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.2 2008-01-28 16:26:02 ghantoos Exp $
+# $Id: README,v 1.3 2008-03-29 14:15:57 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -21,6 +21,7 @@ anyways.
 		* lshell.conf
 		* COPYING
 		* README
+		* CHANGES
 
 	lshell.py must be executable:
 		$>chmod +x lshell.py
@@ -34,10 +35,10 @@ anyways.
 		* forbidden: a list of forbidden character or commands
 		* warning_counter: number of warnings when user enters a 
 		  forbidden value before getting exited from lshell.
-		  The 'forbidden variable part is to avoid execute other 
-		  commands. (e.g. ssh ..;vi .ssh/authorized_keys)
 		* timer: a value in seconds for the session timer
 		* passwd: password of specific user
+		* path: list of path to restrict the user geographicaly
+		* scp: 1 or 0 to allow of forbid the use of scp on a user's account
 
 ###
 3- Usage:
@@ -46,11 +47,12 @@ anyways.
 	location of your configuration file:
 	$> cd /path/to/lshell
 	$> ./lshell.py /path/to/configuration/file
-	In case lshell.py and lshell.conf (or whatever you want to call it)
-	are in the same folder, just type: ./lshell.py lshell.conf
+
+	By default lshell will try to launch using /etc/lshell.conf unless 
+	specified otherwise.
 
 ###
-4- Use case: OpenSSH & authorized_keys
+4- Use case 1: OpenSSH & authorized_keys
 ###
 	The primary goal of lshell, was to be able to create shell accounts 
 	with ssh access	and restrict their environment to a couple a needed 
@@ -67,6 +69,8 @@ anyways.
 	forbidden       : [';', '&', '|'] 
 	warning_counter : 2
 	timer           : 0
+	path		: ['/home/bla', '/usr/bla']
+	scp		: 1 # or 0
 	# END
 	
 	In order to launch lshell limited to the 'ssh' command, I used ssh's 
@@ -101,7 +105,24 @@ anyways.
 	automatically ended! : )
 
 ###
-5- Contact
+5- Use case 2: /etc/passwd
+###
+	In order to configure a user account to use lshell by default, you 
+	can force the its shell to be lshell by specifying it in /etc/passwd.
+	In this case, you must: 
+	1- Untar the lshell tar.gz in /usr/local/lshell/
+	   $> cd /usr/local/
+	   $> tar xvfz lshell-xxxxxxxx.tar.gz
+	2- Save the lshell configuration file in: /etc/lshell.conf
+	3- then, vi/etc/passwd and put as the following 
+	   (example with user ghantoos):
+		ghantoos:x:1001:1001:ghantoos,,,:/home/ghantoos:/usr/local/lshell/lshell.py
+
+	After this, whichever method is used by the user to log into his account,
+	he will end up using the limited shell you configured for him!
+
+###
+6- Contact
 ###
 	If you want to contribute to this project, please do not hesitate.
 	Send me a patch, or just your new lshell.py so I can check it out.

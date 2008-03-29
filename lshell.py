@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.7 2008-02-05 19:51:41 ghantoos Exp $
+#    $Id: lshell.py,v 1.8 2008-03-29 14:15:57 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -207,7 +207,7 @@ class shell_cmd(cmd.Cmd,object):
 		exit(0)
 
 
-class check_config():
+class check_config:
 
 	def __init__(self, stdin=None, stdout=None):
 		""" Force the calling of the methods below
@@ -231,10 +231,12 @@ class check_config():
 
 	def usage(self):
 		""" This method checks the usage. lshell.py must be called with a configuration file.
+			If no configuration file is specified, it will set the configuration file path to 
+			/etc/lshell.conf.
 		"""
 		if len(sys.argv) < 2:
 			#self.stdout.write('No config file specified. Using default file.\n')
-			return 'lshell.conf'
+			return '/etc/lshell.conf'
 		elif len(sys.argv) > 2 or sys.argv[1] in ['-h', '--help']:
 			self.stdout.write(help)
 			sys.exit(0)

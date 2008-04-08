@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.8 2008-03-29 14:15:57 ghantoos Exp $
+#    $Id: lshell.py,v 1.9 2008-04-08 21:42:45 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -279,7 +279,7 @@ class check_config:
 		is then launched!
 		"""
 		self.config.read(self.config_file)
-		global username, allowed, forbidden, warning_counter, timer, path, scp
+		global username, allowed, forbidden, warning_counter, timer, path, home_path, env_path, scp
 		username = self.user
 		allowed = eval(self.config.get(self.user, 'allowed'))
 		allowed.extend(['quit', 'EOF'])
@@ -287,7 +287,17 @@ class check_config:
 		warning_counter = eval(self.config.get(self.user, 'warning_counter'))
 		timer = eval(self.config.get(self.user, 'timer'))
 		path = eval(self.config.get(self.user, 'path'))
+		try:
+			home_path = eval(self.config.get(self.user, 'home_path'))
+		except ConfigParser.NoOptionError:
+			home_path = '/home/' + username
+		try:
+			env_path = eval(self.config.get(self.user, 'env_path'))
+		except ConfigParser.NoOptionError:
+			env_path = ''
 		scp = eval(self.config.get(self.user, 'scp'))
+		os.chdir(home_path)
+		os.environ['PATH']=os.environ['PATH'] + env_path
 
 	def check_scp(self):
 		""" This method checks if the user is trying to SCP a file onto the server.

@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.3 2008-03-29 14:15:57 ghantoos Exp $
+# $Id: README,v 1.4 2008-04-08 21:42:45 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -38,6 +38,9 @@ anyways.
 		* timer: a value in seconds for the session timer
 		* passwd: password of specific user
 		* path: list of path to restrict the user geographicaly
+		* home_path: set the home folder of your user. If not specified, the home
+		  directory is set to /home/username
+		* env_path: update the environment variable $PATH of the user (optional)
 		* scp: 1 or 0 to allow of forbid the use of scp on a user's account
 
 ###
@@ -64,13 +67,15 @@ anyways.
 
 	# START
 	[bla]
-	passwd          : blabla
-	allowed         : ['ssh']
-	forbidden       : [';', '&', '|'] 
-	warning_counter : 2
-	timer           : 0
-	path		: ['/home/bla', '/usr/bla']
-	scp		: 1 # or 0
+	passwd			: blabla
+	allowed			: ['ssh']
+	forbidden		: [';', '&', '|'] 
+	warning_counter	: 2
+	timer			: 0
+	path			: ['/home/bla', '/usr/bla']
+	home_path		: '/home/bla
+	env_path		: ':/sbin:/usr/bla'
+	scp				: 1 # or 0
 	# END
 	
 	In order to launch lshell limited to the 'ssh' command, I used ssh's 

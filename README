@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.4 2008-04-08 21:42:45 ghantoos Exp $
+# $Id: README,v 1.5 2008-05-06 10:10:26 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -15,13 +15,20 @@ anyways.
 ###
 1- Installation:
 ###
-	Extract the files in the wanted directory (tar xvfz lshell.tar.gz)
-	Included files:
-		* lshell.py
-		* lshell.conf
-		* COPYING
-		* README
-		* CHANGES
+	You have 2 options:
+		* use the install.sh script that will guide you through the install:
+			- copying files
+			- creating user to use lshell as main shell
+			- changing main shell of user
+			- listing current users using lshell as main shell
+		* Follow the instructions below:
+			Extract the files in the wanted directory (tar xvfz lshell.tar.gz)
+			Included files:
+				* lshell.py
+				* lshell.conf
+				* COPYING
+				* README
+				* CHANGES
 
 	lshell.py must be executable:
 		$>chmod +x lshell.py
@@ -70,12 +77,12 @@ anyways.
 	passwd			: blabla
 	allowed			: ['ssh']
 	forbidden		: [';', '&', '|'] 
-	warning_counter	: 2
+	warning_counter		: 2
 	timer			: 0
 	path			: ['/home/bla', '/usr/bla']
 	home_path		: '/home/bla
 	env_path		: ':/sbin:/usr/bla'
-	scp				: 1 # or 0
+	scp			: 1 # or 0
 	# END
 	
 	In order to launch lshell limited to the 'ssh' command, I used ssh's 

@@ -2,14 +2,14 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.5 2008-05-06 10:10:26 ghantoos Exp $
+# $Id: README,v 1.6 2008-10-07 23:45:33 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
 I've commented the source file (lshell.py) and the template configuration 
-file (lshell.conf) as much as thought would enough. But Here's a readme file 
+file (lshell.conf) as much as thought would be enough. But Here's a readme file 
 anyways.
 
 ###
@@ -29,6 +29,9 @@ anyways.
 				* COPYING
 				* README
 				* CHANGES
+			Then create the log file (by default /var/log/lshell.log) and make
+			it writable by your users (group rights?), else no log file will
+			be used.
 
 	lshell.py must be executable:
 		$>chmod +x lshell.py
@@ -49,6 +52,9 @@ anyways.
 		  directory is set to /home/username
 		* env_path: update the environment variable $PATH of the user (optional)
 		* scp: 1 or 0 to allow of forbid the use of scp on a user's account
+
+	A default profile is available to let multiple users use the same comfiguration.
+	Nevertheless, you will have to create a [username] section to at least put a password.
 
 ###
 3- Usage:

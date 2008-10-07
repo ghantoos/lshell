@@ -2,11 +2,20 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.4 2008-05-06 10:10:26 ghantoos Exp $
+# $Id: CHANGES,v 1.5 2008-10-07 23:45:33 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== 07/10/2008 ===
+	* Added file completion
+	* Added a history file per user
+	* Added a logging for warnings and log in/out
+	* Added prompt update when user changes directory (bash like)
+	* Corrected the check_path function
+	* Changed user setting from global variable to dict
+	* Added a default profile used when a parameter is not set for a user
 
 === 06/05/2008 ===
 	* Added an shell script usefull to install and manage lshell users

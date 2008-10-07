@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.9 2008-04-08 21:42:45 ghantoos Exp $
+#    $Id: lshell.py,v 1.10 2008-10-07 23:45:33 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -28,10 +28,12 @@ import ConfigParser
 from threading import Timer
 from getpass import getpass, getuser
 import termios
-
+import string, re
 
 # Global Variable config_list listing the required configuration fields per user
-config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer','path','scp']
+config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer','scp']
+LOGFILE='/var/log/lshell.log'
+HISTORY='.lhistory'
 
 # help text
 help = """------------------------------------------------------------------------
@@ -55,35 +57,48 @@ Type '?' or 'help' to get the list of allowed commands"""
 
 class shell_cmd(cmd.Cmd,object): 
 
-	def __init__(self):
-		""" This methohd uses the 'username' global variable, to put it in the prompt.
-		The whole idea here, is just to embellish the lshell..: )
-		"""
-		if (timer > 0): 
+	def __init__(self, userconf):
+		self.conf = userconf
+		self.identchars = self.identchars + '+./-'
+		if (self.conf['timer'] > 0): 
 			t = Timer(2, self.mytimer)
 			t.start()
+		self.log('Logged in',LOGFILE)
+		self.history = os.path.normpath(self.conf['home_path'])+'/'+HISTORY
 		cmd.Cmd.__init__(self)
-		self.prompt = username+':-$ '
+		self.prompt = self.conf['username']+':~$ '
 		self.intro = intro
 
 	def __getattr__(self, attr):
-		"""This is the heart of lshell!
-		This method actually takes care of all the called method that are 
+		"""This method actually takes care of all the called method that are 
 		not resolved (i.e not existing methods). It actually will simulate
-		the existance of any method	entered in the 'allowed' global variable list.
+		the existance of any method	entered in the 'allowed' variable list.
 
 		e.g. You just have to add 'uname' in list of allowed commands in 
-		the 'allowed' global variable, and lshell will react as if you had 
+		the 'allowed' variable, and lshell will react as if you had 
 		added a do_uname in the shell_cmd class!
 		"""
 		if self.check_secure(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.check_path(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.g_cmd in ['quit', 'exit', 'EOF']:
+			self.log('Exited',LOGFILE)
 			self.stdout.write('\nExiting..\n')
 			sys.exit(1)
-		elif self.g_cmd in allowed:
-			os.system(self.g_line)
-		elif self.g_cmd not in ['','?','help'] : self.stdout.write('*** Unknown syntax: %s\n'%self.g_cmd) 
+		elif self.g_cmd in self.conf['allowed']:
+			if self.g_cmd in ['cd']:
+				if len ( self.g_arg ) >= 1:
+					if os.path.isdir(self.g_arg): 
+						os.chdir( self.g_arg )
+						self.updateprompt(os.getcwd())
+					else: self.stdout.write('No such directory.\n')
+				else: 
+					os.chdir(self.conf['home_path'])
+					self.updateprompt(os.getcwd())
+			else:
+				os.system(self.g_line)
+		elif self.g_cmd not in ['','?','help'] : 
+			self.log('UNKW: '+self.g_line, LOGFILE)
+			self.stdout.write('*** Unknown syntax: %s\n'%self.g_cmd) 
 		self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
 		return object.__getattribute__(self, attr)
 
@@ -91,33 +106,160 @@ class shell_cmd(cmd.Cmd,object):
 		"""This method is used to check the content on the typed command.
 		Its purpose is to forbid the user to user to override the lshell
 		command restrictions. 
-		The forbidden characters are placed in the 'forbidden' global variable.
+		The forbidden characters are placed in the 'forbidden' variable.
 		Feel free to update the list. Emptying it would be quite useless..: )
 
 		A warining counter has been added, to kick out of lshell a user if he
-		is warned more than X time (X beeing the 'forbidden_counter' global variable).
+		is warned more than X time (X beeing the 'forbidden_counter' variable).
 		"""
-		for item in forbidden:
+		for item in self.conf['forbidden']:
 			if item in line:
-				global warning_counter
-				warning_counter -= 1
-				if warning_counter <= 0: 
+				self.conf['warning_counter'] -= 1
+				if self.conf['warning_counter'] <= 0: 
+					self.log('FIRED: '+self.g_line,LOGFILE)
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
 				else:
+					self.log('WARN: '+self.g_line,LOGFILE)
 					self.stdout.write('WARNING: What are you trying to do??\n')
 				return 0
 
 	def check_path(self, line):
-		import string, re
-		line = line.strip().split(' ')
-		for item in line:
-			if '/' in item:
-				path_re = re.compile('('+string.join(path,'|')+')')
-				match = path_re.match(item)
-				if not match : 
-					self.check_secure(forbidden[0])
-					return 0
+		path_ = eval(str(self.conf['path']))
+		for i in range(0,len(path_)):
+			path_[i] = os.path.normpath(path_[i])
+		path_re = string.join(path_,'.*|')
+		if '/' in line:
+			line = line.strip().split(' ')
+			for item in line:
+				if '/' in item:
+					if item[0] == '/': tomatch = item
+					else: tomatch = os.getcwd()+'/'+item
+					if not re.findall(path_re,tomatch) : 
+						self.check_secure(self.conf['forbidden'][0])
+						return 0
+		else:
+			if not re.findall(path_re,os.getcwd()) : 
+				self.conf['warning_counter'] -= 1
+				if self.conf['warning_counter'] <= 0: 
+					self.log('FIRED: '+self.g_line,LOGFILE)
+					self.stdout.write('I warned you.. See ya!\n')
+					sys.exit(1)
+				self.log('WARN: '+"CMD: '"+self.g_line+"' in '"+os.getcwd()+"'",LOGFILE)
+				self.stdout.write('You were not supposed to be here.\n')
+				self.stdout.write('This incident will be reported\n')
+				os.chdir(self.conf['home_path'])
+				self.updateprompt(os.getcwd())
+				return 0
+
+	def updateprompt(self, path):
+		if path is self.conf['home_path']:
+			self.prompt = self.conf['username'] + ':~$ '
+		elif re.findall(self.conf['home_path'], path) :
+			self.prompt = self.conf['username'] + ':~' + path.split(self.conf['home_path'])[1] + '$ '
+		else:
+			self.prompt = self.conf['username'] + ':' + path + '$ '
+
+	def log(self,text,logfile):
+		if logfile is not '':
+			from time import strftime
+			log = open(logfile, 'a')
+			log.write(strftime("%Y-%m-%d %H:%M:%S") + ' ('+getuser()+'): ' + text + '\n')
+			log.close()
+
+	def cmdloop(self, intro=None):
+		"""Repeatedly issue a prompt, accept input, parse an initial prefix
+		off the received input, and dispatch to action methods, passing them
+		the remainder of the line as argument.
+
+		"""
+
+		self.preloop()
+		if self.use_rawinput and self.completekey:
+			try:
+				import readline
+				try:
+					readline.read_history_file(self.history)
+				except IOError:
+					# if history file does not exist
+					open(self.history, 'w').close()
+					readline.read_history_file(self.history)
+				self.old_completer = readline.get_completer()
+				readline.set_completer(self.complete)
+				readline.parse_and_bind(self.completekey+": complete")
+			except ImportError:
+				pass
+		try:
+			if intro is not None:
+				self.intro = intro
+			if self.intro:
+				self.stdout.write(str(self.intro)+"\n")
+			stop = None
+			while not stop:
+				if self.cmdqueue:
+					line = self.cmdqueue.pop(0)
+				else:
+					if self.use_rawinput:
+						try:
+							line = raw_input(self.prompt)
+						except EOFError:
+							line = 'EOF'
+						except KeyboardInterrupt:
+							self.stdout.write('\n')
+							line = ''
+
+					else:
+						self.stdout.write(self.prompt)
+						self.stdout.flush()
+						line = self.stdin.readline()
+						if not len(line):
+							line = 'EOF'
+						else:
+							line = line[:-1] # chop \n
+				line = self.precmd(line)
+				stop = self.onecmd(line)
+				stop = self.postcmd(stop, line)
+			self.postloop()
+		finally:
+			if self.use_rawinput and self.completekey:
+				try:
+					import readline
+					readline.set_completer(self.old_completer)
+				except ImportError:
+					pass
+			readline.write_history_file(self.history)
+
+	def complete(self, text, state):
+		"""Return the next possible completion for 'text'.
+
+		If a command has not been entered, then complete against command list.
+		Otherwise try to call complete_<command> to get list of completions.
+		"""
+		if state == 0:
+			import readline
+			origline = readline.get_line_buffer()
+			line = origline.lstrip()
+			stripped = len(origline) - len(line)
+			begidx = readline.get_begidx() - stripped
+			endidx = readline.get_endidx() - stripped
+			if line.split(' ')[0] in self.conf['allowed']:
+				compfunc = self.completechdir
+			elif begidx>0:
+				cmd, args, foo = self.parseline(line)
+				if cmd == '':
+					compfunc = self.completedefault
+				else:
+					try:
+						compfunc = getattr(self, 'complete_' + cmd)
+					except AttributeError:
+						compfunc = self.completedefault
+			else:
+				compfunc = self.completenames
+			self.completion_matches = compfunc(text, line, begidx, endidx)
+		try:
+			return self.completion_matches[state]
+		except IndexError:
+			return None
 
 	def default(self, line):
 		""" This method overrides the original default method. This method was originally used to
@@ -134,9 +276,18 @@ class shell_cmd(cmd.Cmd,object):
 		"""
 		dotext = 'do_'+text
 		names = self.get_names()
-		for command in allowed: 
+		for command in self.conf['allowed']: 
 			names.append('do_' + command)
 		return [a[3:] for a in names if a.startswith(dotext)]
+
+	def completechdir(self,text, line, begidx, endidx):
+		toreturn = []
+		for instance in os.listdir(os.getcwd()):
+			if os.path.isdir(instance):
+				instance = instance+'/'
+			toreturn.append(instance)
+
+		return [a+' ' for a in toreturn if a.startswith(text)]
 
 	def onecmd(self, line):
 		""" This method overrides the original onecomd method, to put the cmd, arg and line 
@@ -209,7 +360,7 @@ class shell_cmd(cmd.Cmd,object):
 
 class check_config:
 
-	def __init__(self, stdin=None, stdout=None):
+	def __init__(self, stdin=None, stdout=None, stderr=None):
 		""" Force the calling of the methods below
 		""" 
 		if stdin is None:
@@ -220,12 +371,18 @@ class check_config:
 			self.stdout = sys.stdout
 		else:
 			self.stdout = stdout
+		if stderr is None:
+			self.stderr = sys.stderr
+		else:
+			self.stderr = stderr
 
+		self.conf = {}
 		self.config_file = self.usage()
+		self.check_log()
 		self.check_file(self.config_file)
 		self.check_config_user()
-		self.get_config_user()
 		self.check_user_integrity()
+		self.get_config_user()
 		self.check_scp()
 		self.check_passwd()
 
@@ -242,10 +399,19 @@ class check_config:
 			sys.exit(0)
 		else: return sys.argv[1]
 
+	def check_log(self):
+		global LOGFILE
+		try:
+			fp=open(LOGFILE,'a').close()
+		except IOError:
+			LOGFILE=''
+			self.stderr.write('WARNING: Cannot write in log file: Permission denied.\n')
+			self.stderr.write('WARNING: Actions will not be logged.\n')
+
 	def check_file(self, config_file):
 		""" This method checks the existence of the "argumently" given configuration file.
 		"""
-		if os.path.exists(self.config_file) is False : 
+		if not os.path.exists(self.config_file): 
 			self.stdout.write("Error: Config file doesn't exist\n")
 			sys.exit(0)
 		else: self.config = ConfigParser.ConfigParser()
@@ -256,7 +422,7 @@ class check_config:
 		If the user is found, it continues by calling check_user_integrity() then check_passwd()
 		"""
 		self.config.read(self.config_file)
-		self.user = getuser() # to use getpass._raw_input('Enter username: '), 'username' must be entered in list_config
+		self.user = getuser()
 		if self.config.has_section(self.user) is False:
 			self.stdout.write('Error: Unknown user "'+self.user+'"\n')
 			sys.exit(0)
@@ -265,39 +431,40 @@ class check_config:
 		""" This method checks if all the required fields by user are present for the present user.
 		In case fields are missing, the user is notified and exited from lshell
 		"""
-		global config_list
 		quit = 0
 		for item in config_list:
-			if self.config.has_option(self.user, item) is False:
-				self.stdout.write('Error: Missing parameter "' + item + '" for user ' + self.user + '\n')
-				quit = 1
-		if quit is 1: sys.exit(0)
+			if not self.config.has_option(self.user, item):
+				if not self.config.has_option('default', item):
+					self.stdout.write('Error: Missing parameter "' + item + '" for user ' + self.user + '\n')
+					self.stdout.write('Error: Add it in the in the [user] or [default] section of conf file\n')
+					sys.exit(0)
 
 	def get_config_user(self):
 		""" Once all the checks above have passed, the configuration files values are entered
-		in global variables to be used by the command line it self. The lshell command line
+		in a dict to be used by the command line it self. The lshell command line
 		is then launched!
 		"""
-		self.config.read(self.config_file)
-		global username, allowed, forbidden, warning_counter, timer, path, home_path, env_path, scp
-		username = self.user
-		allowed = eval(self.config.get(self.user, 'allowed'))
-		allowed.extend(['quit', 'EOF'])
-		forbidden = eval(self.config.get(self.user, 'forbidden'))
-		warning_counter = eval(self.config.get(self.user, 'warning_counter'))
-		timer = eval(self.config.get(self.user, 'timer'))
-		path = eval(self.config.get(self.user, 'path'))
+		for item in ['allowed','forbidden','warning_counter','timer','env_path','scp']:
+			try:
+				self.conf[item] = eval(self.config.get(self.user, item))
+			except ConfigParser.NoOptionError:
+				self.conf[item] = eval(self.config.get('default', item))
+		self.conf['username'] = self.user
+		self.conf['allowed'].extend(['exit'])
 		try:
-			home_path = eval(self.config.get(self.user, 'home_path'))
+			self.conf['home_path'] = os.path.normpath(eval(self.config.get(self.user, 'home_path')))
 		except ConfigParser.NoOptionError:
-			home_path = '/home/' + username
+			self.conf['home_path'] = os.path.expanduser('~'+self.conf['username'])
 		try:
-			env_path = eval(self.config.get(self.user, 'env_path'))
+			self.conf['path'] = eval(self.config.get(self.user, 'path'))
 		except ConfigParser.NoOptionError:
-			env_path = ''
-		scp = eval(self.config.get(self.user, 'scp'))
-		os.chdir(home_path)
-		os.environ['PATH']=os.environ['PATH'] + env_path
+			try:
+				self.conf['path'] = eval(self.config.get('default', 'path'))
+			except ConfigParser.NoOptionError:
+				self.conf['path'] = [self.conf['home_path']]
+				
+		os.chdir(self.conf['home_path'])
+		os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
 
 	def check_scp(self):
 		""" This method checks if the user is trying to SCP a file onto the server.
@@ -313,7 +480,7 @@ class check_config:
 			fd = sys.stdin.fileno()
 			test = termios.tcgetattr(fd)
 		except termios.error:
-			if scp is 1: 
+			if self.conf['scp'] is 1: 
 				os.system('scp -t .')
 				sys.exit(0)
 			else:
@@ -334,12 +501,14 @@ class check_config:
 				self.stdout.write('Error: Wrong password \nExiting..\n')
 				sys.exit(0)
 
+	def returnconf(self):
+		return self.conf
 
 if __name__=='__main__':
 
 	try:
-		check_config()
-		cli = shell_cmd()
+		userconf = check_config()
+		cli = shell_cmd(userconf.returnconf())
 		cli.cmdloop()
 
 	except (KeyboardInterrupt, EOFError):

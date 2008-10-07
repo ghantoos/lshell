@@ -2,7 +2,7 @@
 #
 # Limited Shell (lshell) installation script
 #
-# $Id: install.sh,v 1.1 2008-05-06 10:10:26 ghantoos Exp $
+# $Id: install.sh,v 1.2 2008-10-07 23:45:33 ghantoos Exp $
 #
 # This script will:
 #       - Create /usr/local/lshell/ directory
@@ -108,6 +108,9 @@ install_lshell() {
 	if [ $path ]; then
 		$CONFIGDIR = $path
 	fi
+
+	# creation of log file
+	touch /var/log/lshell.log
 
 	# files copying
 	test ! -d $INSTALLDIR && mkdir $INSTALLDIR

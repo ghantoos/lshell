@@ -2,39 +2,25 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.6 2008-10-07 23:45:33 ghantoos Exp $
+# $Id: README,v 1.7 2008-10-16 23:20:09 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
 I've commented the source file (lshell.py) and the template configuration 
-file (lshell.conf) as much as thought would be enough. But Here's a readme file 
-anyways.
+file (lshell.conf) as much as thought would be enough.
 
 ###
 1- Installation:
 ###
 	You have 2 options:
-		* use the install.sh script that will guide you through the install:
-			- copying files
-			- creating user to use lshell as main shell
-			- changing main shell of user
-			- listing current users using lshell as main shell
-		* Follow the instructions below:
-			Extract the files in the wanted directory (tar xvfz lshell.tar.gz)
-			Included files:
-				* lshell.py
-				* lshell.conf
-				* COPYING
-				* README
-				* CHANGES
-			Then create the log file (by default /var/log/lshell.log) and make
-			it writable by your users (group rights?), else no log file will
-			be used.
-
-	lshell.py must be executable:
-		$>chmod +x lshell.py
+		* use the setup.py present in the tar. It uses python distutils to install
+          everything in the right place:
+			- Extract the files in the wanted directory (tar xvfz lshell.tar.gz)
+			- Run: $> sudo python setup.py install
+		* Install the rpm:
+            - $> rpm -Uvh lshell-x.x-x.noarch.rpm
 
 ###
 2- Configuration:
@@ -62,7 +48,7 @@ anyways.
 	To launch the Limited Shell, just execute lshell.py specifying the 
 	location of your configuration file:
 	$> cd /path/to/lshell
-	$> ./lshell.py /path/to/configuration/file
+	$> lshell /path/to/configuration/file
 
 	By default lshell will try to launch using /etc/lshell.conf unless 
 	specified otherwise.
@@ -80,15 +66,15 @@ anyways.
 
 	# START
 	[bla]
-	passwd			: blabla
-	allowed			: ['ssh']
-	forbidden		: [';', '&', '|'] 
-	warning_counter		: 2
-	timer			: 0
-	path			: ['/home/bla', '/usr/bla']
-	home_path		: '/home/bla
-	env_path		: ':/sbin:/usr/bla'
-	scp			: 1 # or 0
+	passwd          : blabla
+	allowed         : ['ssh']
+	forbidden       : [';', '&', '|'] 
+	warning_counter : 2
+	timer           : 0
+	path            : ['/home/bla', '/usr/bla']
+	home_path       : '/home/bla
+	env_path        : ':/sbin:/usr/bla'
+	scp             : 1 # or 0
 	# END
 	
 	In order to launch lshell limited to the 'ssh' command, I used ssh's 
@@ -128,13 +114,9 @@ anyways.
 	In order to configure a user account to use lshell by default, you 
 	can force the its shell to be lshell by specifying it in /etc/passwd.
 	In this case, you must: 
-	1- Untar the lshell tar.gz in /usr/local/lshell/
-	   $> cd /usr/local/
-	   $> tar xvfz lshell-xxxxxxxx.tar.gz
+	1- $> echo /usr/bin/lshell >> /etc/shells
 	2- Save the lshell configuration file in: /etc/lshell.conf
-	3- then, vi/etc/passwd and put as the following 
-	   (example with user ghantoos):
-		ghantoos:x:1001:1001:ghantoos,,,:/home/ghantoos:/usr/local/lshell/lshell.py
+	3- chsh -s /usr/bin/lshell user_name
 
 	After this, whichever method is used by the user to log into his account,
 	he will end up using the limited shell you configured for him!

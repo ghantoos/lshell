@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.10 2008-10-07 23:45:33 ghantoos Exp $
+#    $Id: lshell.py,v 1.1 2008-10-16 22:56:17 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -29,20 +29,24 @@ from threading import Timer
 from getpass import getpass, getuser
 import termios
 import string, re
+import getopt
 
 # Global Variable config_list listing the required configuration fields per user
 config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer','scp']
 LOGFILE='/var/log/lshell.log'
+CONFIGFILE='/etc/lshell.conf'
 HISTORY='.lhistory'
 
 # help text
-help = """------------------------------------------------------------------------
-Limited Shell (lshell):
- - Specify a configuration file using: ./lshell.py /path/to/config/file
- - Else, lshell.conf will be used by default
+help = """Usage: lshell [options]
 
-For more specifications, please refer to the README.
-------------------------------------------------------------------------
+Options:
+  -h|--help                         Show this help message
+  -c|--config /path/to/config/file  Select config file 
+                                    (default is /etc/lshell.conf)
+  -l|--log    /path/to/logfile      Specify the logfile to use
+                                    (default is /var/log/lshell.log)
+
 """
 
 help_help = """Limited Shell (lshell) limited help.
@@ -63,7 +67,7 @@ class shell_cmd(cmd.Cmd,object):
 		if (self.conf['timer'] > 0): 
 			t = Timer(2, self.mytimer)
 			t.start()
-		self.log('Logged in',LOGFILE)
+		self.log('Logged in',self.conf['logfile'])
 		self.history = os.path.normpath(self.conf['home_path'])+'/'+HISTORY
 		cmd.Cmd.__init__(self)
 		self.prompt = self.conf['username']+':~$ '
@@ -81,7 +85,7 @@ class shell_cmd(cmd.Cmd,object):
 		if self.check_secure(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.check_path(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.g_cmd in ['quit', 'exit', 'EOF']:
-			self.log('Exited',LOGFILE)
+			self.log('Exited',self.conf['logfile'])
 			self.stdout.write('\nExiting..\n')
 			sys.exit(1)
 		elif self.g_cmd in self.conf['allowed']:
@@ -97,7 +101,7 @@ class shell_cmd(cmd.Cmd,object):
 			else:
 				os.system(self.g_line)
 		elif self.g_cmd not in ['','?','help'] : 
-			self.log('UNKW: '+self.g_line, LOGFILE)
+			self.log('UNKW: '+self.g_line, self.conf['logfile'])
 			self.stdout.write('*** Unknown syntax: %s\n'%self.g_cmd) 
 		self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
 		return object.__getattribute__(self, attr)
@@ -116,11 +120,11 @@ class shell_cmd(cmd.Cmd,object):
 			if item in line:
 				self.conf['warning_counter'] -= 1
 				if self.conf['warning_counter'] <= 0: 
-					self.log('FIRED: '+self.g_line,LOGFILE)
+					self.log('FIRED: '+self.g_line,self.conf['logfile'])
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
 				else:
-					self.log('WARN: '+self.g_line,LOGFILE)
+					self.log('WARN: '+self.g_line,self.conf['logfile'])
 					self.stdout.write('WARNING: What are you trying to do??\n')
 				return 0
 
@@ -142,10 +146,10 @@ class shell_cmd(cmd.Cmd,object):
 			if not re.findall(path_re,os.getcwd()) : 
 				self.conf['warning_counter'] -= 1
 				if self.conf['warning_counter'] <= 0: 
-					self.log('FIRED: '+self.g_line,LOGFILE)
+					self.log('FIRED: '+self.g_line,self.conf['logfile'])
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
-				self.log('WARN: '+"CMD: '"+self.g_line+"' in '"+os.getcwd()+"'",LOGFILE)
+				self.log('WARN: '+"CMD: '"+self.g_line+"' in '"+os.getcwd()+"'",self.conf['logfile'])
 				self.stdout.write('You were not supposed to be here.\n')
 				self.stdout.write('This incident will be reported\n')
 				os.chdir(self.conf['home_path'])
@@ -360,7 +364,7 @@ class shell_cmd(cmd.Cmd,object):
 
 class check_config:
 
-	def __init__(self, stdin=None, stdout=None, stderr=None):
+	def __init__(self, args, stdin=None, stdout=None, stderr=None):
 		""" Force the calling of the methods below
 		""" 
 		if stdin is None:
@@ -377,51 +381,69 @@ class check_config:
 			self.stderr = stderr
 
 		self.conf = {}
-		self.config_file = self.usage()
+		self.conf = self.getoptions(args, self.conf)
 		self.check_log()
-		self.check_file(self.config_file)
-		self.check_config_user()
+		self.check_file(self.conf['configfile'])
+		self.check_config_user(self.conf['configfile'])
 		self.check_user_integrity()
 		self.get_config_user()
 		self.check_scp()
 		self.check_passwd()
 
-	def usage(self):
+	def getoptions(self, arguments, conf):
 		""" This method checks the usage. lshell.py must be called with a configuration file.
-			If no configuration file is specified, it will set the configuration file path to 
-			/etc/lshell.conf.
+		If no configuration file is specified, it will set the configuration file path to 
+		/etc/lshell.conf.
 		"""
-		if len(sys.argv) < 2:
-			#self.stdout.write('No config file specified. Using default file.\n')
-			return '/etc/lshell.conf'
-		elif len(sys.argv) > 2 or sys.argv[1] in ['-h', '--help']:
-			self.stdout.write(help)
-			sys.exit(0)
-		else: return sys.argv[1]
+		# uncomment the following to set the -c or --config as mandatory argument
+		#if '-c' not in arguments and '--config' not in arguments:
+		#	usage()
+
+		# set '/etc/lshell.conf' as default configuration file
+		conf['configfile'] = CONFIGFILE
+		conf['logfile'] = LOGFILE
+		try:
+			optlist, args = getopt.getopt(arguments, 'c:l:',['config=','log='])
+		except getopt.GetoptError:
+			self.usage()
+
+		for option, value in optlist:
+			if  option in ['-c', '--config']:
+				conf['configfile'] = os.path.realpath(value)
+			if  option in ['-l', '--log']:
+				conf['logfile'] = os.path.realpath(value)
+			elif option in ['-h', '--help']:
+				self.usage()
+
+		return conf
+
+	def usage(self):
+		""" Prints the usage """
+		sys.stderr.write(help)
+		sys.exit(0)
 
 	def check_log(self):
-		global LOGFILE
 		try:
-			fp=open(LOGFILE,'a').close()
+			fp=open(self.conf['logfile'],'a').close()
 		except IOError:
-			LOGFILE=''
+			self.conf['logfile']=''
 			self.stderr.write('WARNING: Cannot write in log file: Permission denied.\n')
 			self.stderr.write('WARNING: Actions will not be logged.\n')
 
 	def check_file(self, config_file):
 		""" This method checks the existence of the "argumently" given configuration file.
 		"""
-		if not os.path.exists(self.config_file): 
+		if not os.path.exists(config_file): 
 			self.stdout.write("Error: Config file doesn't exist\n")
 			sys.exit(0)
 		else: self.config = ConfigParser.ConfigParser()
 
-	def check_config_user(self):
+	def check_config_user(self,config_file):
 		""" This method checks if the current user exists in the configuration file.
 		If the user is not found, he is exited from lshell.
 		If the user is found, it continues by calling check_user_integrity() then check_passwd()
 		"""
-		self.config.read(self.config_file)
+		self.config.read(config_file)
 		self.user = getuser()
 		if self.config.has_section(self.user) is False:
 			self.stdout.write('Error: Unknown user "'+self.user+'"\n')
@@ -507,7 +529,7 @@ class check_config:
 if __name__=='__main__':
 
 	try:
-		userconf = check_config()
+		userconf = check_config(sys.argv[1:])
 		cli = shell_cmd(userconf.returnconf())
 		cli.cmdloop()
 

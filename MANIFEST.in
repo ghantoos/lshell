@@ -1,0 +1,5 @@
+include COPYING
+include README
+include CHANGES
+include etc/lshell.conf
+include log/lshell.log

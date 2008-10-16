@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.7 2008-10-16 23:20:09 ghantoos Exp $
+# $Id: README,v 1.8 2008-10-16 23:28:18 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -21,6 +21,16 @@ file (lshell.conf) as much as thought would be enough.
 			- Run: $> sudo python setup.py install
 		* Install the rpm:
             - $> rpm -Uvh lshell-x.x-x.noarch.rpm
+
+	Files tree should look something like this:
+		/etc/lshell.conf
+		/usr/bin/lshell
+		/usr/lib/python2.4/site-packages/lshell.py
+		/usr/lib/python2.4/site-packages/lshell.pyc
+		/usr/share/doc/lshell/CHANGES
+		/usr/share/doc/lshell/COPYING
+		/usr/share/doc/lshell/README
+		/var/log/lshell.log
 
 ###
 2- Configuration:

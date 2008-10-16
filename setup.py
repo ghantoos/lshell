@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.1 2008-10-16 22:56:17 ghantoos Exp $
+# $Id: setup.py,v 1.2 2008-10-16 23:28:18 ghantoos Exp $
 
 from distutils.core import setup
 
@@ -17,6 +17,7 @@ if __name__ == '__main__':
 		keywords=['limited','shell','security','python'],
 		url='http://ghantoos.org/',
 		license='GPL',
+		platforms='UNIX',
 		scripts = ['bin/lshell'],
 		package_dir = {'':'lshellmodule'},
 		packages = [''],

@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.9 2008-10-17 10:18:11 ghantoos Exp $
+# $Id: README,v 1.10 2008-10-17 13:57:19 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -56,13 +56,12 @@ file (lshell.conf) as much as thought would be enough.
 ###
 3- Usage:
 ###
-	To launch the Limited Shell, just execute lshell.py specifying the 
+	To launch the Limited Shell, just execute lshell specifying the 
 	location of your configuration file:
-	$> cd /path/to/lshell
-	$> lshell /path/to/configuration/file
+	$> lshell -c /path/to/configuration/file
 
 	By default lshell will try to launch using /etc/lshell.conf unless 
-	specified otherwise.
+	specified otherwise (using -c|--config).
 
 ###
 4- Use case 1: OpenSSH & authorized_keys

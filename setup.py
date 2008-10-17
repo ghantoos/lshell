@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.2 2008-10-16 23:28:18 ghantoos Exp $
+# $Id: setup.py,v 1.3 2008-10-17 23:49:18 ghantoos Exp $
 
 from distutils.core import setup
 
@@ -21,6 +21,9 @@ if __name__ == '__main__':
 		scripts = ['bin/lshell'],
 		package_dir = {'':'lshellmodule'},
 		packages = [''],
-		data_files = [('/etc', ['etc/lshell.conf']), ('share/doc/lshell',['README', 'COPYING', 'CHANGES']), ('/var/log',['log/lshell.log'])]
+		data_files = [('/etc', ['etc/lshell.conf']), 
+						('share/doc/lshell',['README', 'COPYING', 'CHANGES']), 
+						('/var/log',['log/lshell.log']) ,
+						('man/man1/', ['man/lshell.1.gz']) ]
 	)
 

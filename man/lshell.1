@@ -1,0 +1,56 @@
+.\"
+.\"   $Id: lshell.1,v 1.1 2008-10-17 23:52:52 ghantoos Exp $
+.\"
+.\"   Man page for the Limited Shell (lshell) project.
+.\"
+.TH LSHELL 1 "October 17, 2008" "v0.2" "USER COMMANDS"
+
+.SH NAME
+lshell \- Limited Shell
+
+.SH SYNOPSIS
+.B lshell 
+[\fIOPTION\fR] [\fIFILE\fR]
+
+.SH DESCRIPTION
+\fBlshell\fR provides a limited shell configured per user.
+The configuration is done quite simply using a configuration file.
+Coupled with ssh's 
+.I authorized_keys 
+or with
+.I /etc/shells
+and 
+.I /etc/passwd
+, it becomes very easy to restrict user's access to a limited set of command.
+
+.SH OPTIONS
+.TP
+.B \-h, --help
+Display help text
+.TP
+.B \-c, --config=\fIFILE\fR
+Select config file (default is /etc/lshell.conf)
+.TP
+.B \-l, --log=\fIFILE\fR
+Specify the log file to use (default is /var/log/lshell.log)
+
+.SH EXAMPLES
+.TP
+.B $ lshell
+.RS
+Tries to un lshell using default /etc/lshell.conf as configuration file. If it 
+fails a warning is printed and lshell is interrupted.
+Tries to un lshell using default /var/log/lshell.conf as log file. If it fails
+a warning is printed and lshell is continues runing.
+.RE
+.TP
+.B $ lshell -c /path/to/myconf.file -l /path/to/mylog.file
+.RS
+This will override the default options by specified configuration and/or log file
+.RE
+
+.SH AUTHOR
+Currently maintained by Ignace Mouzannar -ghantoos- 
+
+.SH EMAIL
+Feel free to send me your recommendations at ghantoos@ghantoos.org

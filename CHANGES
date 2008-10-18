@@ -2,18 +2,18 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.6 2008-10-16 22:56:17 ghantoos Exp $
+# $Id: CHANGES,v 1.7 2008-10-18 00:43:24 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== 17/10/2008 ===
+=== v0.2 17/10/2008 ===
 	* Added config and log option on command line (-c|--config and -l|--log)
 	* ordered the files for packaging purposes
 	* first packaging of lshell in source and rpm using distutils
 
-=== 07/10/2008 ===
+=== v0.2 07/10/2008 ===
 	* Added file completion
 	* Added a history file per user
 	* Added a logging for warnings and log in/out

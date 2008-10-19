@@ -1,6 +1,8 @@
 #!/bin/sh
 # postinst script for lshell
 #
+# $Id: postinst,v 1.2 2008-10-19 20:28:30 ghantoos Exp $
+#
 # see: dh_installdeb(1)
 
 set -e
@@ -20,7 +22,7 @@ set -e
 
 case "$1" in
     configure)
-	chmod /var/log/lshell.log
+	chmod 664 /var/log/lshell.log
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

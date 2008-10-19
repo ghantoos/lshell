@@ -1,6 +1,6 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.1 2008-10-19 16:54:14 ghantoos Exp $
+# $Id: Makefile,v 1.2 2008-10-19 20:28:30 ghantoos Exp $
 #
 
 PYTHON=`which python`
@@ -18,7 +18,6 @@ all:
 
 install: 
 		$(PYTHON) setup.py install --root $(DESTDIR)
-		chmod 664 $(DESTDIR)/var/log/lshell.log
 
 buildrpm: 
 		$(PYTHON) setup.py bdist_rpm --post-install=postinstall

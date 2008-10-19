@@ -1,0 +1,56 @@
+lshell (0.2-1) unstable; urgency=low
+
+  * ordered the files for packaging purposes
+  * Initial source packaging using distutils
+  * Initial rpm packaging using distutils
+  * Initial debian packaging
+  * Added file completion
+  * Added a history file per user
+  * Added a logging for warnings and log in/out
+  * Added prompt update when user changes directory (bash like)
+  * Corrected the check_path function
+  * Changed user setting from global variable to dict
+  * Added a default profile used when a parameter is not set for a user
+
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, 18 Oct 2008 20:13:44 +0200
+
+lshell (0.06-1) unstable; urgency=low
+
+  * Added an shell script usefull to install and manage lshell users
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Tue, 6 May 2008 00:00:01 +0200
+
+lshell (0.05-1) unstable; urgency=low
+
+  * Added evironment path (env_path) update support
+  * Added home path (home_path) variable
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Fri, 08 Apr 2008 00:00:01 +0200
+
+lshell (0.04-1) unstable; urgency=low
+
+  * Corrected class declaration bug and configuration file location
+  * Updated the README file with another usage of lshell
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, 29 Mar 2008 00:00:01 +0200
+
+lshell (0.03-1) unstable; urgency=low
+
+  * added a path variable to restrict the user's geographic actions
+  * MAJOR: added SCP support (also configurable through the config file)
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Tue, 5 Feb 2008 00:00:01 +0200
+
+lshell (0.02-1) unstable; urgency=low
+
+  * MAJOR: Added the 'help' method
+  * Did some code cleanup
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Thu, 31 Jan 2008 00:00:01 +0200
+
+lshell (0.01-1) unstable; urgency=low
+
+  * Initial release of lshell
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Mon, 28 Jan 2008 00:00:01 +0200

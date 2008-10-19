@@ -1,0 +1,13 @@
+Source: lshell
+Section: shells
+Priority: extra
+Maintainer: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
+Homepage: http://ghantoos.org/limited-shell-lshell/
+Build-Depends: python (>=2.4.3-1ubuntu3)
+Standards-Version: 3.7.2
+
+Package: lshell
+Architecture: any
+Depends: python (>=2.4)
+Description: Limited Shell
+ lshell provides a limited shell configured by user. The configuration is done quite simply using a configuration file. Coupled with ssh's authorized_keys or /etc/passwd, it becomes very easy to restrict a user access to limited command.

@@ -2,16 +2,19 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.7 2008-10-18 00:43:24 ghantoos Exp $
+# $Id: CHANGES,v 1.8 2008-10-19 16:54:14 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.2 18/10/2008 ===
+	* Initial debian packaging
+
 === v0.2 17/10/2008 ===
 	* Added config and log option on command line (-c|--config and -l|--log)
-	* ordered the files for packaging purposes
-	* first packaging of lshell in source and rpm using distutils
+	* Initial source packaging using distutils
+	* Initial rpm packaging using distutils
 
 === v0.2 07/10/2008 ===
 	* Added file completion

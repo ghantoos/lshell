@@ -5,7 +5,9 @@
 # As a special exception, when this file is copied by dh-make into a
 # dh-make output file, you may use that output file without restriction.
 # This special exception was added by Craig Small in version 0.37 of dh-make.
-
+#
+# $Id: rules,v 1.2 2008-10-19 16:55:52 ghantoos Exp $
+#
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 

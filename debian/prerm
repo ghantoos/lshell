@@ -1,7 +1,7 @@
 #!/bin/sh
 # postrm script for lshell
 #
-# $Id
+# $Id: prerm,v 1.2 2008-10-20 20:11:13 ghantoos Exp $
 #
 
 set -e

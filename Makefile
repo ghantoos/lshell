@@ -1,6 +1,6 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.2 2008-10-19 20:28:30 ghantoos Exp $
+# $Id: Makefile,v 1.3 2008-10-20 19:07:54 ghantoos Exp $
 #
 
 PYTHON=`which python`
@@ -17,7 +17,7 @@ all:
 		@echo "make clean - Get rid of scratch and byte files"
 
 install: 
-		$(PYTHON) setup.py install --root $(DESTDIR)
+		$(PYTHON) setup.py install --root $(DESTDIR) $(COMPILE)
 
 buildrpm: 
 		$(PYTHON) setup.py bdist_rpm --post-install=postinstall

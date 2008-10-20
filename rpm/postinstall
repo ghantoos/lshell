@@ -1,0 +1,9 @@
+#!/bin/sh
+#
+# $Id: postinstall,v 1.1 2008-10-20 20:27:36 ghantoos Exp $
+#
+# RPM build postinstall script
+
+groupadd lshellg
+chown root:lshellg /var/log/lshell.log
+chmod 664 /var/log/lshell.log

@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# $Id: preuninstall,v 1.1 2008-10-20 20:27:36 ghantoos Exp $
+#
+# RPM build postinstall script
+
+groupdel lshellg

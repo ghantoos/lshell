@@ -1,3 +1,10 @@
+lshell (0.2.1-1) unstable; urgency=low
+
+  * Corrected rpm & deb builds
+  * added a manpage
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, 20 Oct 2008 22:49:04 +0200
+
 lshell (0.2-1) unstable; urgency=low
 
   * ordered the files for packaging purposes
@@ -11,7 +18,6 @@ lshell (0.2-1) unstable; urgency=low
   * Corrected the check_path function
   * Changed user setting from global variable to dict
   * Added a default profile used when a parameter is not set for a user
-
 
  -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, 18 Oct 2008 20:13:44 +0200
 

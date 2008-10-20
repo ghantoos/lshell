@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.1 2008-10-17 23:52:52 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.2 2008-10-20 20:38:58 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH LSHELL 1 "October 17, 2008" "v0.2" "USER COMMANDS"
+.TH LSHELL 1 "October 20, 2008" "v0.2.1" "USER COMMANDS"
 
 .SH NAME
 lshell \- Limited Shell
@@ -48,6 +48,12 @@ a warning is printed and lshell is continues runing.
 .RS
 This will override the default options by specified configuration and/or log file
 .RE
+
+.SH TODO
+.TP
+In order to log a user's warnings into the default \fI/var/log/lshell.log\fR file, you must add the user to the \fIlshellg\fR group:
+
+$ useradd -G lshellg youruser
 
 .SH AUTHOR
 Currently maintained by Ignace Mouzannar -ghantoos- 

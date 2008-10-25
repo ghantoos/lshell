@@ -6,7 +6,7 @@
 # dh-make output file, you may use that output file without restriction.
 # This special exception was added by Craig Small in version 0.37 of dh-make.
 #
-# $Id: rules,v 1.4 2008-10-20 19:07:54 ghantoos Exp $
+# $Id: rules,v 1.5 2008-10-25 14:22:05 ghantoos Exp $
 #
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
@@ -52,10 +52,11 @@ binary-indep: build install
 binary-arch: build install
 	dh_testroot
 	dh_installchangelogs CHANGES
+	dh_pycentral
+	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
-	dh_pysupport
 	dh_installdeb
 	dh_shlibdeps
 	dh_gencontrol

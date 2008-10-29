@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.11 2008-10-29 01:01:35 ghantoos Exp $
+# $Id: README,v 1.12 2008-10-29 22:39:46 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://ghantoos.org/limited-shell-lshell/
@@ -21,7 +21,8 @@ file (lshell.conf) as much as thought would be enough.
 			- Run: $> sudo python setup.py install
 		* Install the rpm:
             - $> rpm -Uvh lshell-x.x-x.noarch.rpm
-
+        * Install the deb:
+            - $> dpkg -i lshell-x.x-x.deb
 	Files tree should look something like this:
 
 	etc/lshell.conf         ---> /etc/lshell.conf
@@ -122,9 +123,7 @@ file (lshell.conf) as much as thought would be enough.
 ###
 5- Use case 2: /etc/passwd
 ###
-	In order to configure a user account to use lshell by default, you 
-	can force the its shell to be lshell by specifying it in /etc/passwd.
-	In this case, you must: 
+	In order to configure a user account to use lshell by default, you must:
 	 $> chsh -s /usr/bin/lshell user_name
 
 	After this, whichever method is used by the user to log into his account,

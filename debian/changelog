@@ -3,6 +3,7 @@ lshell (0.2.2-1) unstable; urgency=low
   * corrected SCP functionnality
   * added SFTP support
   * passwd in not mandatory in configuration file (deprecated)
+  * lshell is now added to /etc/shells using `add-shell`
 
  -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, 29 Oct 2008 01:14:26 +0200
 

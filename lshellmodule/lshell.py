@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.2 2008-10-29 01:01:35 ghantoos Exp $
+#    $Id: lshell.py,v 1.3 2008-10-29 22:39:46 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -63,6 +63,7 @@ class shell_cmd(cmd.Cmd,object):
 
 	def __init__(self, userconf):
 		self.conf = userconf
+		self.log = log
 		self.identchars = self.identchars + '+./-'
 		if (self.conf['timer'] > 0): 
 			t = Timer(2, self.mytimer)
@@ -163,13 +164,6 @@ class shell_cmd(cmd.Cmd,object):
 			self.prompt = self.conf['username'] + ':~' + path.split(self.conf['home_path'])[1] + '$ '
 		else:
 			self.prompt = self.conf['username'] + ':' + path + '$ '
-
-	def log(self,text,logfile):
-		if logfile is not '':
-			from time import strftime
-			log = open(logfile, 'a')
-			log.write(strftime("%Y-%m-%d %H:%M:%S") + ' ('+getuser()+'): ' + text + '\n')
-			log.close()
 
 	def cmdloop(self, intro=None):
 		"""Repeatedly issue a prompt, accept input, parse an initial prefix
@@ -380,6 +374,7 @@ class check_config:
 		else:
 			self.stderr = stderr
 
+		self.log = log
 		self.conf = {}
 		self.conf, self.arguments = self.getoptions(args, self.conf)
 		self.check_log()
@@ -508,22 +503,28 @@ class check_config:
 			if self.arguments[2].startswith('scp'):
 				if self.conf['scp'] is 1: 
 					if '&' not in self.arguments[2] and ';' not in self.arguments[2]:
+						self.log('SCP: '+ str(self.arguments[2]),self.conf['logfile'])
 						os.system(self.arguments[2])
 						sys.exit(0)
 					else:
+						self.log('WARN_HACK?: '+ str(self.arguments[2]),self.conf['logfile'])
 						self.stdout.write('\nWarning: This has been logged!\n')
 						sys.exit(0)
 				else:
-					self.stdout.write('\nSorry..You are not allowed to use SCP.\n')
+					self.log('WARN_SCP: Not allowed -> '+ str(self.arguments[2]),self.conf['logfile'])
+					self.stdout.write('Sorry..You are not allowed to use SCP.\n')
 					sys.exit(0)
 			elif 'sftp-server' in self.arguments[2]:
 				if self.conf['sftp'] is 1:
+					self.log('SFTP connect',self.conf['logfile'])
 					os.system(self.arguments[2])
+					self.log('SFTP disconnect',self.conf['logfile'])
 					sys.exit(0)
 				else:
 					sys.exit(0)
 			else:
-				self.stdout.write('\nSorry..You are not allowed to execute command over ssh.\n')
+				self.log('WARN_CMD_over_SSH: '+ str(self.arguments[2]),self.conf['logfile'])
+				self.stdout.write('Sorry..You are not allowed to execute commands over ssh.\n')
 				sys.exit(0)
 
 	def check_passwd(self):
@@ -549,6 +550,14 @@ class check_config:
 
 	def returnconf(self):
 		return self.conf
+
+
+def log(text,logfile):
+	if logfile is not '':
+		from time import strftime
+		log = open(logfile, 'a')
+		log.write(strftime("%Y-%m-%d %H:%M:%S") + ' ('+getuser()+'): ' + text + '\n')
+		log.close()
 
 if __name__=='__main__':
 

@@ -1,6 +1,6 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.5 2008-10-20 20:56:40 ghantoos Exp $
+# $Id: Makefile,v 1.6 2008-10-29 01:01:35 ghantoos Exp $
 #
 
 PYTHON=`which python`
@@ -8,7 +8,7 @@ PKGNAME=lshell
 DESTDIR=/
 BUILDIR=deb
 PROJECT=lshell
-VERSION=0.2.1
+VERSION=0.2.2
 
 all:
 		@echo "make install - Install on local system"

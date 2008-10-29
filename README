@@ -2,10 +2,10 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.10 2008-10-17 13:57:19 ghantoos Exp $
+# $Id: README,v 1.11 2008-10-29 01:01:35 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
-http://sourceforge.net/projects/lshell/
+http://ghantoos.org/limited-shell-lshell/
 #####################################
 
 I've commented the source file (lshell.py) and the template configuration 
@@ -36,8 +36,7 @@ file (lshell.conf) as much as thought would be enough.
 ###
 2- Configuration:
 ###
-	lshell.conf presents a template configuration file. Fields to fill by 
-	user are:
+	lshell.conf presents a template configuration file. Fields to fill are:
 		* allowed: a list a the allowed commands
 		* forbidden: a list of forbidden character or commands
 		* warning_counter: number of warnings when user enters a 
@@ -46,9 +45,10 @@ file (lshell.conf) as much as thought would be enough.
 		* passwd: password of specific user
 		* path: list of path to restrict the user geographicaly
 		* home_path: set the home folder of your user. If not specified, the home
-		  directory is set to /home/username
+		  directory is set to the HOME environment variable
 		* env_path: update the environment variable $PATH of the user (optional)
 		* scp: 1 or 0 to allow of forbid the use of scp on a user's account
+		* sftp: 1 or 0 to allow of forbid the use of sftp on a user's account
 
 	A default profile is available to let multiple users use the same comfiguration.
 	Nevertheless, you will have to create a [username] section to at least put a password.
@@ -85,6 +85,7 @@ file (lshell.conf) as much as thought would be enough.
 	home_path       : '/home/bla
 	env_path        : ':/sbin:/usr/bla'
 	scp             : 1 # or 0
+    sftp            : 1 # or 0
 	# END
 	
 	In order to launch lshell limited to the 'ssh' command, I used ssh's 
@@ -124,9 +125,7 @@ file (lshell.conf) as much as thought would be enough.
 	In order to configure a user account to use lshell by default, you 
 	can force the its shell to be lshell by specifying it in /etc/passwd.
 	In this case, you must: 
-	1- $> echo /usr/bin/lshell >> /etc/shells
-	2- Save the lshell configuration file in: /etc/lshell.conf
-	3- chsh -s /usr/bin/lshell user_name
+	 $> chsh -s /usr/bin/lshell user_name
 
 	After this, whichever method is used by the user to log into his account,
 	he will end up using the limited shell you configured for him!

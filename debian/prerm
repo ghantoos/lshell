@@ -1,7 +1,7 @@
 #!/bin/sh
 # postrm script for lshell
 #
-# $Id: prerm,v 1.4 2008-10-25 14:22:05 ghantoos Exp $
+# $Id: prerm,v 1.5 2008-10-29 01:01:35 ghantoos Exp $
 #
 
 set -e
@@ -11,6 +11,7 @@ case "$1" in
 	# delete lshell group
 	groupdel lshellg
 	pycentral pkgremove lshell
+	/usr/sbin/remove-shell /usr/bin/lshell 
     ;;
 
     *)

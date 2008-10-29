@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.1 2008-10-16 22:56:17 ghantoos Exp $
+#    $Id: lshell.py,v 1.2 2008-10-29 01:01:35 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -32,7 +32,7 @@ import string, re
 import getopt
 
 # Global Variable config_list listing the required configuration fields per user
-config_list = ['passwd', 'allowed', 'forbidden', 'warning_counter', 'timer','scp']
+config_list = ['allowed', 'forbidden', 'warning_counter', 'timer', 'scp', 'sftp']
 LOGFILE='/var/log/lshell.log'
 CONFIGFILE='/etc/lshell.conf'
 HISTORY='.lhistory'
@@ -381,13 +381,13 @@ class check_config:
 			self.stderr = stderr
 
 		self.conf = {}
-		self.conf = self.getoptions(args, self.conf)
+		self.conf, self.arguments = self.getoptions(args, self.conf)
 		self.check_log()
 		self.check_file(self.conf['configfile'])
 		self.check_config_user(self.conf['configfile'])
 		self.check_user_integrity()
 		self.get_config_user()
-		self.check_scp()
+		self.check_scp_sftp()
 		self.check_passwd()
 
 	def getoptions(self, arguments, conf):
@@ -415,7 +415,7 @@ class check_config:
 			elif option in ['-h', '--help']:
 				self.usage()
 
-		return conf
+		return conf, args
 
 	def usage(self):
 		""" Prints the usage """
@@ -446,8 +446,12 @@ class check_config:
 		self.config.read(config_file)
 		self.user = getuser()
 		if self.config.has_section(self.user) is False:
-			self.stdout.write('Error: Unknown user "'+self.user+'"\n')
-			sys.exit(0)
+			if self.config.has_section('default') is False:
+				self.stdout.write('Please check lshell\'s configuration file. It seem there is no default section\n')
+				sys.exit(0)
+			else: self.section = 'default'
+		else:
+			self.section = self.user
 
 	def check_user_integrity(self):
 		""" This method checks if all the required fields by user are present for the present user.
@@ -455,7 +459,7 @@ class check_config:
 		"""
 		quit = 0
 		for item in config_list:
-			if not self.config.has_option(self.user, item):
+			if not self.config.has_option(self.section, item):
 				if not self.config.has_option('default', item):
 					self.stdout.write('Error: Missing parameter "' + item + '" for user ' + self.user + '\n')
 					self.stdout.write('Error: Add it in the in the [user] or [default] section of conf file\n')
@@ -466,47 +470,60 @@ class check_config:
 		in a dict to be used by the command line it self. The lshell command line
 		is then launched!
 		"""
-		for item in ['allowed','forbidden','warning_counter','timer','env_path','scp']:
+		for item in ['allowed','forbidden','warning_counter','timer','scp','sftp']:
 			try:
 				self.conf[item] = eval(self.config.get(self.user, item))
-			except ConfigParser.NoOptionError:
+			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 				self.conf[item] = eval(self.config.get('default', item))
 		self.conf['username'] = self.user
 		self.conf['allowed'].extend(['exit'])
 		try:
 			self.conf['home_path'] = os.path.normpath(eval(self.config.get(self.user, 'home_path')))
-		except ConfigParser.NoOptionError:
-			self.conf['home_path'] = os.path.expanduser('~'+self.conf['username'])
+		except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+			self.conf['home_path'] = os.environ['HOME']
 		try:
 			self.conf['path'] = eval(self.config.get(self.user, 'path'))
-		except ConfigParser.NoOptionError:
+		except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 			try:
 				self.conf['path'] = eval(self.config.get('default', 'path'))
-			except ConfigParser.NoOptionError:
+			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 				self.conf['path'] = [self.conf['home_path']]
-				
+		try:
+			self.conf['env_path'] = eval(self.config.get(self.user, 'env_path'))
+		except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+			try:
+				self.conf['env_path'] = eval(self.config.get('default', 'env_path'))
+			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+				self.conf['env_path'] = ''
+
 		os.chdir(self.conf['home_path'])
 		os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
 
-	def check_scp(self):
+	def check_scp_sftp(self):
 		""" This method checks if the user is trying to SCP a file onto the server.
 		If this is the case, it checks if the user is allowed to use SCP or not, and
 		acts as requested. : )
-		The detection part is a bit weird, but it works! (I still need your help if you've 
-		got any idea). Actually, if I'm not wrong 'fd' the value of the file descriptor 
-		associated with the stream, and termios.tcgetattr should return a list containing 
-		the tty attributes for my file descriptor. In the case of scp, no there no tty attributes,
-		so the command returns an error wich gets us to the except part, which deals with the scp.
 		"""
-		try:
-			fd = sys.stdin.fileno()
-			test = termios.tcgetattr(fd)
-		except termios.error:
-			if self.conf['scp'] is 1: 
-				os.system('scp -t .')
-				sys.exit(0)
+		if len(self.arguments) > 1:
+			if self.arguments[2].startswith('scp'):
+				if self.conf['scp'] is 1: 
+					if '&' not in self.arguments[2] and ';' not in self.arguments[2]:
+						os.system(self.arguments[2])
+						sys.exit(0)
+					else:
+						self.stdout.write('\nWarning: This has been logged!\n')
+						sys.exit(0)
+				else:
+					self.stdout.write('\nSorry..You are not allowed to use SCP.\n')
+					sys.exit(0)
+			elif 'sftp-server' in self.arguments[2]:
+				if self.conf['sftp'] is 1:
+					os.system(self.arguments[2])
+					sys.exit(0)
+				else:
+					sys.exit(0)
 			else:
-				self.stdout.write('Sorry..You are not allowed to use SCP.\n')
+				self.stdout.write('\nSorry..You are not allowed to execute command over ssh.\n')
 				sys.exit(0)
 
 	def check_passwd(self):
@@ -515,13 +532,20 @@ class check_config:
 		the password is asked to be entered.
 		If the entered password is wrong, the user is exited from lshell.
 		"""
-		passwd = self.config.get(self.user, 'passwd')
-		if passwd is '' : return 0
-		else:
+		if self.config.has_section(self.user):
+			if self.config.has_option(self.user, 'passwd'):
+				passwd = self.config.get(self.user, 'passwd')
+			else: 
+				passwd = None
+		else: 
+			passwd = None
+
+		if passwd:
 			password = getpass("Enter "+self.user+"'s password: ")
 			if password != passwd:
 				self.stdout.write('Error: Wrong password \nExiting..\n')
 				sys.exit(0)
+		else: return 0
 
 	def returnconf(self):
 		return self.conf

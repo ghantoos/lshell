@@ -1,7 +1,7 @@
 #!/bin/sh
 # postinst script for lshell
 #
-# $Id: postinst,v 1.4 2008-10-20 20:27:36 ghantoos Exp $
+# $Id: postinst,v 1.5 2008-10-29 01:01:35 ghantoos Exp $
 #
 
 set -e
@@ -12,6 +12,7 @@ case "$1" in
 	groupadd lshellg
 	chown root:lshellg /var/log/lshell.log
 	chmod 664 /var/log/lshell.log
+	/usr/sbin/add-shell /usr/bin/lshell
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

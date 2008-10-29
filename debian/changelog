@@ -1,3 +1,11 @@
+lshell (0.2.2-1) unstable; urgency=low
+
+  * corrected SCP functionnality
+  * added SFTP support
+  * passwd in not mandatory in configuration file (deprecated)
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, 29 Oct 2008 01:14:26 +0200
+
 lshell (0.2.1-1) unstable; urgency=low
 
   * Corrected rpm & deb builds

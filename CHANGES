@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.11 2008-10-29 01:01:35 ghantoos Exp $
+# $Id: CHANGES,v 1.12 2008-10-29 22:40:35 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -11,7 +11,8 @@ http://sourceforge.net/projects/lshell/
 === v0.2.2 29/10/2008 ===
     * corrected SCP functionnality
     * added SFTP support
-	* passwd in not mandatory in configuration file (deprecated)
+    * passwd in not mandatory in configuration file (deprecated)
+    * lshell is now added to /etc/shells using `add-shell`
 
 === v0.2.1 20/10/2008 ===
 	* Corrected rpm & deb builds

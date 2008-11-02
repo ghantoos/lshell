@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.4 2008-11-02 21:11:30 ghantoos Exp $
+#    $Id: lshell.py,v 1.5 2008-11-02 21:58:53 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -33,9 +33,7 @@ import getopt
 
 # Global Variable config_list listing the required configuration fields per user
 config_list = ['allowed', 'forbidden', 'warning_counter', 'timer', 'scp', 'sftp']
-LOGFILE='/var/log/lshell.log'
 CONFIGFILE='/etc/lshell.conf'
-HISTORY='.lhistory'
 
 # help text
 help = """Usage: lshell [options]
@@ -68,7 +66,7 @@ class shell_cmd(cmd.Cmd,object):
 			t = Timer(2, self.mytimer)
 			t.start()
 		self.log('Logged in',self.conf['logfile'])
-		self.history = os.path.normpath(self.conf['home_path'])+'/'+HISTORY
+		self.history = os.path.normpath(self.conf['home_path'])+'/'+self.conf['history']
 		cmd.Cmd.__init__(self)
 		self.prompt = self.conf['username']+':~$ '
 		self.intro = intro
@@ -385,8 +383,9 @@ class check_config:
 		self.log = log
 		self.conf = {}
 		self.conf, self.arguments = self.getoptions(args, self.conf)
-		self.check_log()
 		self.check_file(self.conf['configfile'])
+		self.getglobal()
+		self.check_log()
 		self.check_config_user(self.conf['configfile'])
 		self.check_user_integrity()
 		self.get_config_user()
@@ -404,7 +403,7 @@ class check_config:
 
 		# set '/etc/lshell.conf' as default configuration file
 		conf['configfile'] = CONFIGFILE
-		conf['logfile'] = LOGFILE
+
 		try:
 			optlist, args = getopt.getopt(arguments, 'c:l:',['config=','log='])
 		except getopt.GetoptError:
@@ -425,14 +424,6 @@ class check_config:
 		sys.stderr.write(help)
 		sys.exit(0)
 
-	def check_log(self):
-		try:
-			fp=open(self.conf['logfile'],'a').close()
-		except IOError:
-			self.conf['logfile']=''
-			self.stderr.write('WARNING: Cannot write in log file: Permission denied.\n')
-			self.stderr.write('WARNING: Actions will not be logged.\n')
-
 	def check_file(self, config_file):
 		""" This method checks the existence of the "argumently" given configuration file.
 		"""
@@ -440,6 +431,24 @@ class check_config:
 			self.stdout.write("Error: Config file doesn't exist\n")
 			sys.exit(0)
 		else: self.config = ConfigParser.ConfigParser()
+
+	def getglobal(self):
+		self.config.read(self.conf['configfile'])
+		if not self.config.has_section('global'):
+			self.stdout.write('Config file missing [global] section\n')
+			sys.exit(0)
+
+		for item in self.config.items('global'):
+			if not self.conf.has_key(item[0]):
+				self.conf[item[0]] = item[1]
+
+	def check_log(self):
+		try:
+			fp=open(self.conf['logfile'],'a').close()
+		except IOError:
+			self.conf['logfile']=''
+			self.stderr.write('WARNING: Cannot write in log file: Permission denied.\n')
+			self.stderr.write('WARNING: Actions will not be logged.\n')
 
 	def check_config_user(self,config_file):
 		""" This method checks if the current user exists in the configuration file.

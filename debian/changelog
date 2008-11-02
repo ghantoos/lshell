@@ -1,6 +1,7 @@
 lshell (0.2.3-1) unstable; urgency=low
 
   * corrected completion
+  * added [global] section in configuration file
 
  -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, XX Oct 2008 XXXXXXX +0200
 

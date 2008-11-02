@@ -1,3 +1,9 @@
+lshell (0.2.3-1) unstable; urgency=low
+
+  * corrected completion
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sat, XX Oct 2008 XXXXXXX +0200
+
 lshell (0.2.2-1) unstable; urgency=low
 
   * corrected SCP functionnality

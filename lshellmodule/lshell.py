@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.3 2008-10-29 22:39:46 ghantoos Exp $
+#    $Id: lshell.py,v 1.4 2008-11-02 21:11:30 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -54,10 +54,9 @@ Cheers.
 """
 
 # Intro Text
-intro = """------------------
-Welcome to lshell!
-------------------
-Type '?' or 'help' to get the list of allowed commands"""
+intro = """%s
+You are in a limited shell.
+Type '?' or 'help' to get the list of allowed commands""" %('-'*80)
 
 class shell_cmd(cmd.Cmd,object): 
 
@@ -87,7 +86,7 @@ class shell_cmd(cmd.Cmd,object):
 		if self.check_path(self.g_line) == 0: return object.__getattribute__(self, attr)
 		if self.g_cmd in ['quit', 'exit', 'EOF']:
 			self.log('Exited',self.conf['logfile'])
-			self.stdout.write('\nExiting..\n')
+			self.stdout.write('\n')
 			sys.exit(1)
 		elif self.g_cmd in self.conf['allowed']:
 			if self.g_cmd in ['cd']:
@@ -280,12 +279,21 @@ class shell_cmd(cmd.Cmd,object):
 
 	def completechdir(self,text, line, begidx, endidx):
 		toreturn = []
-		for instance in os.listdir(os.getcwd()):
-			if os.path.isdir(instance):
-				instance = instance+'/'
+		try:
+			direct = os.path.realpath(line.split(' ',1)[1].rsplit('/',1)[0])
+		except: 
+			direct = os.getcwd()
+		finally:
+			if not os.path.isdir(direct):
+				direct = os.getcwd()
+
+		for instance in os.listdir(direct):
+			if os.path.isdir(os.path.join(direct,instance)):
+				instance = instance + '/'
+			else: instance = instance + ' '
 			toreturn.append(instance)
 
-		return [a+' ' for a in toreturn if a.startswith(text)]
+		return [a for a in toreturn if a.startswith(text)]
 
 	def onecmd(self, line):
 		""" This method overrides the original onecomd method, to put the cmd, arg and line 

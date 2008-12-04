@@ -1,8 +1,10 @@
 #!/bin/sh
 # postinst script for lshell
 #
-# $Id: postinst,v 1.5 2008-10-29 01:01:35 ghantoos Exp $
+# $Id: postinst,v 1.6 2008-12-04 22:37:58 ghantoos Exp $
 #
+
+#DEBHELPER#
 
 set -e
 

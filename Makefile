@@ -1,6 +1,6 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.7 2008-12-04 20:00:42 ghantoos Exp $
+# $Id: Makefile,v 1.8 2008-12-04 22:37:58 ghantoos Exp $
 #
 
 PYTHON=`which python`

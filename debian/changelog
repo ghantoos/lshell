@@ -1,4 +1,4 @@
-lshell (0.2.3-1) unstable; urgency=low
+lshell (0.2.3) unstable; urgency=low
 
   * corrected completion
   * added [global] section in configuration file

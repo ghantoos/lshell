@@ -1,14 +1,13 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.6 2008-10-29 01:01:35 ghantoos Exp $
+# $Id: Makefile,v 1.7 2008-12-04 20:00:42 ghantoos Exp $
 #
 
 PYTHON=`which python`
-PKGNAME=lshell
 DESTDIR=/
-BUILDIR=deb
+BUILDIR=$(CURDIR)/debian/lshell
 PROJECT=lshell
-VERSION=0.2.2
+VERSION=0.2.3-1
 
 all:
 		@echo "make install - Install on local system"
@@ -23,16 +22,12 @@ buildrpm:
 		$(PYTHON) setup.py bdist_rpm --post-install=rpm/postinstall --pre-uninstall=rpm/preuninstall
 
 builddeb:
-		$(PYTHON) setup.py sdist
-		mkdir -p $(BUILDIR)/$(PROJECT)-$(VERSION)/debian
-		cp dist/$(PROJECT)-$(VERSION).tar.gz $(BUILDIR)
-		cd $(BUILDIR) && tar xfz $(PROJECT)-$(VERSION).tar.gz
-		mv $(BUILDIR)/$(PROJECT)-$(VERSION).tar.gz $(BUILDIR)/$(PROJECT)-$(VERSION)/
-		cp debian/* $(BUILDIR)/$(PROJECT)-$(VERSION)/debian/
-		cd $(BUILDIR)/$(PROJECT)-$(VERSION) && dpkg-buildpackage
+		mkdir -p ${BUILDIR}
+		DESTDIR=$(BUILDIR) dpkg-buildpackage -rfakeroot
 
 clean:
 		$(PYTHON) setup.py clean
-		rm -rf build/ MANIFEST $(BUILDIR)
+		$(MAKE) -f $(CURDIR)/debian/rules clean
+		rm -rf build/ MANIFEST
 		find . -name '*.pyc' -delete
 

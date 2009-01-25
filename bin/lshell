@@ -1,14 +1,8 @@
 #!/usr/bin/env python
+#
+# $Id: lshell,v 1.2 2009-01-25 22:45:47 ghantoos Exp $
 
 import lshell
-import sys
 
 if __name__=='__main__':
-	try:
-		userconf = lshell.check_config(sys.argv)
-		cli = lshell.shell_cmd(userconf.returnconf())
-		cli.cmdloop()
-
-	except (KeyboardInterrupt, EOFError):
-		sys.stdout.write('\nExited on user request\n')
-		sys.exit(0)
+	lshell.main()

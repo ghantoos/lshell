@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.8 2009-01-25 18:24:26 ghantoos Exp $
+# $Id: setup.py,v 1.9 2009-01-25 22:56:48 ghantoos Exp $
 
 from distutils.core import setup
 
@@ -23,7 +23,6 @@ if __name__ == '__main__':
 		packages = [''],
 		data_files = [('/etc', ['etc/lshell.conf']), 
 						('share/doc/lshell',['README', 'COPYING', 'CHANGES']), 
-						('var/log',['log/lshell.log']) ,
-						('share/man/man1/', ['man/lshell.1']) ]
+						('share/man/man1/', ['man/lshell.1.gz']) ]
 	)
 

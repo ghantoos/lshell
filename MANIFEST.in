@@ -2,6 +2,5 @@ include COPYING
 include README
 include CHANGES
 include etc/lshell.conf
-include log/lshell.log
 include man/lshell.1.gz
 include Makefile

@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.5 2008-10-29 22:39:46 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.6 2009-01-25 22:52:25 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH LSHELL 1 "October 28, 2008" "v0.2.2" "USER COMMANDS"
+.TH LSHELL 1 "January 25, 2009" "v0.2.4" "USER COMMANDS"
 
 .SH NAME
 lshell \- Limited Shell
@@ -32,7 +32,13 @@ Display help text
 Select config file (default is /etc/lshell.conf)
 .TP
 .B \-l, --log=\fIFILE\fR
-Specify the log file to use (default is /var/log/lshell.log)
+Specify the log file to use
+.TP
+.B \-h, --help
+Show help message
+.TP
+.B \--version
+Show version
 
 .SH EXAMPLES
 .TP
@@ -44,9 +50,9 @@ Tries to un lshell using default /var/log/lshell.conf as log file. If it fails
 a warning is printed and lshell is continues runing.
 .RE
 .TP
-.B $ lshell -c /path/to/myconf.file -l /path/to/mylog.file
+.B $ lshell -c /path/to/myconf.file -l /path/to/mylog.log
 .RS
-This will override the default options by specified configuration and/or log file
+This will override the default options specified for configuration and/or log file
 .RE
 
 .SH TODO
@@ -63,4 +69,4 @@ $ chsh -s /usr/bin/lshell user_name
 Currently maintained by Ignace Mouzannar -ghantoos- 
 
 .SH EMAIL
-Feel free to send me your recommendations at ghantoos@ghantoos.org
+Feel free to send me your recommendations at <ghantoos@ghantoos.org>

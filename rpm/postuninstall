@@ -1,13 +1,12 @@
 #!/bin/sh
 #
-# $Id: postuninstall,v 1.1 2009-01-25 22:41:49 ghantoos Exp $
+# $Id: postuninstall,v 1.3 2009-01-25 22:44:54 ghantoos Exp $
 #
-# RPM build postinstall script
+# RPM build postuninstall script
 
 # Check if rpm is being _removed_ (as opposed to _upgraded_)
 # if deletion process, then proceed, else, exit 0
 # source: http://www.ibm.com/developerworks/library/l-rpm3.html
-
 if [ "$1" != "0" ] ; then
 	exit 0
 fi

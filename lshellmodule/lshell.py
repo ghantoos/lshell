@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.6 2009-01-25 18:24:26 ghantoos Exp $
+#    $Id: lshell.py,v 1.7 2009-01-25 22:56:48 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -154,14 +154,14 @@ class shell_cmd(cmd.Cmd,object):
 			if not re.findall(path_re,os.getcwd()) : 
 				self.conf['warning_counter'] -= 1
 				if self.conf['warning_counter'] <= 0: 
-					self.log.warn('WARN: forbidden path (%s) -> "%s")' 
+					self.log.warn('WARN: forbidden path (%s) -> "%s"' 
 												%(os.getcwd(), self.g_line))
 					self.log.warn('Kicked out')
 					self.stdout.write('You were not supposed to be here. ')
 					self.stdout.write('This incident will be reported.\n')
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
-				self.log.warn('WARN: forbidden path (%s) -> "%s")' 
+				self.log.warn('WARN: forbidden path (%s) -> "%s"' 
 												%(os.getcwd(), self.g_line))
 				self.stdout.write('You were not supposed to be here. ')
 				self.stdout.write('This incident will be reported.\n')
@@ -386,7 +386,7 @@ class shell_cmd(cmd.Cmd,object):
 		""" 
 		# set timer
 		signal.signal(signal.SIGALRM, self._timererror)
-		signal.alarm(userconf['timer'])
+		signal.alarm(self.conf['timer'])
 
 	def _timererror(self, signum, frame):
 		raise LshellTimeOut, "lshell timer timeout"
@@ -654,8 +654,7 @@ class LshellTimeOut(Exception):
 	def __str__(self):
 		return repr(self.value)
 
-if __name__=='__main__':
-
+def main():
 	# get configuration
 	userconf = check_config(sys.argv[1:]).returnconf()
 
@@ -669,4 +668,8 @@ if __name__=='__main__':
 	except LshellTimeOut:
 		userconf['logfile'].warn('Timer expired')
 		sys.stdout.write('\nTime is up.\n')
+
+if __name__ == '__main__':
+	main()
+
 

@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.5 2008-11-02 21:58:53 ghantoos Exp $
+#    $Id: lshell.py,v 1.6 2009-01-25 18:24:26 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -28,23 +28,26 @@ import ConfigParser
 from threading import Timer
 from getpass import getpass, getuser
 import termios
-import string, re
+import string
+import re
 import getopt
+import logging
+import signal
 
-# Global Variable config_list listing the required configuration fields per user
-config_list = ['allowed', 'forbidden', 'warning_counter', 'timer', 'scp', 'sftp']
+__author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
+__version__= "0.2.4"
+
+# Global Variable config_list lists the required configuration fields per user
+config_list = ['allowed', 'forbidden', 'warning_counter', 
+													'timer', 'scp', 'sftp']
 CONFIGFILE='/etc/lshell.conf'
 
 # help text
-help = """Usage: lshell [options]
-
-Options:
-  -h|--help                         Show this help message
-  -c|--config /path/to/config/file  Select config file 
-                                    (default is /etc/lshell.conf)
-  -l|--log    /path/to/logfile      Specify the logfile to use
-                                    (default is /var/log/lshell.log)
-
+help = """Usage: lshell [OPTIONS]
+  -c, --config <config file> : Config file location (default /etc/lshell.conf)
+  -l, --log    <log file>    : Log file location (default /var/log/lshell.log)
+  -h, --help                 : Show this help message
+  --version                  : Show version
 """
 
 help_help = """Limited Shell (lshell) limited help.
@@ -60,15 +63,15 @@ class shell_cmd(cmd.Cmd,object):
 
 	def __init__(self, userconf):
 		self.conf = userconf
-		self.log = log
+		self.log = self.conf['logfile']
+		# Set timer
+		if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
 		self.identchars = self.identchars + '+./-'
-		if (self.conf['timer'] > 0): 
-			t = Timer(2, self.mytimer)
-			t.start()
-		self.log('Logged in',self.conf['logfile'])
-		self.history = os.path.normpath(self.conf['home_path'])+'/'+self.conf['history']
+		self.log.warn('Logged in')
+		self.history = os.path.normpath(self.conf['home_path']) \
+											+ '/' + self.conf['history']
 		cmd.Cmd.__init__(self)
-		self.prompt = self.conf['username']+':~$ '
+		self.prompt = self.conf['username'] + ':~$ '
 		self.intro = intro
 
 	def __getattr__(self, attr):
@@ -80,10 +83,12 @@ class shell_cmd(cmd.Cmd,object):
 		the 'allowed' variable, and lshell will react as if you had 
 		added a do_uname in the shell_cmd class!
 		"""
-		if self.check_secure(self.g_line) == 0: return object.__getattribute__(self, attr)
-		if self.check_path(self.g_line) == 0: return object.__getattribute__(self, attr)
+		if self.check_secure(self.g_line) == 0: 
+			return object.__getattribute__(self, attr)
+		if self.check_path(self.g_line) == 0: 
+			return object.__getattribute__(self, attr)
 		if self.g_cmd in ['quit', 'exit', 'EOF']:
-			self.log('Exited',self.conf['logfile'])
+			self.log.warn('Exited')
 			self.stdout.write('\n')
 			sys.exit(1)
 		elif self.g_cmd in self.conf['allowed']:
@@ -99,8 +104,8 @@ class shell_cmd(cmd.Cmd,object):
 			else:
 				os.system(self.g_line)
 		elif self.g_cmd not in ['','?','help'] : 
-			self.log('UNKW: '+self.g_line, self.conf['logfile'])
-			self.stdout.write('*** Unknown syntax: %s\n'%self.g_cmd) 
+			self.log.warn('WARN: unknown syntax -> "%s"' %self.g_line)
+			self.stdout.write('*** Unknown syntax: %s\n' %self.g_cmd) 
 		self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
 		return object.__getattribute__(self, attr)
 
@@ -118,12 +123,17 @@ class shell_cmd(cmd.Cmd,object):
 			if item in line:
 				self.conf['warning_counter'] -= 1
 				if self.conf['warning_counter'] <= 0: 
-					self.log('FIRED: '+self.g_line,self.conf['logfile'])
+					self.log.warn('WARN: forbidden syntax -> "%s"' 
+																%self.g_line)
+					self.log.warn('Kicked out')
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
 				else:
-					self.log('WARN: '+self.g_line,self.conf['logfile'])
-					self.stdout.write('WARNING: What are you trying to do??\n')
+					self.log.warn('WARN: forbidden syntax -> "%s"' 
+																%self.g_line)
+					self.stdout.write('WARNING: You have %s joker(s) left,'   
+										' before getting kicked out.\n' \
+										%(self.conf['warning_counter']-1))
 				return 0
 
 	def check_path(self, line):
@@ -144,12 +154,20 @@ class shell_cmd(cmd.Cmd,object):
 			if not re.findall(path_re,os.getcwd()) : 
 				self.conf['warning_counter'] -= 1
 				if self.conf['warning_counter'] <= 0: 
-					self.log('FIRED: '+self.g_line,self.conf['logfile'])
+					self.log.warn('WARN: forbidden path (%s) -> "%s")' 
+												%(os.getcwd(), self.g_line))
+					self.log.warn('Kicked out')
+					self.stdout.write('You were not supposed to be here. ')
+					self.stdout.write('This incident will be reported.\n')
 					self.stdout.write('I warned you.. See ya!\n')
 					sys.exit(1)
-				self.log('WARN: '+"CMD: '"+self.g_line+"' in '"+os.getcwd()+"'",self.conf['logfile'])
-				self.stdout.write('You were not supposed to be here.\n')
-				self.stdout.write('This incident will be reported\n')
+				self.log.warn('WARN: forbidden path (%s) -> "%s")' 
+												%(os.getcwd(), self.g_line))
+				self.stdout.write('You were not supposed to be here. ')
+				self.stdout.write('This incident will be reported.\n')
+				self.stdout.write('WARNING: You have %s joker(s) left, '
+										'before getting kicked out\n' \
+										%(self.conf['warning_counter']-1)) 
 				os.chdir(self.conf['home_path'])
 				self.updateprompt(os.getcwd())
 				return 0
@@ -158,7 +176,8 @@ class shell_cmd(cmd.Cmd,object):
 		if path is self.conf['home_path']:
 			self.prompt = self.conf['username'] + ':~$ '
 		elif re.findall(self.conf['home_path'], path) :
-			self.prompt = self.conf['username'] + ':~' + path.split(self.conf['home_path'])[1] + '$ '
+			self.prompt = self.conf['username'] + ':~' \
+								+ path.split(self.conf['home_path'])[1] + '$ '
 		else:
 			self.prompt = self.conf['username'] + ':' + path + '$ '
 
@@ -222,7 +241,11 @@ class shell_cmd(cmd.Cmd,object):
 					readline.set_completer(self.old_completer)
 				except ImportError:
 					pass
-			readline.write_history_file(self.history)
+			try:
+				readline.write_history_file(self.history)
+			except IOError:
+				self.stdout.write('WARNING: couldn\'t write history '
+												'to file %s\n' %self.history)
 
 	def complete(self, text, state):
 		"""Return the next possible completion for 'text'.
@@ -257,16 +280,17 @@ class shell_cmd(cmd.Cmd,object):
 			return None
 
 	def default(self, line):
-		""" This method overrides the original default method. This method was originally used to
-		warn when an unknown command was entered (*** Unknown syntax: blabla)
+		""" This method overrides the original default method. 
+		It was originally used to warn when an unknown command was entered 
+		(e.g. *** Unknown syntax: blabla). 
 		It has been implemented in the __getattr__ method.
 		So it has no use here. Its output is now empty.
 		"""
 		self.stdout.write('')
 
 	def completenames(self, text, *ignored):
-		""" This method overrides the original  completenames method to overload it's output
-		with the command available in the 'allowed' variable
+		""" This method overrides the original completenames method to overload
+		it's output with the command available in the 'allowed' variable
 		This is useful when typing 'tab-tab' in the command prompt
 		"""
 		dotext = 'do_'+text
@@ -281,9 +305,9 @@ class shell_cmd(cmd.Cmd,object):
 			direct = os.path.realpath(line.split(' ',1)[1].rsplit('/',1)[0])
 		except: 
 			direct = os.getcwd()
-		finally:
-			if not os.path.isdir(direct):
-				direct = os.getcwd()
+
+		if not os.path.isdir(direct):
+			direct = os.getcwd()
 
 		for instance in os.listdir(direct):
 			if os.path.isdir(os.path.join(direct,instance)):
@@ -294,8 +318,9 @@ class shell_cmd(cmd.Cmd,object):
 		return [a for a in toreturn if a.startswith(text)]
 
 	def onecmd(self, line):
-		""" This method overrides the original onecomd method, to put the cmd, arg and line 
-		variables in class global variables: self.g_cmd, self.g_arg and self.g_line
+		""" This method overrides the original onecomd method, to put the cmd,
+		arg and line variables in class global variables: self.g_cmd, 
+		self.g_arg and self.g_line.
 		Thos variables are then used by the __getattr__ method
 		"""
 		cmd, arg, line = self.parseline(line)
@@ -315,18 +340,19 @@ class shell_cmd(cmd.Cmd,object):
 			return func(arg)
 
 	def emptyline(self):
-		""" This method overrides the original emptyline method, so i doesn't repeat the 
-		last command if last command was empty.
+		""" This method overrides the original emptyline method, so it doesn't
+		repeat the last command if last command was empty.
 		I just found this annoying..
 		"""
 		if self.lastcmd:
 			return 0
 
 	def do_help(self, arg):
-		""" This method overrides the original do_help method. Instead of printing out the
-		that are documented or not, it returns the list of allowed commands when '?' or
-		'help' is entered. Of course, it doesn't override the help function: any help_*
-		method will be called (e.g. help_help(self) )
+		""" This method overrides the original do_help method. 
+		Instead of printing out the that are documented or not, it returns the
+		list of allowed commands when '?' or 'help' is entered. 
+		Of course, it doesn't override the help function: any help_* method 
+		will be called (e.g. help_help(self) )
 		""" 
 		if arg:
 			try:
@@ -343,7 +369,7 @@ class shell_cmd(cmd.Cmd,object):
 				return
 			func()
 		else:
-			# Get list of allowed commands, removes duplicate 'help' then sorts it
+			# Get list of allowed commands, remove duplicate 'help' then sort it
 			list_tmp = dict.fromkeys(self.completenames('')).keys()
 			list_tmp.sort()
 			self.columnize(list_tmp)
@@ -351,16 +377,19 @@ class shell_cmd(cmd.Cmd,object):
 	def help_help(self):
 		self.stdout.write(help_help)
 
-	def mytimer(self):
-		""" This function is suppose to kick you out the the lshell after the 'timer' variable
-		exprires. 'timer' is set in seconds.
+	def mytimer(self,timeout):
+		""" This function is suppose to kick you out the the lshell after 
+		the 'timer' variable exprires. 'timer' is set in seconds.
 
-		This function is still bugged as it creates a thread with the timer, then only kills 
-		the thread and not the whole process.HELP!
-		"""  
-		self.stdout.write("Time's up! Exiting..\n")
-		exit(0)
+		This function is still bugged as it creates a thread with the timer, 
+		then only kills the thread and not the whole process.HELP!
+		""" 
+		# set timer
+		signal.signal(signal.SIGALRM, self._timererror)
+		signal.alarm(userconf['timer'])
 
+	def _timererror(self, signum, frame):
+		raise LshellTimeOut, "lshell timer timeout"
 
 class check_config:
 
@@ -380,7 +409,6 @@ class check_config:
 		else:
 			self.stderr = stderr
 
-		self.log = log
 		self.conf = {}
 		self.conf, self.arguments = self.getoptions(args, self.conf)
 		self.check_file(self.conf['configfile'])
@@ -393,11 +421,12 @@ class check_config:
 		self.check_passwd()
 
 	def getoptions(self, arguments, conf):
-		""" This method checks the usage. lshell.py must be called with a configuration file.
-		If no configuration file is specified, it will set the configuration file path to 
-		/etc/lshell.conf.
+		""" This method checks the usage. lshell.py must be called with a 
+		configuration file.
+		If no configuration file is specified, it will set the configuration
+		file path to /etc/lshell.conf.
 		"""
-		# uncomment the following to set the -c or --config as mandatory argument
+		# uncomment the following to set the -c/--config as mandatory argument
 		#if '-c' not in arguments and '--config' not in arguments:
 		#	usage()
 
@@ -405,8 +434,11 @@ class check_config:
 		conf['configfile'] = CONFIGFILE
 
 		try:
-			optlist, args = getopt.getopt(arguments, 'c:l:',['config=','log='])
+			optlist, args = getopt.getopt(arguments, 
+									'c:l:v',
+									['config=','log=','help','version'])
 		except getopt.GetoptError:
+			self.stderr.write('Missing or unknown argument(s)\n')
 			self.usage()
 
 		for option, value in optlist:
@@ -414,8 +446,10 @@ class check_config:
 				conf['configfile'] = os.path.realpath(value)
 			if  option in ['-l', '--log']:
 				conf['logfile'] = os.path.realpath(value)
-			elif option in ['-h', '--help']:
+			if option in ['-h', '--help']:
 				self.usage()
+			if option in ['--version']:
+				self.version()
 
 		return conf, args
 
@@ -424,11 +458,18 @@ class check_config:
 		sys.stderr.write(help)
 		sys.exit(0)
 
+	def version(self):
+		""" Prints the version """
+		sys.stderr.write('lshell-%s - Limited Shell\n' %__version__)
+		sys.exit(0)
+
 	def check_file(self, config_file):
-		""" This method checks the existence of the "argumently" given configuration file.
+		""" This method checks the existence of the "argumently"
+		given configuration file.
 		"""
 		if not os.path.exists(config_file): 
 			self.stdout.write("Error: Config file doesn't exist\n")
+			self.stdout.write(help)
 			sys.exit(0)
 		else: self.config = ConfigParser.ConfigParser()
 
@@ -443,46 +484,75 @@ class check_config:
 				self.conf[item[0]] = item[1]
 
 	def check_log(self):
+		# create logger for lshell application
+		logger = logging.getLogger('lshell')
+		formatter = logging.Formatter('%(asctime)s (' + getuser() \
+														+ '): %(message)s')
+
+		# set log to output error on stderr
+		logsterr = logging.StreamHandler()
+		logger.addHandler(logsterr)
+		logsterr.setFormatter(logging.Formatter('%(message)s'))
+		logsterr.setLevel(logging.ERROR)
+
 		try:
+			# check if log file is writable in which case add log file handler 
 			fp=open(self.conf['logfile'],'a').close()
+			logfile = logging.FileHandler(self.conf['logfile'])
+			logger.addHandler(logfile)
+			logfile.setFormatter(formatter)
+			logfile.setLevel(logging.WARNING)
+
 		except IOError:
-			self.conf['logfile']=''
-			self.stderr.write('WARNING: Cannot write in log file: Permission denied.\n')
-			self.stderr.write('WARNING: Actions will not be logged.\n')
+			sys.stderr.write('Warning: Cannot write in log file: '
+													'Permission denied.\n')
+			sys.stderr.write('Warning: Actions will not be logged.\n')
+
+		self.conf['logfile'] = logger
+		self.log = logger
 
 	def check_config_user(self,config_file):
-		""" This method checks if the current user exists in the configuration file.
-		If the user is not found, he is exited from lshell.
-		If the user is found, it continues by calling check_user_integrity() then check_passwd()
+		""" This method checks if the current user exists in the configuration
+		file. If the user is not found, he is exited from lshell. Else, if the 
+		user is found, it continues by calling check_user_integrity() then 
+		check_passwd()
 		"""
 		self.config.read(config_file)
 		self.user = getuser()
 		if self.config.has_section(self.user) is False:
 			if self.config.has_section('default') is False:
-				self.stdout.write('Please check lshell\'s configuration file. It seem there is no default section\n')
+				self.log.error('ERROR: No [default] section found.'
+									' Check configuration file.')
 				sys.exit(0)
 			else: self.section = 'default'
 		else:
 			self.section = self.user
 
 	def check_user_integrity(self):
-		""" This method checks if all the required fields by user are present for the present user.
+		""" This method checks if all the required fields by user are present
+		for the present user.
 		In case fields are missing, the user is notified and exited from lshell
 		"""
 		quit = 0
 		for item in config_list:
 			if not self.config.has_option(self.section, item):
 				if not self.config.has_option('default', item):
-					self.stdout.write('Error: Missing parameter "' + item + '" for user ' + self.user + '\n')
-					self.stdout.write('Error: Add it in the in the [user] or [default] section of conf file\n')
+					self.log.error('ERROR: Missing parameter "' \
+															+ item + '"')
+					self.log.error('ERROR: Add it in the in the [%s] '
+										'or [default] section of conf file.'
+										% self.user)
 					sys.exit(0)
 
 	def get_config_user(self):
-		""" Once all the checks above have passed, the configuration files values are entered
-		in a dict to be used by the command line it self. The lshell command line
-		is then launched!
+		""" Once all the checks above have passed, the configuration files
+		values are entered in a dict to be used by the command line it self.
+		The lshell command line is then launched!
 		"""
-		for item in ['allowed','forbidden','warning_counter','timer','scp','sftp']:
+		for item in ['allowed',
+					'forbidden',
+					'warning_counter',
+					'timer','scp','sftp']:
 			try:
 				self.conf[item] = eval(self.config.get(self.user, item))
 			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
@@ -490,7 +560,8 @@ class check_config:
 		self.conf['username'] = self.user
 		self.conf['allowed'].extend(['exit'])
 		try:
-			self.conf['home_path'] = os.path.normpath(eval(self.config.get(self.user, 'home_path')))
+			self.conf['home_path'] = os.path.normpath(eval(self.config.get(
+													self.user, 'home_path')))
 		except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 			self.conf['home_path'] = os.environ['HOME']
 		try:
@@ -501,10 +572,12 @@ class check_config:
 			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 				self.conf['path'] = [self.conf['home_path']]
 		try:
-			self.conf['env_path'] = eval(self.config.get(self.user, 'env_path'))
+			self.conf['env_path'] = eval(self.config.get(
+														self.user, 'env_path'))
 		except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 			try:
-				self.conf['env_path'] = eval(self.config.get('default', 'env_path'))
+				self.conf['env_path'] = eval(self.config.get(
+														'default', 'env_path'))
 			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 				self.conf['env_path'] = ''
 
@@ -512,42 +585,47 @@ class check_config:
 		os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
 
 	def check_scp_sftp(self):
-		""" This method checks if the user is trying to SCP a file onto the server.
-		If this is the case, it checks if the user is allowed to use SCP or not, and
-		acts as requested. : )
+		""" This method checks if the user is trying to SCP a file onto the
+		server. If this is the case, it checks if the user is allowed to use 
+		SCP or not, and	acts as requested. : )
 		"""
 		if len(self.arguments) > 1:
 			if self.arguments[2].startswith('scp'):
 				if self.conf['scp'] is 1: 
-					if '&' not in self.arguments[2] and ';' not in self.arguments[2]:
-						self.log('SCP: '+ str(self.arguments[2]),self.conf['logfile'])
+					if '&' not in self.arguments[2] \
+								and ';' not in self.arguments[2]:
+						self.log.warn('SCP: '+ str(self.arguments[2]))
 						os.system(self.arguments[2])
 						sys.exit(0)
 					else:
-						self.log('WARN_HACK?: '+ str(self.arguments[2]),self.conf['logfile'])
+						self.log.warn('WARN: HACK? -> '+ str(self.arguments[2]))
 						self.stdout.write('\nWarning: This has been logged!\n')
 						sys.exit(0)
 				else:
-					self.log('WARN_SCP: Not allowed -> '+ str(self.arguments[2]),self.conf['logfile'])
-					self.stdout.write('Sorry..You are not allowed to use SCP.\n')
+					self.log.warn('WARN: SCP Not allowed -> ' \
+										+ str(self.arguments[2]))
+					self.stdout.write('You are not allowed to use SCP.\n')
 					sys.exit(0)
 			elif 'sftp-server' in self.arguments[2]:
 				if self.conf['sftp'] is 1:
-					self.log('SFTP connect',self.conf['logfile'])
+					self.log.warn('SFTP connect')
 					os.system(self.arguments[2])
-					self.log('SFTP disconnect',self.conf['logfile'])
+					self.log.warn('SFTP disconnect')
 					sys.exit(0)
 				else:
 					sys.exit(0)
 			else:
-				self.log('WARN_CMD_over_SSH: '+ str(self.arguments[2]),self.conf['logfile'])
-				self.stdout.write('Sorry..You are not allowed to execute commands over ssh.\n')
+				self.log.warn('WARN: command over SSH: ' \
+												+ str(self.arguments[2]))
+				self.stdout.write('You are not allowed to execute '
+												'commands over ssh.\n')
 				sys.exit(0)
 
 	def check_passwd(self):
-		""" As a passwd field is required by user. This method checks in the configuration file
-		if the password is empty, in wich case, no passwrd check is required. In the other case,
-		the password is asked to be entered.
+		""" As a passwd field is required by user. This method checks in the
+		configuration file if the password is empty, in wich case, no passwrd 
+		check is required. In the other case, the password is asked to be 
+		entered. 
 		If the entered password is wrong, the user is exited from lshell.
 		"""
 		if self.config.has_section(self.user):
@@ -568,22 +646,27 @@ class check_config:
 	def returnconf(self):
 		return self.conf
 
+class LshellTimeOut(Exception):
+	""" Custum exception used for timer timeout """
 
-def log(text,logfile):
-	if logfile is not '':
-		from time import strftime
-		log = open(logfile, 'a')
-		log.write(strftime("%Y-%m-%d %H:%M:%S") + ' ('+getuser()+'): ' + text + '\n')
-		log.close()
+	def __init__(self, value = "Timed Out"):
+		self.value = value
+	def __str__(self):
+		return repr(self.value)
 
 if __name__=='__main__':
 
+	# get configuration
+	userconf = check_config(sys.argv[1:]).returnconf()
+
 	try:
-		userconf = check_config(sys.argv[1:])
-		cli = shell_cmd(userconf.returnconf())
+		cli = shell_cmd(userconf)
 		cli.cmdloop()
 
 	except (KeyboardInterrupt, EOFError):
 		sys.stdout.write('\nExited on user request\n')
 		sys.exit(0)
+	except LshellTimeOut:
+		userconf['logfile'].warn('Timer expired')
+		sys.stdout.write('\nTime is up.\n')
 

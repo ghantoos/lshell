@@ -2,13 +2,18 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.14 2008-11-02 21:58:52 ghantoos Exp $
+# $Id: CHANGES,v 1.15 2009-01-25 18:24:26 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.2.3 XX/XX/XXXX ===
+=== v0.2.4 25/01/2009 ===
+    * Fixed timer
+	* added python logging method
+	* cleaned code
+
+=== v0.2.3 03/12/2008 ===
     * corrected completion
 	* added [global] section in configuration file
 

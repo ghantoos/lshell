@@ -1,3 +1,11 @@
+lshell (0.2.4) unstable; urgency=low
+
+  * Fixed timer
+  * added python logging method
+  * cleaned code
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Wed, 25 Jan 2009 02:11:02 +0200
+
 lshell (0.2.3) unstable; urgency=low
 
   * corrected completion

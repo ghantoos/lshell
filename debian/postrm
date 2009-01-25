@@ -2,6 +2,8 @@
 # postrm script for lshell
 #
 # see: dh_installdeb(1)
+#
+# $Id: postrm,v 1.2 2009-01-25 18:28:54 ghantoos Exp $
 
 set -e
 

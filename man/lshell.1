@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.6 2009-01-25 22:52:25 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.7 2009-01-26 00:09:55 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -25,13 +25,10 @@ and
 
 .SH OPTIONS
 .TP
-.B \-h, --help
-Display help text
-.TP
-.B \-c, --config=\fIFILE\fR
+.B \--config=\fIFILE\fR
 Select config file (default is /etc/lshell.conf)
 .TP
-.B \-l, --log=\fIFILE\fR
+.B \--log=\fIFILE\fR
 Specify the log file to use
 .TP
 .B \-h, --help
@@ -50,7 +47,7 @@ Tries to un lshell using default /var/log/lshell.conf as log file. If it fails
 a warning is printed and lshell is continues runing.
 .RE
 .TP
-.B $ lshell -c /path/to/myconf.file -l /path/to/mylog.log
+.B $ lshell --config /path/to/myconf.file --log /path/to/mylog.log
 .RS
 This will override the default options specified for configuration and/or log file
 .RE

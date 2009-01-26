@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.7 2009-01-25 22:56:48 ghantoos Exp $
+#    $Id: lshell.py,v 1.8 2009-01-26 00:09:55 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -44,8 +44,8 @@ CONFIGFILE='/etc/lshell.conf'
 
 # help text
 help = """Usage: lshell [OPTIONS]
-  -c, --config <config file> : Config file location (default /etc/lshell.conf)
-  -l, --log    <log file>    : Log file location (default /var/log/lshell.log)
+  --config <config file> : Config file location (default /etc/lshell.conf)
+  --log    <log file>    : Log file location (default /var/log/lshell.log)
   -h, --help                 : Show this help message
   --version                  : Show version
 """
@@ -435,17 +435,19 @@ class check_config:
 
 		try:
 			optlist, args = getopt.getopt(arguments, 
-									'c:l:v',
+									'hc:',
 									['config=','log=','help','version'])
 		except getopt.GetoptError:
 			self.stderr.write('Missing or unknown argument(s)\n')
 			self.usage()
 
 		for option, value in optlist:
-			if  option in ['-c', '--config']:
+			if  option in ['--config']:
 				conf['configfile'] = os.path.realpath(value)
-			if  option in ['-l', '--log']:
+			if  option in ['--log']:
 				conf['logfile'] = os.path.realpath(value)
+			if  option in ['-c']:
+				conf['ssh'] = value
 			if option in ['-h', '--help']:
 				self.usage()
 			if option in ['--version']:
@@ -589,34 +591,34 @@ class check_config:
 		server. If this is the case, it checks if the user is allowed to use 
 		SCP or not, and	acts as requested. : )
 		"""
-		if len(self.arguments) > 1:
-			if self.arguments[2].startswith('scp'):
+		if self.conf.has_key('ssh'):
+			if self.conf['ssh'].startswith('scp'):
 				if self.conf['scp'] is 1: 
-					if '&' not in self.arguments[2] \
-								and ';' not in self.arguments[2]:
-						self.log.warn('SCP: '+ str(self.arguments[2]))
-						os.system(self.arguments[2])
+					if '&' not in self.conf['ssh'] \
+								and ';' not in self.conf['ssh']:
+						self.log.warn('SCP: '+ self.conf['ssh'])
+						os.system(self.conf['ssh'])
 						sys.exit(0)
 					else:
-						self.log.warn('WARN: HACK? -> '+ str(self.arguments[2]))
+						self.log.warn('WARN: HACK? -> '+ self.conf['ssh'])
 						self.stdout.write('\nWarning: This has been logged!\n')
 						sys.exit(0)
 				else:
 					self.log.warn('WARN: SCP Not allowed -> ' \
-										+ str(self.arguments[2]))
+										+ self.conf['ssh'])
 					self.stdout.write('You are not allowed to use SCP.\n')
 					sys.exit(0)
-			elif 'sftp-server' in self.arguments[2]:
+			elif 'sftp-server' in self.conf['ssh']:
 				if self.conf['sftp'] is 1:
 					self.log.warn('SFTP connect')
-					os.system(self.arguments[2])
+					os.system(self.conf['ssh'])
 					self.log.warn('SFTP disconnect')
 					sys.exit(0)
 				else:
 					sys.exit(0)
 			else:
-				self.log.warn('WARN: command over SSH: ' \
-												+ str(self.arguments[2]))
+				self.log.warn('WARN: command over ssh: "'
+												+ self.conf['ssh'] + '"')
 				self.stdout.write('You are not allowed to execute '
 												'commands over ssh.\n')
 				sys.exit(0)

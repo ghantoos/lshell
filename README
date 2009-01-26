@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.13 2009-01-26 00:14:42 ghantoos Exp $
+# $Id: README,v 1.14 2009-01-26 00:16:08 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://ghantoos.org/limited-shell-lshell/
@@ -15,8 +15,8 @@ file (lshell.conf) as much as thought would be enough.
 1- Installation:
 ###
 	You have 2 options:
-		* use the setup.py present in the tar. It uses python distutils to install
-          everything in the right place:
+		* use the setup.py present in the tar. It uses python distutils to 
+          install everything in the right place:
 			- Extract the files in the wanted directory (tar xvfz lshell.tar.gz)
 			- Run: $> sudo python setup.py install
 		* Install the rpm:
@@ -51,8 +51,9 @@ file (lshell.conf) as much as thought would be enough.
 		* scp: 1 or 0 to allow of forbid the use of scp on a user's account
 		* sftp: 1 or 0 to allow of forbid the use of sftp on a user's account
 
-	A default profile is available to let multiple users use the same comfiguration.
-	Nevertheless, you will have to create a [username] section to at least put a password.
+	A default profile is available to let multiple users use the same 
+	comfiguration. Nevertheless, you will have to create a [username] section 
+	to at least put a password.
 
 ###
 3- Usage:

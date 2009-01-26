@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.12 2008-10-29 22:39:46 ghantoos Exp $
+# $Id: README,v 1.13 2009-01-26 00:14:42 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://ghantoos.org/limited-shell-lshell/
@@ -59,10 +59,10 @@ file (lshell.conf) as much as thought would be enough.
 ###
 	To launch the Limited Shell, just execute lshell specifying the 
 	location of your configuration file:
-	$> lshell -c /path/to/configuration/file
+	$> lshell --config /path/to/configuration/file
 
 	By default lshell will try to launch using /etc/lshell.conf unless 
-	specified otherwise (using -c|--config).
+	specified otherwise (using --config).
 
 ###
 4- Use case 1: OpenSSH & authorized_keys
@@ -93,7 +93,7 @@ file (lshell.conf) as much as thought would be enough.
 	authorized_keys:
 	$> vi /home/bla/.ssh/authorized_keys
 	and add :
-		command="/path/to/lshell.py /path/to/lshell.conf",no-port-for
+		command="/usr/bin/lshell --config /path/to/lshell.conf",no-port-for
 		warding,no-X11-forwarding,no-agent-forwarding,no-pty
 	just before the "ssh-dss blablablabla" part.
 

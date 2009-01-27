@@ -2,20 +2,22 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.15 2009-01-25 18:24:26 ghantoos Exp $
+# $Id: CHANGES,v 1.16 2009-01-27 00:24:52 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.2.4 25/01/2009 ===
+=== v0.2.4 27/01/2009 ===
+    * NEW: "overssh" in config file. Allows to set commands allowed to execute over ssh
     * Fixed timer
-	* added python logging method
-	* cleaned code
+    * added python logging method
+    * cleaned code
+    * cleaner "over ssh commands" support (e.g. scp, sftp, rsync, etc.)
 
 === v0.2.3 03/12/2008 ===
     * corrected completion
-	* added [global] section in configuration file
+    * added [global] section in configuration file
 
 === v0.2.2 29/10/2008 ===
     * corrected SCP functionnality
@@ -24,44 +26,44 @@ http://sourceforge.net/projects/lshell/
     * lshell is now added to /etc/shells using `add-shell`
 
 === v0.2.1 20/10/2008 ===
-	* Corrected rpm & deb builds
-	* added a manpage
+    * Corrected rpm & deb builds
+    * added a manpage
 
 === v0.2 18/10/2008 ===
-	* Initial debian packaging
+    * Initial debian packaging
 
 === v0.2 17/10/2008 ===
-	* Added config and log option on command line (-c|--config and -l|--log)
-	* Initial source packaging using distutils
-	* Initial rpm packaging using distutils
+    * Added config and log option on command line (-c|--config and -l|--log)
+    * Initial source packaging using distutils
+    * Initial rpm packaging using distutils
 
 === v0.2 07/10/2008 ===
-	* Added file completion
-	* Added a history file per user
-	* Added a logging for warnings and log in/out
-	* Added prompt update when user changes directory (bash like)
-	* Corrected the check_path function
-	* Changed user setting from global variable to dict
-	* Added a default profile used when a parameter is not set for a user
+    * Added file completion
+    * Added a history file per user
+    * Added a logging for warnings and log in/out
+    * Added prompt update when user changes directory (bash like)
+    * Corrected the check_path function
+    * Changed user setting from global variable to dict
+    * Added a default profile used when a parameter is not set for a user
 
 === 06/05/2008 ===
-	* Added an shell script usefull to install and manage lshell users
+    * Added an shell script usefull to install and manage lshell users
 
 === 08/04/2008 ===
-	* Added evironment path (env_path) update support
-	* Added home path (home_path) variable
+    * Added evironment path (env_path) update support
+    * Added home path (home_path) variable
 
 === 29/03/2008 ===
-	* Corrected class declaration bug and configuration file location
-	* Updated the README file with another usage of lshell
+    * Corrected class declaration bug and configuration file location
+    * Updated the README file with another usage of lshell
 
 === 05/02/2008 ===
-	* added a path variable to restrict the user's geographic actions
-	* MAJOR: added SCP support (also configurable through the config file)
+    * added a path variable to restrict the user's geographic actions
+    * MAJOR: added SCP support (also configurable through the config file)
 
 === 31/01/2008 ===
-	* MAJOR: Added the 'help' method
-	* Did some code cleanup
+    * MAJOR: Added the 'help' method
+    * Did some code cleanup
 
 === 28/01/2008 ===
-	* Initial release of lshell
+    * Initial release of lshell

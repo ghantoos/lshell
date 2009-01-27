@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.7 2009-01-26 00:09:55 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.8 2009-01-27 00:25:03 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH LSHELL 1 "January 25, 2009" "v0.2.4" "USER COMMANDS"
+.TH LSHELL 1 "January 27, 2009" "v0.2.4" "USER COMMANDS"
 
 .SH NAME
 lshell \- Limited Shell
@@ -36,6 +36,63 @@ Show help message
 .TP
 .B \--version
 Show version
+
+.SH CONFIGURATION
+\fBlshell\fR configuration has 3 parts: \fB[global]\fR, \fB[default]\fR and
+\fB[myuser]\fR:
+.RS
+.ft 3
+.nf
+.sp
+[global]   -> lshell system configuration
+[default]  -> lshell default user configuration
+[blah]     -> user "blah" specific configuration
+.ft
+.LP
+.RE
+.fi
+
+.SS [global]
+.TP
+.I logfile
+Config filename
+.TP
+.I history
+History filename (located in $HOME of the user)
+.SS [default] and/or [username]
+.TP
+.I allowed
+a list of the allowed commands
+.TP
+.I forbidden
+a list of forbidden character or commands
+.TP
+.I warning_counter
+number of warnings when user enters a forbidden value before getting exited from lshell.
+.TP
+.I timer
+a value in seconds for the session timer
+.TP
+.I passwd
+password of specific user (default is empty)
+.TP
+.I path
+list of path to restrict the user geographicaly
+.TP
+.I home_path
+set the home folder of your user. If not specified, the home directory is set to the $HOME environment variable
+.TP
+.I env_path
+update the environment variable $PATH of the user (optional)
+.TP
+.I scp
+1 or 0 to allow of forbid the use of scp connection
+.TP
+.I sftp
+1 or 0 to allow of forbid the use of sftp connection
+.TP
+.I overssh
+list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, etc.)
 
 .SH EXAMPLES
 .TP

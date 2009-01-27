@@ -1,10 +1,12 @@
 lshell (0.2.4) unstable; urgency=low
 
+  * NEW: "overssh" in config file. Allows to set commands allowed to execute over ssh
   * Fixed timer
   * added python logging method
   * cleaned code
+  * cleaner "over ssh commands" support (e.g. scp, sftp, rsync, etc.)
 
- -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Wed, 25 Jan 2009 02:11:02 +0200
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Tue, 27 Jan 2009 02:11:02 +0200
 
 lshell (0.2.3) unstable; urgency=low
 

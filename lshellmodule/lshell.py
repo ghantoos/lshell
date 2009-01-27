@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.8 2009-01-26 00:09:55 ghantoos Exp $
+#    $Id: lshell.py,v 1.9 2009-01-27 00:25:03 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -25,7 +25,6 @@ import cmd
 import sys
 import os
 import ConfigParser
-from threading import Timer
 from getpass import getpass, getuser
 import termios
 import string
@@ -554,11 +553,15 @@ class check_config:
 		for item in ['allowed',
 					'forbidden',
 					'warning_counter',
-					'timer','scp','sftp']:
+					'timer',
+					'scp',
+					'sftp',
+					'overssh']:
 			try:
 				self.conf[item] = eval(self.config.get(self.user, item))
 			except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
 				self.conf[item] = eval(self.config.get('default', item))
+
 		self.conf['username'] = self.user
 		self.conf['allowed'].extend(['exit'])
 		try:
@@ -592,35 +595,34 @@ class check_config:
 		SCP or not, and	acts as requested. : )
 		"""
 		if self.conf.has_key('ssh'):
-			if self.conf['ssh'].startswith('scp'):
-				if self.conf['scp'] is 1: 
-					if '&' not in self.conf['ssh'] \
-								and ';' not in self.conf['ssh']:
-						self.log.warn('SCP: '+ self.conf['ssh'])
-						os.system(self.conf['ssh'])
-						sys.exit(0)
-					else:
-						self.log.warn('WARN: HACK? -> '+ self.conf['ssh'])
-						self.stdout.write('\nWarning: This has been logged!\n')
-						sys.exit(0)
-				else:
-					self.log.warn('WARN: SCP Not allowed -> ' \
-										+ self.conf['ssh'])
-					self.stdout.write('You are not allowed to use SCP.\n')
-					sys.exit(0)
-			elif 'sftp-server' in self.conf['ssh']:
-				if self.conf['sftp'] is 1:
-					self.log.warn('SFTP connect')
-					os.system(self.conf['ssh'])
-					self.log.warn('SFTP disconnect')
-					sys.exit(0)
-				else:
-					sys.exit(0)
+			if self.conf['ssh'].find('&') > -1 \
+						or self.conf['ssh'].find(';') > -1:
+				self.log.warn('WARN: forbidden char over ssh -> "%s"' 
+														%self.conf['ssh'])
+				self.stdout.write('Warning: This has been logged!\n')
+				sys.exit(0)
+			if self.conf['ssh'].startswith('scp') and self.conf['scp'] is 1: 
+				self.log.warn('Over SSH: "%s"' %self.conf['ssh'])
+				os.system(self.conf['ssh'])
+				self.log.warn('SCP disconnect')
+				sys.exit(0)
+			elif 'sftp-server' in self.conf['ssh'] and self.conf['sftp'] is 1:
+				self.log.warn('SFTP connect')
+				os.system(self.conf['ssh'])
+				self.log.warn('SFTP disconnect')
+				sys.exit(0)
+			elif self.conf['ssh'].split()[0] in self.conf['overssh']:
+				self.log.warn('Over SSH: "%s"' %self.conf['ssh'])
+				os.system(self.conf['ssh'])
+				self.log.warn('Exited')
+				sys.exit(0)
 			else:
-				self.log.warn('WARN: command over ssh: "'
-												+ self.conf['ssh'] + '"')
+				self.log.warn('WARN: forbidden command over SSH: "%s"' 
+														%self.conf['ssh'])
+				self.log.warn('Exited')
 				self.stdout.write('You are not allowed to execute '
-												'commands over ssh.\n')
+												'"%s" command over ssh.\n'
+												%self.conf['ssh'].split()[0])
 				sys.exit(0)
 
 	def check_passwd(self):

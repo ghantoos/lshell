@@ -1,53 +1,59 @@
 #!/bin/sh
 #
-# $Id: postinstall,v 1.3 2009-01-25 22:41:49 ghantoos Exp $
+# $Id: postinstall,v 1.4 2009-01-27 14:36:43 ghantoos Exp $
 #
 # RPM build postinstall script
 
 # Check if rpm is being _installed_ (as opposed to _upgraded_)
 # if installation process, then proceed, else, exit 0
 # source: http://www.ibm.com/developerworks/library/l-rpm3.html
-if [ "$1" != "1" ] ; then
-	exit 0
-fi
-
-groupadd --force lshellg
-touch /var/log/lshell.log
-chown root:lshellg /var/log/lshell.log
-chmod 664 /var/log/lshell.log
+# case of installation
+if [ "$1" = "1" ] ; then
+	groupadd --force lshellg
+	touch /var/log/lshell.log
+	chown root:lshellg /var/log/lshell.log
+	chmod 664 /var/log/lshell.log
 
 
-#####
-# This part is taken from debian add-shell(8) script
-#####
+	#####
+	# This part is taken from debian add-shell(8) script
+	#####
 
-lshell=/usr/bin/lshell
-file=/etc/shells
-tmpfile=${file}.tmp
+	lshell=/usr/bin/lshell
+	file=/etc/shells
+	tmpfile=${file}.tmp
 
-set -o noclobber
+	set -o noclobber
 
-trap "rm -f ${tmpfile}" EXIT
+	trap "rm -f ${tmpfile}" EXIT
 
-if ! cat ${file} > ${tmpfile}
-then
-	    cat 1>&2 <<EOF
-Either another instance of $0 is running, or it was previously interrupted.
-Please examine ${tmpfile} to see if it should be moved onto ${file}.
+	if ! cat ${file} > ${tmpfile}
+	then
+		    cat 1>&2 <<EOF
+	Either another instance of $0 is running, or it was previously interrupted.
+	Please examine ${tmpfile} to see if it should be moved onto ${file}.
 EOF
-	    exit 1
+		    exit 1
+	fi
+
+
+	if ! grep -q "^${lshell}" ${tmpfile}
+	then
+		echo ${lshell} >> ${tmpfile}
+	fi
+	chmod --reference=${file} ${tmpfile}
+	chown --reference=${file} ${tmpfile}
+
+	mv ${tmpfile} ${file}
+
+	trap "" EXIT
+	exit 0
+
+# case of upgrade
+else
+	mv /etc/lshell.conf /etc/lshell.conf-rpm
+	mv /etc/lshell.conf-preinstall /etc/lshell.conf
+	exit 0
+
 fi
 
-
-if ! grep -q "^${lshell}" ${tmpfile}
-then
-	echo ${lshell} >> ${tmpfile}
-fi
-chmod --reference=${file} ${tmpfile}
-chown --reference=${file} ${tmpfile}
-
-mv ${tmpfile} ${file}
-
-trap "" EXIT
-
-exit 0

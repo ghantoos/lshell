@@ -1,18 +1,18 @@
 #!/bin/sh
 #
-# $Id: postuninstall,v 1.2 2009-01-25 22:42:40 ghantoos Exp $
+# $Id: postuninstall,v 1.4 2009-01-27 14:36:43 ghantoos Exp $
 #
 # RPM build postuninstall script
 
 # Check if rpm is being _removed_ (as opposed to _upgraded_)
 # if deletion process, then proceed, else, exit 0
 # source: http://www.ibm.com/developerworks/library/l-rpm3.html
-
 if [ "$1" != "0" ] ; then
 	exit 0
 fi
 
 groupdel lshellg
+rm -f /etc/lshell.conf-rpm
 
 #####
 # This part is taken from debian remove-shell(8) script

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #
-# $Id: lshell,v 1.2 2009-01-25 22:45:47 ghantoos Exp $
+# $Id: lshell,v 1.3 2009-02-08 17:19:27 ghantoos Exp $
 
 import lshell
 
 if __name__=='__main__':
-	lshell.main()
+    lshell.main()

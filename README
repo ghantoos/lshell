@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.15 2009-01-27 00:24:54 ghantoos Exp $
+# $Id: README,v 1.16 2009-02-08 15:26:57 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://ghantoos.org/limited-shell-lshell/
@@ -90,6 +90,7 @@ file (lshell.conf) as much as thought would be enough.
     env_path        : ':/sbin:/usr/bla'
     scp             : 1 # or 0
     sftp            : 1 # or 0
+	overssh         : ['rsync','ls']
     # END
     
     In order to launch lshell limited to the 'ssh' command, I used ssh's 

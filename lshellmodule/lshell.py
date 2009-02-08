@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.9 2009-01-27 00:25:03 ghantoos Exp $
+#    $Id: lshell.py,v 1.10 2009-02-08 15:27:16 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -32,6 +32,7 @@ import re
 import getopt
 import logging
 import signal
+import readline
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
 __version__= "0.2.4"
@@ -190,18 +191,14 @@ class shell_cmd(cmd.Cmd,object):
 		self.preloop()
 		if self.use_rawinput and self.completekey:
 			try:
-				import readline
-				try:
-					readline.read_history_file(self.history)
-				except IOError:
-					# if history file does not exist
-					open(self.history, 'w').close()
-					readline.read_history_file(self.history)
-				self.old_completer = readline.get_completer()
-				readline.set_completer(self.complete)
-				readline.parse_and_bind(self.completekey+": complete")
-			except ImportError:
-				pass
+				readline.read_history_file(self.history)
+			except IOError:
+				# if history file does not exist
+				open(self.history, 'w').close()
+				readline.read_history_file(self.history)
+			self.old_completer = readline.get_completer()
+			readline.set_completer(self.complete)
+			readline.parse_and_bind(self.completekey+": complete")
 		try:
 			if intro is not None:
 				self.intro = intro
@@ -236,7 +233,6 @@ class shell_cmd(cmd.Cmd,object):
 		finally:
 			if self.use_rawinput and self.completekey:
 				try:
-					import readline
 					readline.set_completer(self.old_completer)
 				except ImportError:
 					pass
@@ -253,7 +249,6 @@ class shell_cmd(cmd.Cmd,object):
 		Otherwise try to call complete_<command> to get list of completions.
 		"""
 		if state == 0:
-			import readline
 			origline = readline.get_line_buffer()
 			line = origline.lstrip()
 			stripped = len(origline) - len(line)

@@ -2,15 +2,20 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.17 2009-01-27 14:45:01 ghantoos Exp $
+# $Id: CHANGES,v 1.18 2009-02-15 18:46:58 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.2.5 08/02/2009 ===
+    * corrected import readline [bug]
+    * added log direcotyr instead of a logfile
+    * created log levels (0 to 3)
+
 === v0.2.4 27/01/2009 ===
     * NEW: "overssh" in config file. Allows to set commands allowed to execute over ssh (e.g. rsync)
-    * Fixed timer
+    * fixed timer
     * added python logging method
     * cleaned code
     * cleaner "over ssh commands" support (e.g. scp, sftp, rsync, etc.)

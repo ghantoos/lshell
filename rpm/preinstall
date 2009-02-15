@@ -1,12 +1,12 @@
 #!/bin/sh
 #
-# $Id: preinstall,v 1.1 2009-01-27 14:36:43 ghantoos Exp $
+# $Id: preinstall,v 1.2 2009-02-15 18:46:58 ghantoos Exp $
 #
 # RPM build preinstall script
 
 # Save the configuration
 if [ -f "/etc/lshell.conf" ]; then
-	mv /etc/lshell.conf /etc/lshell.conf-preinstall
+    cp /etc/lshell.conf /etc/lshell.conf-preinstall
 fi
 
 exit 0

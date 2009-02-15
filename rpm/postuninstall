@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: postuninstall,v 1.4 2009-01-27 14:36:43 ghantoos Exp $
+# $Id: postuninstall,v 1.5 2009-02-15 18:46:58 ghantoos Exp $
 #
 # RPM build postuninstall script
 
@@ -8,7 +8,10 @@
 # if deletion process, then proceed, else, exit 0
 # source: http://www.ibm.com/developerworks/library/l-rpm3.html
 if [ "$1" != "0" ] ; then
-	exit 0
+    if [ -f "/etc/lshell.conf" ]; then
+        cp /etc/lshell.conf /etc/lshell.conf-preinstall
+    fi
+    exit 0
 fi
 
 groupdel lshellg
@@ -27,14 +30,14 @@ otmpfile=${file}.tmp2
 set -o noclobber
 
 trap "rm -f ${tmpfile} ${otmpfile}" EXIT
-	    
+        
 if ! cat ${file} > ${tmpfile}
 then
-	    cat 1>&2 <<EOF
+        cat 1>&2 <<EOF
 Either another instance of $0 is running, or it was previously interrupted.
 Please examine ${tmpfile} to see if it should be moved onto ${file}.
 EOF
-	    exit 1
+        exit 1
 fi
 
 # this is supposed to be reliable, not pretty

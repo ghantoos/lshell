@@ -3,26 +3,26 @@
 #
 # see: dh_installdeb(1)
 #
-# $Id: postrm,v 1.2 2009-01-25 18:28:54 ghantoos Exp $
+# $Id: postrm,v 1.3 2009-02-15 18:46:58 ghantoos Exp $
 
 set -e
 
 case "$1" in
     purge|abort-install)
-		# delete lshell group
-		groupdel lshellg
-		pycentral pkgremove lshell
-		/usr/sbin/remove-shell /usr/bin/lshell 
-		;;
+        # delete lshell group
+        groupdel lshellg
+        pycentral pkgremove lshell
+        /usr/sbin/remove-shell /usr/bin/lshell 
+        ;;
 
-	remove|upgrade|failed-upgrade|abort-upgrade|disappear)
-		# do nothing
-		;;
+    remove|upgrade|failed-upgrade|abort-upgrade|disappear)
+        # do nothing
+        ;;
 
     *)
         echo "postrm called with unknown argument \`$1'" >&2
         exit 1
-    	;;
+        ;;
 esac
 
 # dh_installdeb will replace this with shell code automatically

@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.8 2009-01-27 00:25:03 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.9 2009-02-15 18:46:58 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -26,7 +26,7 @@ and
 .SH OPTIONS
 .TP
 .B \--config=\fIFILE\fR
-Select config file (default is /etc/lshell.conf)
+Select config file
 .TP
 .B \--log=\fIFILE\fR
 Specify the log file to use
@@ -54,11 +54,14 @@ Show version
 
 .SS [global]
 .TP
-.I logfile
-Config filename
+.I logpath
+config path (default is /var/log/lshell/)
+.TP
+.I loglevel
+0, 1, 2 or 3  (0: no logs, 1: least verbose)
 .TP
 .I history
-History filename (located in $HOME of the user)
+history filename (located in $HOME of the user)
 .SS [default] and/or [username]
 .TP
 .I allowed
@@ -113,7 +116,7 @@ This will override the default options specified for configuration and/or log fi
 .TP
 In order to log a user's warnings into the default \fI/var/log/lshell.log\fR file, you must add the user to the \fIlshellg\fR group:
 
-$ usermod -G lshellg user_name
+$ usermod -aG lshellg user_name
 .TP
 In order to set lshell as default shell for a user:
 

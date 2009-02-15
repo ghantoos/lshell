@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.11 2009-02-08 17:17:40 ghantoos Exp $
+#    $Id: lshell.py,v 1.12 2009-02-15 18:46:58 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -35,41 +35,54 @@ import signal
 import readline
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.2.4"
+__version__= "0.2.5"
 
 # Global Variable config_list lists the required configuration fields per user
 config_list = ['allowed', 'forbidden', 'warning_counter', 
                                                     'timer', 'scp', 'sftp']
-CONFIGFILE='/etc/lshell.conf'
+
+# set configuration file path depending on sys.exec_prefix
+# on *Linux sys.exec_prefix = '/usr' and default path must be in '/etc'
+# on *BSD sys.exec_prefix = '/usr/{pkg,local}/' and default path 
+# is '/usr/{pkg,local}/etc'
+if sys.exec_prefix != '/usr':
+    # for *BSD
+    conf_prefix = sys.exec_prefix
+else:
+    # for *Linux
+    conf_prefix = ''
+CONFIGFILE = conf_prefix + '/etc/lshell.conf'
+
+# history file
+HISTORY = ".lhistory"
 
 # help text
 help = """Usage: lshell [OPTIONS]
-  --config <config file> : Config file location (default /etc/lshell.conf)
-  --log    <log file>    : Log file location (default /var/log/lshell.log)
-  -h, --help                 : Show this help message
-  --version                  : Show version
-"""
+  --config <file> : Config file location (default %s)
+  --log    <dir>  : Log files directory
+  -h, --help      : Show this help message
+  --version       : Show version
+""" % CONFIGFILE
 
 help_help = """Limited Shell (lshell) limited help.
 Cheers.
 """
 
 # Intro Text
-intro = """%s
-You are in a limited shell.
-Type '?' or 'help' to get the list of allowed commands""" %('-'*80)
+intro = """You are in a limited shell.
+Type '?' or 'help' to get the list of allowed commands"""
 
 class shell_cmd(cmd.Cmd,object): 
 
     def __init__(self, userconf):
         self.conf = userconf
-        self.log = self.conf['logfile']
+        self.log = self.conf['logpath']
         # Set timer
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
-        self.log.warn('Logged in')
+        self.log.error('Logged in')
         self.history = os.path.normpath(self.conf['home_path']) \
-                                            + '/' + self.conf['history']
+                                            + '/' + HISTORY
         cmd.Cmd.__init__(self)
         self.prompt = self.conf['username'] + ':~$ '
         self.intro = intro
@@ -88,7 +101,7 @@ class shell_cmd(cmd.Cmd,object):
         if self.check_path(self.g_line) == 0: 
             return object.__getattribute__(self, attr)
         if self.g_cmd in ['quit', 'exit', 'EOF']:
-            self.log.warn('Exited')
+            self.log.error('Exited')
             self.stdout.write('\n')
             sys.exit(1)
         elif self.g_cmd in self.conf['allowed']:
@@ -104,8 +117,8 @@ class shell_cmd(cmd.Cmd,object):
             else:
                 os.system(self.g_line)
         elif self.g_cmd not in ['','?','help'] : 
-            self.log.warn('WARN: unknown syntax -> "%s"' %self.g_line)
-            self.stdout.write('*** Unknown syntax: %s\n' %self.g_cmd) 
+            self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
+            self.stdout.write('*** unknown syntax: %s\n' %self.g_cmd) 
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
@@ -123,15 +136,14 @@ class shell_cmd(cmd.Cmd,object):
             if item in line:
                 self.conf['warning_counter'] -= 1
                 if self.conf['warning_counter'] <= 0: 
-                    self.log.warn('WARN: forbidden syntax -> "%s"' 
+                    self.log.critical('*** forbidden syntax -> "%s"' 
                                                                 %self.g_line)
-                    self.log.warn('Kicked out')
-                    self.stdout.write('I warned you.. See ya!\n')
+                    self.log.critical('- Kicked out -')
                     sys.exit(1)
                 else:
-                    self.log.warn('WARN: forbidden syntax -> "%s"' 
+                    self.log.critical('*** forbidden syntax -> "%s"' 
                                                                 %self.g_line)
-                    self.stdout.write('WARNING: You have %s joker(s) left,'   
+                    self.stdout.write('*** You have %s joker(s) left,'   
                                         ' before getting kicked out.\n' \
                                         %(self.conf['warning_counter']-1))
                 return 0
@@ -154,14 +166,14 @@ class shell_cmd(cmd.Cmd,object):
             if not re.findall(path_re,os.getcwd()) : 
                 self.conf['warning_counter'] -= 1
                 if self.conf['warning_counter'] <= 0: 
-                    self.log.warn('WARN: forbidden path (%s) -> "%s"' 
+                    self.log.critical('WARN: forbidden path (%s) -> "%s"' 
                                                 %(os.getcwd(), self.g_line))
-                    self.log.warn('Kicked out')
+                    self.log.critical('Kicked out')
                     self.stdout.write('You were not supposed to be here. ')
                     self.stdout.write('This incident will be reported.\n')
                     self.stdout.write('I warned you.. See ya!\n')
                     sys.exit(1)
-                self.log.warn('WARN: forbidden path (%s) -> "%s"' 
+                self.log.critical('WARN: forbidden path (%s) -> "%s"' 
                                                 %(os.getcwd(), self.g_line))
                 self.stdout.write('You were not supposed to be here. ')
                 self.stdout.write('This incident will be reported.\n')
@@ -424,7 +436,7 @@ class check_config:
         #if '-c' not in arguments and '--config' not in arguments:
         #    usage()
 
-        # set '/etc/lshell.conf' as default configuration file
+        # set CONFIGFILE as default configuration file
         conf['configfile'] = CONFIGFILE
 
         try:
@@ -439,7 +451,7 @@ class check_config:
             if  option in ['--config']:
                 conf['configfile'] = os.path.realpath(value)
             if  option in ['--log']:
-                conf['logfile'] = os.path.realpath(value)
+                conf['logpath'] = os.path.realpath(value)
             if  option in ['-c']:
                 conf['ssh'] = value
             if option in ['-h', '--help']:
@@ -479,7 +491,19 @@ class check_config:
             if not self.conf.has_key(item[0]):
                 self.conf[item[0]] = item[1]
 
+        # log level must be 1, 2, 3  or 0
+        if not self.conf.has_key('loglevel'): self.conf['loglevel'] = 0
+        self.conf['loglevel'] = int(self.conf['loglevel'])
+        if self.conf['loglevel'] > 3: self.conf['loglevel'] = 3
+        elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
+
     def check_log(self):
+
+        # define log levels dict
+        levels = { 1 : logging.CRITICAL, 
+                   2 : logging.ERROR, 
+                   3 : logging.WARNING }
+
         # create logger for lshell application
         logger = logging.getLogger('lshell')
         formatter = logging.Formatter('%(asctime)s (' + getuser() \
@@ -489,22 +513,26 @@ class check_config:
         logsterr = logging.StreamHandler()
         logger.addHandler(logsterr)
         logsterr.setFormatter(logging.Formatter('%(message)s'))
-        logsterr.setLevel(logging.ERROR)
+        logsterr.setLevel(logging.CRITICAL)
 
-        try:
-            # check if log file is writable in which case add log file handler 
-            fp=open(self.conf['logfile'],'a').close()
-            logfile = logging.FileHandler(self.conf['logfile'])
-            logger.addHandler(logfile)
-            logfile.setFormatter(formatter)
-            logfile.setLevel(logging.WARNING)
+        if self.conf['loglevel'] > 0:
+            try:
+                # check if log file is writable in which case add log file handler
+                logfile = self.conf['logpath'] + '/' + getuser() + '.log'
+                fp=open(logfile,'a').close()
+                logfile = logging.FileHandler(logfile)
+                logger.addHandler(logfile)
+                logfile.setFormatter(formatter)
+                logfile.setLevel(levels[self.conf['loglevel']])
 
-        except IOError:
-            sys.stderr.write('Warning: Cannot write in log file: '
-                                                    'Permission denied.\n')
-            sys.stderr.write('Warning: Actions will not be logged.\n')
+            except IOError:
+                # uncomment following 2 lines to warn if log file is not writable 
+                #sys.stderr.write('Warning: Cannot write in log file: '
+                #                                        'Permission denied.\n')
+                #sys.stderr.write('Warning: Actions will not be logged.\n')
+                pass
 
-        self.conf['logfile'] = logger
+        self.conf['logpath'] = logger
         self.log = logger
 
     def check_config_user(self,config_file):
@@ -517,7 +545,7 @@ class check_config:
         self.user = getuser()
         if self.config.has_section(self.user) is False:
             if self.config.has_section('default') is False:
-                self.log.error('ERROR: No [default] section found.'
+                self.log.critical('ERROR: No [default] section found.'
                                     ' Check configuration file.')
                 sys.exit(0)
             else: self.section = 'default'
@@ -533,9 +561,9 @@ class check_config:
         for item in config_list:
             if not self.config.has_option(self.section, item):
                 if not self.config.has_option('default', item):
-                    self.log.error('ERROR: Missing parameter "' \
+                    self.log.critical('ERROR: Missing parameter "' \
                                                             + item + '"')
-                    self.log.error('ERROR: Add it in the in the [%s] '
+                    self.log.critical('ERROR: Add it in the in the [%s] '
                                         'or [default] section of conf file.'
                                         % self.user)
                     sys.exit(0)
@@ -564,13 +592,17 @@ class check_config:
                                                     self.user, 'home_path')))
         except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             self.conf['home_path'] = os.environ['HOME']
+
         try:
             self.conf['path'] = eval(self.config.get(self.user, 'path'))
+            self.conf['path'].append(self.conf['home_path'])
         except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             try:
                 self.conf['path'] = eval(self.config.get('default', 'path'))
+                self.conf['path'].append(self.conf['home_path'])
             except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                 self.conf['path'] = [self.conf['home_path']]
+
         try:
             self.conf['env_path'] = eval(self.config.get(
                                                         self.user, 'env_path'))
@@ -592,29 +624,29 @@ class check_config:
         if self.conf.has_key('ssh'):
             if self.conf['ssh'].find('&') > -1 \
                         or self.conf['ssh'].find(';') > -1:
-                self.log.warn('WARN: forbidden char over ssh -> "%s"' 
+                self.log.critical('WARN: forbidden char over ssh -> "%s"' 
                                                         %self.conf['ssh'])
                 self.stdout.write('Warning: This has been logged!\n')
                 sys.exit(0)
             if self.conf['ssh'].startswith('scp') and self.conf['scp'] is 1: 
-                self.log.warn('Over SSH: "%s"' %self.conf['ssh'])
+                self.log.error('Over SSH: "%s"' %self.conf['ssh'])
                 os.system(self.conf['ssh'])
-                self.log.warn('SCP disconnect')
+                self.log.error('SCP disconnect')
                 sys.exit(0)
             elif 'sftp-server' in self.conf['ssh'] and self.conf['sftp'] is 1:
-                self.log.warn('SFTP connect')
+                self.log.error('SFTP connect')
                 os.system(self.conf['ssh'])
-                self.log.warn('SFTP disconnect')
+                self.log.error('SFTP disconnect')
                 sys.exit(0)
             elif self.conf['ssh'].split()[0] in self.conf['overssh']:
-                self.log.warn('Over SSH: "%s"' %self.conf['ssh'])
+                self.log.error('Over SSH: "%s"' %self.conf['ssh'])
                 os.system(self.conf['ssh'])
-                self.log.warn('Exited')
+                self.log.error('Exited')
                 sys.exit(0)
             else:
-                self.log.warn('WARN: forbidden command over SSH: "%s"' 
+                self.log.critical('WARN: forbidden command over SSH: "%s"' 
                                                         %self.conf['ssh'])
-                self.log.warn('Exited')
+                self.log.error('Exited')
                 self.stdout.write('You are not allowed to execute '
                                                 '"%s" command over ssh.\n'
                                                 %self.conf['ssh'].split()[0])
@@ -639,6 +671,7 @@ class check_config:
             password = getpass("Enter "+self.user+"'s password: ")
             if password != passwd:
                 self.stdout.write('Error: Wrong password \nExiting..\n')
+                self.log.critical('WARN: Wring password')
                 sys.exit(0)
         else: return 0
 
@@ -665,7 +698,7 @@ def main():
         sys.stdout.write('\nExited on user request\n')
         sys.exit(0)
     except LshellTimeOut:
-        userconf['logfile'].warn('Timer expired')
+        userconf['logpath'].error('Timer expired')
         sys.stdout.write('\nTime is up.\n')
 
 if __name__ == '__main__':

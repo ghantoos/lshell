@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.9 2009-02-15 18:46:58 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.10 2009-02-15 18:50:46 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -10,7 +10,7 @@ lshell \- Limited Shell
 
 .SH SYNOPSIS
 .B lshell 
-[\fIOPTION\fR] [\fIFILE\fR]
+[\fIOPTIONS\fR]
 
 .SH DESCRIPTION
 \fBlshell\fR provides a limited shell configured per user.
@@ -25,11 +25,11 @@ and
 
 .SH OPTIONS
 .TP
-.B \--config=\fIFILE\fR
-Select config file
+.B \--config \fI<FILE>\fR
+Specify config file
 .TP
-.B \--log=\fIFILE\fR
-Specify the log file to use
+.B \--log \fI<DIR>\fR
+Specify the log directory
 .TP
 .B \-h, --help
 Show help message

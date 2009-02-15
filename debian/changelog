@@ -4,7 +4,7 @@ lshell (0.2.5) unstable; urgency=low
   * added log direcotyr instead of a logfile
   * created log levels (0 to 3)
 
- -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sun, 08 Feb 2009 19:27:41 +0200
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sun, 15 Feb 2009 19:27:41 +0200
 
 lshell (0.2.4) unstable; urgency=low
 

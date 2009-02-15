@@ -2,13 +2,13 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.18 2009-02-15 18:46:58 ghantoos Exp $
+# $Id: CHANGES,v 1.19 2009-02-15 23:49:45 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.2.5 08/02/2009 ===
+=== v0.2.5 15/02/2009 ===
     * corrected import readline [bug]
     * added log direcotyr instead of a logfile
     * created log levels (0 to 3)

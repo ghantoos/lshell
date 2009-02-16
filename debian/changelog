@@ -3,6 +3,7 @@ lshell (0.2.5) unstable; urgency=low
   * corrected import readline [bug]
   * added log direcotyr instead of a logfile
   * created log levels (0 to 3)
+  * setup.py is now BSD compatible (using --install-data flag)
 
  -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sun, 15 Feb 2009 19:27:41 +0200
 

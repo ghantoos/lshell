@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.19 2009-02-15 23:49:45 ghantoos Exp $
+# $Id: CHANGES,v 1.20 2009-02-16 00:01:51 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -12,6 +12,7 @@ http://sourceforge.net/projects/lshell/
     * corrected import readline [bug]
     * added log direcotyr instead of a logfile
     * created log levels (0 to 3)
+    * setup.py is now BSD compatible (using --install-data flag)
 
 === v0.2.4 27/01/2009 ===
     * NEW: "overssh" in config file. Allows to set commands allowed to execute over ssh (e.g. rsync)

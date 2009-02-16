@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.17 2009-02-15 18:46:58 ghantoos Exp $
+# $Id: README,v 1.18 2009-02-16 00:44:49 ghantoos Exp $
 
 Contact: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
@@ -14,7 +14,7 @@ file (lshell.conf) as much as thought would be enough.
 ###
 1- Installation:
 ###
-    You have 2 options:
+    You have 3 options:
         * Use the setup.py present in the source tar.gz. It uses python        \
           distutils to install everything in the right place:
             - Extract the files:
@@ -30,7 +30,7 @@ file (lshell.conf) as much as thought would be enough.
         * Install the deb:
             - # dpkg -i lshell-x.x-x.deb
 
-    File to be installed are: 
+    Files to be installed are: 
         * etc/lshell.conf
         * bin/lshell
         * lshellmodule/lshell.py
@@ -101,7 +101,7 @@ file (lshell.conf) as much as thought would be enough.
     By default lshell will try to launch using /${CONFPATH}/lshell.conf unless \
     specified otherwise (using --config), where ${CONFPATH} is :
         - "/etc/" for Linux
-        - "/usr/{pkg,local}/" for *BSD
+        - "/usr/{pkg,local}/etc/" for *BSD
 
     In order to log a user, you will have to add him to the lshellg group:
     # usermod -aG lshellg username

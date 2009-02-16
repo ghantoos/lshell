@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.20 2009-02-16 00:01:51 ghantoos Exp $
+# $Id: CHANGES,v 1.21 2009-02-16 00:44:49 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -10,7 +10,7 @@ http://sourceforge.net/projects/lshell/
 
 === v0.2.5 15/02/2009 ===
     * corrected import readline [bug]
-    * added log direcotyr instead of a logfile
+    * added log directory instead of a logfile
     * created log levels (0 to 3)
     * setup.py is now BSD compatible (using --install-data flag)
 

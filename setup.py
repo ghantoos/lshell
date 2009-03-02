@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.12 2009-03-02 21:35:20 ghantoos Exp $
+# $Id: setup.py,v 1.13 2009-03-02 21:37:08 ghantoos Exp $
 
 from distutils.core import setup
 
@@ -17,7 +17,7 @@ choose a list of allowed commands for every limited account.""",
         maintainer='Ignace Mouzannar -ghantoos-',
         maintainer_email='ghantoos@ghantoos.org',
         keywords=['limited','shell','security','python'],
-        url='http://ghantoos.org/',
+        url='http://ghantoos.org/limited-shell-lshell/',
         license='GPL',
         platforms='UNIX',
         scripts = ['bin/lshell'],

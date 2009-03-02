@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.13 2009-03-02 21:32:57 ghantoos Exp $
+#    $Id: lshell.py,v 1.14 2009-03-02 22:41:39 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -35,7 +35,7 @@ import signal
 import readline
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.2.5"
+__version__= "0.2.6"
 
 # Global Variable config_list lists the required configuration fields per user
 config_list = ['allowed', 'forbidden', 'warning_counter', 
@@ -585,7 +585,6 @@ class check_config:
             except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                 self.conf[item] = eval(self.config.get('default', item))
 
-        print os.environ['PATH']
         if self.conf['allowed'] == 'all':
             self.conf['allowed'] = []
             for directory in os.environ['PATH'].split(':'):

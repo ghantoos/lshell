@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.11 2009-03-02 21:32:57 ghantoos Exp $
+# $Id: setup.py,v 1.12 2009-03-02 21:35:20 ghantoos Exp $
 
 from distutils.core import setup
 
@@ -23,7 +23,7 @@ choose a list of allowed commands for every limited account.""",
         scripts = ['bin/lshell'],
         package_dir = {'':'lshellmodule'},
         packages = ['lshell'],
-        data_files = [(conf_path, ['etc/lshell.conf']), 
+        data_files = [('/etc', ['etc/lshell.conf']),
             ('share/doc/lshell',['README', 'COPYING', 'CHANGES']),
             ('share/man/man1/', ['man/lshell.1.gz']) ]
         classifiers=[

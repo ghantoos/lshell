@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.12 2009-02-15 18:46:58 ghantoos Exp $
+#    $Id: lshell.py,v 1.13 2009-03-02 21:32:57 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -585,8 +585,18 @@ class check_config:
             except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                 self.conf[item] = eval(self.config.get('default', item))
 
+        print os.environ['PATH']
+        if self.conf['allowed'] == 'all':
+            self.conf['allowed'] = []
+            for directory in os.environ['PATH'].split(':'):
+                for item in os.listdir(directory):
+                    if os.access(os.path.join(directory,item), os.X_OK):
+                        self.conf['allowed'].append(item)
+
+        self.conf['allowed'].append('exit')
+
         self.conf['username'] = self.user
-        self.conf['allowed'].extend(['exit'])
+
         try:
             self.conf['home_path'] = os.path.normpath(eval(self.config.get(
                                                     self.user, 'home_path')))

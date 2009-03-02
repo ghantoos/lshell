@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.10 2009-02-15 18:50:46 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.11 2009-03-02 21:32:57 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH LSHELL 1 "January 27, 2009" "v0.2.4" "USER COMMANDS"
+.TH lshell 1 "March 02, 2009" "v0.2.6" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -38,7 +38,7 @@ Show help message
 Show version
 
 .SH CONFIGURATION
-\fBlshell\fR configuration has 3 parts: \fB[global]\fR, \fB[default]\fR and
+\fBlshell\fR configuration has 3 parts: \fB[global]\fR, \fB[default]\fR and \
 \fB[myuser]\fR:
 .RS
 .ft 3
@@ -65,13 +65,15 @@ history filename (located in $HOME of the user)
 .SS [default] and/or [username]
 .TP
 .I allowed
-a list of the allowed commands
+a list of the allowed commands or set to 'all' to allow all commands in user's \
+PATH
 .TP
 .I forbidden
 a list of forbidden character or commands
 .TP
 .I warning_counter
-number of warnings when user enters a forbidden value before getting exited from lshell.
+number of warnings when user enters a forbidden value before getting exited \
+from lshell.
 .TP
 .I timer
 a value in seconds for the session timer
@@ -83,7 +85,8 @@ password of specific user (default is empty)
 list of path to restrict the user geographicaly
 .TP
 .I home_path
-set the home folder of your user. If not specified, the home directory is set to the $HOME environment variable
+set the home folder of your user. If not specified, the home directory is set \
+to the $HOME environment variable
 .TP
 .I env_path
 update the environment variable $PATH of the user (optional)
@@ -95,26 +98,29 @@ update the environment variable $PATH of the user (optional)
 1 or 0 to allow of forbid the use of sftp connection
 .TP
 .I overssh
-list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, etc.)
+list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, \
+etc.)
 
 .SH EXAMPLES
 .TP
 .B $ lshell
 .RS
-Tries to un lshell using default /etc/lshell.conf as configuration file. If it 
+Tries to un lshell using default /etc/lshell.conf as configuration file. If it \
 fails a warning is printed and lshell is interrupted.
-Tries to un lshell using default /var/log/lshell.conf as log file. If it fails
+Tries to un lshell using default /var/log/lshell.conf as log file. If it fails \
 a warning is printed and lshell is continues runing.
 .RE
 .TP
 .B $ lshell --config /path/to/myconf.file --log /path/to/mylog.log
 .RS
-This will override the default options specified for configuration and/or log file
+This will override the default options specified for configuration and/or log \
+file
 .RE
 
 .SH TODO
 .TP
-In order to log a user's warnings into the default \fI/var/log/lshell.log\fR file, you must add the user to the \fIlshellg\fR group:
+In order to log a user's warnings into the default \fI/var/log/lshell.log\fR \
+file, you must add the user to the \fIlshellg\fR group:
 
 $ usermod -aG lshellg user_name
 .TP

@@ -1,3 +1,11 @@
+lshell (0.2.6) unstable; urgency=low
+
+    * added 'all' to allow all commands to a user
+    * added backticks in lshell.conf
+    * undued changes in setup.py and added classifiers
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Mon, 02 Mar 2009 10:14:49 +0200
+
 lshell (0.2.5) unstable; urgency=low
 
   * corrected import readline [bug]

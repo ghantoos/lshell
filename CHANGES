@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.22 2009-03-02 21:32:57 ghantoos Exp $
+# $Id: CHANGES,v 1.23 2009-03-03 10:24:17 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -11,7 +11,7 @@ http://sourceforge.net/projects/lshell/
 === v0.2.6 02/03/2009 ===
     * added 'all' to allow all commands to a user
     * added backticks in lshell.conf
-    * undued changes in setup.py and added classifiers
+    * changes made to setup.py in version 0.2.5 were undone + added classifiers
 
 === v0.2.5 15/02/2009 ===
     * corrected import readline [bug]

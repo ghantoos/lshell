@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.15 2009-03-03 23:13:43 ghantoos Exp $
+#    $Id: lshell.py,v 1.16 2009-03-03 23:38:20 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -623,6 +623,8 @@ class check_config:
                     for item in os.listdir(directory):
                         if os.access(os.path.join(directory,item), os.X_OK):
                             self.conf['allowed'].append(item)
+                else: self.log.error('CONF: PATH entry "%s" does not exist'
+                                                              % directory) 
 
         self.conf['allowed'].append('exit')
 

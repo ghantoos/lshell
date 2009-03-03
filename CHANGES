@@ -2,11 +2,13 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.23 2009-03-03 10:24:17 ghantoos Exp $
+# $Id: CHANGES,v 1.24 2009-03-03 23:38:20 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+=== v0.2.7 04/03/2009 ===
+    * corrected bug in case PATH does not exist and allowed set to 'all'
 
 === v0.2.6 02/03/2009 ===
     * added 'all' to allow all commands to a user

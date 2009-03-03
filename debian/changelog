@@ -1,3 +1,9 @@
+lshell (0.2.7) unstable; urgency=low
+
+    * corrected bug in case PATH does not exist and allowed set to 'all'
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Wed, 04 Mar 2009 00:36:09 +0200
+
 lshell (0.2.6) unstable; urgency=low
 
     * added 'all' to allow all commands to a user

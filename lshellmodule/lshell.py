@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.14 2009-03-02 22:41:39 ghantoos Exp $
+#    $Id: lshell.py,v 1.15 2009-03-03 23:13:43 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -35,7 +35,7 @@ import signal
 import readline
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.2.6"
+__version__= "0.2.7"
 
 # Global Variable config_list lists the required configuration fields per user
 config_list = ['allowed', 'forbidden', 'warning_counter', 
@@ -585,15 +585,6 @@ class check_config:
             except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                 self.conf[item] = eval(self.config.get('default', item))
 
-        if self.conf['allowed'] == 'all':
-            self.conf['allowed'] = []
-            for directory in os.environ['PATH'].split(':'):
-                for item in os.listdir(directory):
-                    if os.access(os.path.join(directory,item), os.X_OK):
-                        self.conf['allowed'].append(item)
-
-        self.conf['allowed'].append('exit')
-
         self.conf['username'] = self.user
 
         try:
@@ -624,6 +615,16 @@ class check_config:
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
+
+        if self.conf['allowed'] == 'all':
+            self.conf['allowed'] = []
+            for directory in os.environ['PATH'].split(':'):
+                if os.path.exists(directory):
+                    for item in os.listdir(directory):
+                        if os.access(os.path.join(directory,item), os.X_OK):
+                            self.conf['allowed'].append(item)
+
+        self.conf['allowed'].append('exit')
 
     def check_scp_sftp(self):
         """ This method checks if the user is trying to SCP a file onto the

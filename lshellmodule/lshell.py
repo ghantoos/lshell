@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.16 2009-03-03 23:38:20 ghantoos Exp $
+#    $Id: lshell.py,v 1.17 2009-03-08 02:32:17 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -33,13 +33,14 @@ import getopt
 import logging
 import signal
 import readline
+import grp
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
 __version__= "0.2.7"
 
-# Global Variable config_list lists the required configuration fields per user
-config_list = ['allowed', 'forbidden', 'warning_counter', 
-                                                    'timer', 'scp', 'sftp']
+# Global Variable required_config lists the required configuration fields per user
+required_config = ['allowed', 'forbidden', 'warning_counter'] 
+#                                                    'timer', 'scp', 'sftp']
 
 # set configuration file path depending on sys.exec_prefix
 # on *Linux sys.exec_prefix = '/usr' and default path must be in '/etc'
@@ -206,8 +207,11 @@ class shell_cmd(cmd.Cmd,object):
                 readline.read_history_file(self.history)
             except IOError:
                 # if history file does not exist
-                open(self.history, 'w').close()
-                readline.read_history_file(self.history)
+                try:
+                    open(self.history, 'w').close()
+                    readline.read_history_file(self.history)
+                except IOError:
+                    pass
             self.old_completer = readline.get_completer()
             readline.set_completer(self.complete)
             readline.parse_and_bind(self.completekey+": complete")
@@ -251,7 +255,7 @@ class shell_cmd(cmd.Cmd,object):
             try:
                 readline.write_history_file(self.history)
             except IOError:
-                self.stdout.write('WARNING: couldn\'t write history '
+                self.log.error('WARN: couldn\'t write history '
                                                 'to file %s\n' %self.history)
 
     def complete(self, text, state):
@@ -418,9 +422,9 @@ class check_config:
         self.conf = {}
         self.conf, self.arguments = self.getoptions(args, self.conf)
         self.check_file(self.conf['configfile'])
-        self.getglobal()
+        self.get_global()
         self.check_log()
-        self.check_config_user(self.conf['configfile'])
+        self.get_config()
         self.check_user_integrity()
         self.get_config_user()
         self.check_scp_sftp()
@@ -481,7 +485,9 @@ class check_config:
             sys.exit(0)
         else: self.config = ConfigParser.ConfigParser()
 
-    def getglobal(self):
+    def get_global(self):
+        """ Loads the [global] parameters from the configuration file
+        """
         self.config.read(self.conf['configfile'])
         if not self.config.has_section('global'):
             self.stdout.write('Config file missing [global] section\n')
@@ -498,7 +504,8 @@ class check_config:
         elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
 
     def check_log(self):
-
+        """ Sets the log level and log file
+        """
         # define log levels dict
         levels = { 1 : logging.CRITICAL, 
                    2 : logging.ERROR, 
@@ -535,38 +542,53 @@ class check_config:
         self.conf['logpath'] = logger
         self.log = logger
 
-    def check_config_user(self,config_file):
-        """ This method checks if the current user exists in the configuration
-        file. If the user is not found, he is exited from lshell. Else, if the 
-        user is found, it continues by calling check_user_integrity() then 
-        check_passwd()
+    def get_config(self):
+        """ Load default, group and user configuation. Then merge them all. The 
+        loadpriority is done in the following order:
+            1- User section
+            2- Group section
+            3- Default section
         """
-        self.config.read(config_file)
+        self.config.read(self.conf['configfile'])
         self.user = getuser()
-        if self.config.has_section(self.user) is False:
-            if self.config.has_section('default') is False:
-                self.log.critical('ERROR: No [default] section found.'
-                                    ' Check configuration file.')
-                sys.exit(0)
-            else: self.section = 'default'
-        else:
-            self.section = self.user
+        conf_group, conf_default, conf_user = [], [], []
+        # get group configuration if any
+        for section in self.config.sections():
+            if section.startswith('grp:'):
+                grpname = section.split(':')[1]
+                try:
+                    grpgid = grp.getgrnam(grpname)[2]
+                    if grpgid in os.getgroups():
+                        conf_group = self.config.items(section)
+                        pass
+                except:
+                    self.log.error('[%s] group does not exist' %section)
+
+        # get default configuration if any
+        if self.config.has_section('default'):
+            conf_default = self.config.items('default')
+
+        # get user configuration if any
+        if self.config.has_section(self.user):
+            conf_user = self.config.items(self.user)
+
+        # merge all configurations (tuples) in a single dict
+        # the order of the sum below set the priority defined above
+        self.conf_raw = dict(conf_default + conf_group + conf_user)
 
     def check_user_integrity(self):
         """ This method checks if all the required fields by user are present
         for the present user.
         In case fields are missing, the user is notified and exited from lshell
         """
-        quit = 0
-        for item in config_list:
-            if not self.config.has_option(self.section, item):
-                if not self.config.has_option('default', item):
-                    self.log.critical('ERROR: Missing parameter "' \
-                                                            + item + '"')
-                    self.log.critical('ERROR: Add it in the in the [%s] '
-                                        'or [default] section of conf file.'
-                                        % self.user)
-                    sys.exit(0)
+        for item in required_config:
+            if item not in self.conf_raw.keys():
+                self.log.critical('ERROR: Missing parameter \'' \
+                                                        + item + '\'')
+                self.log.critical('ERROR: Add it in the in the [%s] '
+                                    'or [default] section of conf file.'
+                                    % self.user)
+                sys.exit(0)
 
     def get_config_user(self):
         """ Once all the checks above have passed, the configuration files
@@ -580,38 +602,26 @@ class check_config:
                     'scp',
                     'sftp',
                     'overssh']:
-            try:
-                self.conf[item] = eval(self.config.get(self.user, item))
-            except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-                self.conf[item] = eval(self.config.get('default', item))
+            self.conf[item] = eval(self.conf_raw[item])
 
         self.conf['username'] = self.user
 
         try:
-            self.conf['home_path'] = os.path.normpath(eval(self.config.get(
-                                                    self.user, 'home_path')))
-        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.conf['home_path'] = os.path.normpath(eval(self.conf_raw[
+                                                    'home_path']))
+        except KeyError:
             self.conf['home_path'] = os.environ['HOME']
 
         try:
-            self.conf['path'] = eval(self.config.get(self.user, 'path'))
+            self.conf['path'] = eval(self.conf_raw['path'])
             self.conf['path'].append(self.conf['home_path'])
-        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-            try:
-                self.conf['path'] = eval(self.config.get('default', 'path'))
-                self.conf['path'].append(self.conf['home_path'])
-            except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-                self.conf['path'] = [self.conf['home_path']]
+        except KeyError:
+            self.conf['path'] = [self.conf['home_path']]
 
         try:
-            self.conf['env_path'] = eval(self.config.get(
-                                                        self.user, 'env_path'))
-        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-            try:
-                self.conf['env_path'] = eval(self.config.get(
-                                                        'default', 'env_path'))
-            except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-                self.conf['env_path'] = ''
+            self.conf['env_path'] = eval(self.conf_raw['env_path'])
+        except KeyError:
+            self.conf['env_path'] = ''
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']

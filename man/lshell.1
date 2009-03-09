@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.11 2009-03-02 21:32:57 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.12 2009-03-09 00:44:11 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "March 02, 2009" "v0.2.6" 
+.TH lshell 1 "March 09, 2009" "v0.9.0" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -38,15 +38,15 @@ Show help message
 Show version
 
 .SH CONFIGURATION
-\fBlshell\fR configuration has 3 parts: \fB[global]\fR, \fB[default]\fR and \
-\fB[myuser]\fR:
+\fBlshell\fR configuration has 4 types of sections:
 .RS
 .ft 3
 .nf
 .sp
-[global]   -> lshell system configuration
-[default]  -> lshell default user configuration
-[blah]     -> user "blah" specific configuration
+[global]   -> lshell system configuration (only 1)
+[default]  -> lshell default user configuration (only 1)
+[blah]     -> UNIX username "blah" specific configuration
+[grp:blah] -> UNIX groupname "blah" specific configuration
 .ft
 .LP
 .RE
@@ -59,10 +59,7 @@ config path (default is /var/log/lshell/)
 .TP
 .I loglevel
 0, 1, 2 or 3  (0: no logs, 1: least verbose)
-.TP
-.I history
-history filename (located in $HOME of the user)
-.SS [default] and/or [username]
+.SS [default] and/or [grp:groupname] and/or [username]
 .TP
 .I allowed
 a list of the allowed commands or set to 'all' to allow all commands in user's \
@@ -105,10 +102,9 @@ etc.)
 .TP
 .B $ lshell
 .RS
-Tries to un lshell using default /etc/lshell.conf as configuration file. If it \
-fails a warning is printed and lshell is interrupted.
-Tries to un lshell using default /var/log/lshell.conf as log file. If it fails \
-a warning is printed and lshell is continues runing.
+Tries to run lshell using default ${PREFIX}/etc/lshell.conf as configuration \
+file. If it fails a warning is printed and lshell is interrupted.
+lshell options are loaded from the configuration file
 .RE
 .TP
 .B $ lshell --config /path/to/myconf.file --log /path/to/mylog.log
@@ -119,15 +115,46 @@ file
 
 .SH TODO
 .TP
-In order to log a user's warnings into the default \fI/var/log/lshell.log\fR \
-file, you must add the user to the \fIlshellg\fR group:
+In order to log a user's warnings into the logging directory (default \
+\fI/var/log/lshell/\fR) , you must firt create the folder (if it doesn't \
+exist yet) and chown it to lshellg group:
+.RS
+.ft 3
+.nf
+.sp
+# mkdir /var/log/lshell
+# chown :lshellg /var/log/lshell
+# chmod 770 /var/log/lshell
+.ft
+.LP
+.RE
+.fi
 
-$ usermod -aG lshellg user_name
-.TP
+then add the user to the \fIlshellg\fR group:
+.RS
+.ft 3
+.nf
+.sp
+# usermod -aG lshellg user_name
+.ft
+.LP
+.RE
+.fi
+
 In order to set lshell as default shell for a user:
+.RS
+.ft 3
+.nf
+.sp
+On Linux:
+# chsh -s /usr/bin/lshell user_name
 
-$ chsh -s /usr/bin/lshell user_name
-
+On *BSD:
+# chsh -s /usr/{pkg,local}/bin/lshell user_name
+.ft
+.LP
+.RE
+.fi
 .SH AUTHOR
 Currently maintained by Ignace Mouzannar -ghantoos- 
 

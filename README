@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.18 2009-02-16 00:44:49 ghantoos Exp $
+# $Id: README,v 1.19 2009-03-09 00:44:11 ghantoos Exp $
 
 Contact: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
@@ -46,9 +46,10 @@ file (lshell.conf) as much as thought would be enough.
     [global]
         * logpath         : log directory (default /var/log/lshell/ )
         * loglevel        : 0, 1, 2 or 3  (0: no logs, 1: least verbose)
-        * history         : history file  (default ~/.lhistory)
 
-    [default] or [username]
+    [default] 
+    or [username] (UNIX username)
+    or [grp:groupname] (UNIX groupname)
         * allowed         : a list of the allowed commands
         * forbidden       : a list of forbidden character or commands
         * warning_counter : number of warnings when user enters a forbidden    \
@@ -64,9 +65,13 @@ file (lshell.conf) as much as thought would be enough.
         * overssh         : list of command allowed to execute over ssh (e.g.  \
                             rsync, rdiff-backup, scp, etc.)
 
-    A [default] profile is available to let multiple users use the same        \
-    comfiguration. Nevertheless, you can create a [username] section to        \
+    A [default] profile is available for all users using lshell. Nevertheless, \
+    you can create a [username] section or a [grp:groupname] section to        \
     customize users' preferences.
+    Order of priority when loading preferences is the following:
+        1- User configuration
+        2- Group configuration
+        3- Default configuration
 
     The primary goal of lshell, was to be able to create shell accounts        \
     with ssh access    and restrict their environment to a couple a needed     \

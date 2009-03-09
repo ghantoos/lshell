@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.17 2009-03-08 02:32:17 ghantoos Exp $
+#    $Id: lshell.py,v 1.18 2009-03-09 00:44:11 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -36,7 +36,7 @@ import readline
 import grp
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.2.7"
+__version__= "0.9.0"
 
 # Global Variable required_config lists the required configuration fields per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -119,7 +119,7 @@ class shell_cmd(cmd.Cmd,object):
                 os.system(self.g_line)
         elif self.g_cmd not in ['','?','help'] : 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
-            self.stdout.write('*** unknown syntax: %s\n' %self.g_cmd) 
+            self.stdout.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
@@ -533,7 +533,8 @@ class check_config:
                 logfile.setLevel(levels[self.conf['loglevel']])
 
             except IOError:
-                # uncomment following 2 lines to warn if log file is not writable 
+                # uncomment the 2 following lines to warn if log file is not   \
+                # writable 
                 #sys.stderr.write('Warning: Cannot write in log file: '
                 #                                        'Permission denied.\n')
                 #sys.stderr.write('Warning: Actions will not be logged.\n')
@@ -552,17 +553,17 @@ class check_config:
         self.config.read(self.conf['configfile'])
         self.user = getuser()
         conf_group, conf_default, conf_user = [], [], []
-        # get group configuration if any
-        for section in self.config.sections():
-            if section.startswith('grp:'):
-                grpname = section.split(':')[1]
-                try:
-                    grpgid = grp.getgrnam(grpname)[2]
-                    if grpgid in os.getgroups():
-                        conf_group = self.config.items(section)
-                        pass
-                except:
-                    self.log.error('[%s] group does not exist' %section)
+        # get groups configuration if any.
+        # for each group the user belongs to, check if specific configuration  \
+        # exists. Then merge all configuration in conf_group. The primary group\
+        # has the highest priority. 
+        grplist = os.getgroups()
+        grplist.reverse()
+        for gid in grplist:
+            grpname = grp.getgrgid(gid)[0]
+            section = 'grp:' + grpname
+            if self.config.has_section(section):
+                conf_group += self.config.items(section)
 
         # get default configuration if any
         if self.config.has_section('default'):

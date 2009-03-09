@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.18 2009-03-09 00:44:11 ghantoos Exp $
+#    $Id: lshell.py,v 1.19 2009-03-09 19:28:48 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -135,19 +135,35 @@ class shell_cmd(cmd.Cmd,object):
         """
         for item in self.conf['forbidden']:
             if item in line:
-                self.conf['warning_counter'] -= 1
-                if self.conf['warning_counter'] <= 0: 
-                    self.log.critical('*** forbidden syntax -> "%s"' 
-                                                                %self.g_line)
-                    self.log.critical('- Kicked out -')
-                    sys.exit(1)
-                else:
-                    self.log.critical('*** forbidden syntax -> "%s"' 
-                                                                %self.g_line)
-                    self.stdout.write('*** You have %s joker(s) left,'   
-                                        ' before getting kicked out.\n' \
-                                        %(self.conf['warning_counter']-1))
-                return 0
+                self.counter_update('synthax')
+        for item in line.split():
+            if ('..' or './' or '/') in item:
+                allowedpath = eval(str(self.conf['path']))
+                allowedpath_re = string.join(allowedpath, '.*|')
+                path = os.path.realpath(item)
+                if not re.findall(allowedpath_re, path):
+                    self.counter_update('path', path)
+                    return 0
+
+    def counter_update(self, messagetype, path=None):
+        self.conf['warning_counter'] -= 1
+        if path:
+            line = path
+        else:
+            line = self.g_line
+        if self.conf['warning_counter'] <= 0: 
+            self.log.critical('*** forbidden %s -> "%s"' 
+                                                  % (messagetype ,line))
+            self.log.critical('- Kicked out -')
+            sys.exit(1)
+        else:
+            self.log.critical('*** forbidden %s -> "%s"' 
+                                                  % (messagetype ,line))
+            self.stdout.write('*** You have %s joker(s) left,'   
+                                ' before getting kicked out.\n' \
+                                %(self.conf['warning_counter']-1))
+            self.stdout.write('This incident has been reported.\n')
+        return 0
 
     def check_path(self, line):
         path_ = eval(str(self.conf['path']))
@@ -161,7 +177,7 @@ class shell_cmd(cmd.Cmd,object):
                     if item[0] == '/': tomatch = item
                     else: tomatch = os.getcwd()+'/'+item
                     if not re.findall(path_re,tomatch) : 
-                        self.check_secure(self.conf['forbidden'][0])
+                        self.counter_update('path', tomatch)
                         return 0
         else:
             if not re.findall(path_re,os.getcwd()) : 
@@ -603,7 +619,10 @@ class check_config:
                     'scp',
                     'sftp',
                     'overssh']:
-            self.conf[item] = eval(self.conf_raw[item])
+            try:
+                self.conf[item] = eval(self.conf_raw[item])
+            except KeyError:
+                self.conf[item] = 0
 
         self.conf['username'] = self.user
 

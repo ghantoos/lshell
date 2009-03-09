@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: postuninstall,v 1.5 2009-02-15 18:46:58 ghantoos Exp $
+# $Id: postuninstall,v 1.6 2009-03-09 13:59:40 ghantoos Exp $
 #
 # RPM build postuninstall script
 
@@ -14,7 +14,7 @@ if [ "$1" != "0" ] ; then
     exit 0
 fi
 
-groupdel lshellg
+#groupdel lshellg
 rm -f /etc/lshell.conf-rpm
 
 #####

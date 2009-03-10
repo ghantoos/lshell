@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.19 2009-03-09 19:28:48 ghantoos Exp $
+#    $Id: lshell.py,v 1.20 2009-03-10 00:37:04 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -103,15 +103,17 @@ class shell_cmd(cmd.Cmd,object):
             return object.__getattribute__(self, attr)
         if self.g_cmd in ['quit', 'exit', 'EOF']:
             self.log.error('Exited')
-            self.stdout.write('\n')
-            sys.exit(1)
+            if self.g_cmd == 'EOF':
+                self.stdout.write('\n')
+            sys.exit(0)
         elif self.g_cmd in self.conf['allowed']:
             if self.g_cmd in ['cd']:
-                if len ( self.g_arg ) >= 1:
+                if len(self.g_arg) >= 1:
                     if os.path.isdir(self.g_arg): 
-                        os.chdir( self.g_arg )
+                        os.chdir(self.g_arg)
                         self.updateprompt(os.getcwd())
-                    else: self.stdout.write('No such directory.\n')
+                    else: self.stdout.write('cd: %s: No such directory.\n'
+                                                % os.path.realpath(self.g_arg))
                 else: 
                     os.chdir(self.conf['home_path'])
                     self.updateprompt(os.getcwd())
@@ -136,14 +138,6 @@ class shell_cmd(cmd.Cmd,object):
         for item in self.conf['forbidden']:
             if item in line:
                 self.counter_update('synthax')
-        for item in line.split():
-            if ('..' or './' or '/') in item:
-                allowedpath = eval(str(self.conf['path']))
-                allowedpath_re = string.join(allowedpath, '.*|')
-                path = os.path.realpath(item)
-                if not re.findall(allowedpath_re, path):
-                    self.counter_update('path', path)
-                    return 0
 
     def counter_update(self, messagetype, path=None):
         self.conf['warning_counter'] -= 1
@@ -163,43 +157,29 @@ class shell_cmd(cmd.Cmd,object):
                                 ' before getting kicked out.\n' \
                                 %(self.conf['warning_counter']-1))
             self.stdout.write('This incident has been reported.\n')
-        return 0
+            return 0
 
-    def check_path(self, line):
+    def check_path(self, line, completion=0):
         path_ = eval(str(self.conf['path']))
         for i in range(0,len(path_)):
             path_[i] = os.path.normpath(path_[i])
         path_re = string.join(path_,'.*|')
-        if '/' in line:
-            line = line.strip().split(' ')
+        if './' or '/' in line:
+            line = line.strip().split()
             for item in line:
                 if '/' in item:
-                    if item[0] == '/': tomatch = item
-                    else: tomatch = os.getcwd()+'/'+item
-                    if not re.findall(path_re,tomatch) : 
-                        self.counter_update('path', tomatch)
+                    tomatch = os.path.realpath(item)
+                    if not re.findall(path_re,tomatch):
+                        if completion == 0:
+                            self.counter_update('path', tomatch)
                         return 0
-        else:
-            if not re.findall(path_re,os.getcwd()) : 
-                self.conf['warning_counter'] -= 1
-                if self.conf['warning_counter'] <= 0: 
-                    self.log.critical('WARN: forbidden path (%s) -> "%s"' 
-                                                %(os.getcwd(), self.g_line))
-                    self.log.critical('Kicked out')
-                    self.stdout.write('You were not supposed to be here. ')
-                    self.stdout.write('This incident will be reported.\n')
-                    self.stdout.write('I warned you.. See ya!\n')
-                    sys.exit(1)
-                self.log.critical('WARN: forbidden path (%s) -> "%s"' 
-                                                %(os.getcwd(), self.g_line))
-                self.stdout.write('You were not supposed to be here. ')
-                self.stdout.write('This incident will be reported.\n')
-                self.stdout.write('WARNING: You have %s joker(s) left, '
-                                        'before getting kicked out\n' \
-                                        %(self.conf['warning_counter']-1)) 
+        elif completion == 0:
+            if not re.findall(path_re,os.getcwd()): 
+                self.counter_update('path', os.getcwd())
                 os.chdir(self.conf['home_path'])
                 self.updateprompt(os.getcwd())
                 return 0
+        return 1
 
     def updateprompt(self, path):
         if path is self.conf['home_path']:
@@ -286,7 +266,7 @@ class shell_cmd(cmd.Cmd,object):
             stripped = len(origline) - len(line)
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
-            if line.split(' ')[0] in self.conf['allowed']:
+            if line.split()[0] in self.conf['allowed']:
                 compfunc = self.completechdir
             elif begidx>0:
                 cmd, args, foo = self.parseline(line)
@@ -327,19 +307,24 @@ class shell_cmd(cmd.Cmd,object):
 
     def completechdir(self,text, line, begidx, endidx):
         toreturn = []
-        try:
-            direct = os.path.realpath(line.split(' ',1)[1].rsplit('/',1)[0])
-        except: 
-            direct = os.getcwd()
+        if './' or '/' in line:
+            try:
+                directory = os.path.realpath(line.split()[-1])
+            except: 
+                directory = os.getcwd()
 
-        if not os.path.isdir(direct):
-            direct = os.getcwd()
+        if not os.path.isdir(directory):
+            directory = directory.rsplit('/',1)[0]
+            if directory == '': directory = '/'
+            if not os.path.isdir(directory):
+                directory = os.getcwd()
 
-        for instance in os.listdir(direct):
-            if os.path.isdir(os.path.join(direct,instance)):
-                instance = instance + '/'
-            else: instance = instance + ' '
-            toreturn.append(instance)
+        if self.check_path(directory, 1) == 1:
+            for instance in os.listdir(directory):
+                if os.path.isdir(os.path.join(directory,instance)):
+                    instance = instance + '/'
+                else: instance = instance + ' '
+                toreturn.append(instance)
 
         return [a for a in toreturn if a.startswith(text)]
 

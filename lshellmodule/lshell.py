@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.20 2009-03-10 00:37:04 ghantoos Exp $
+#    $Id: lshell.py,v 1.21 2009-03-11 00:28:29 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -138,6 +138,7 @@ class shell_cmd(cmd.Cmd,object):
         for item in self.conf['forbidden']:
             if item in line:
                 self.counter_update('synthax')
+                return 0
 
     def counter_update(self, messagetype, path=None):
         self.conf['warning_counter'] -= 1
@@ -157,7 +158,6 @@ class shell_cmd(cmd.Cmd,object):
                                 ' before getting kicked out.\n' \
                                 %(self.conf['warning_counter']-1))
             self.stdout.write('This incident has been reported.\n')
-            return 0
 
     def check_path(self, line, completion=0):
         path_ = eval(str(self.conf['path']))
@@ -452,6 +452,7 @@ class check_config:
             self.stderr.write('Missing or unknown argument(s)\n')
             self.usage()
 
+
         for option, value in optlist:
             if  option in ['--config']:
                 conf['configfile'] = os.path.realpath(value)
@@ -649,34 +650,43 @@ class check_config:
         SCP or not, and    acts as requested. : )
         """
         if self.conf.has_key('ssh'):
-            if self.conf['ssh'].find('&') > -1 \
-                        or self.conf['ssh'].find(';') > -1:
-                self.log.critical('WARN: forbidden char over ssh -> "%s"' 
-                                                        %self.conf['ssh'])
-                self.stdout.write('Warning: This has been logged!\n')
-                sys.exit(0)
-            if self.conf['ssh'].startswith('scp') and self.conf['scp'] is 1: 
-                self.log.error('Over SSH: "%s"' %self.conf['ssh'])
-                os.system(self.conf['ssh'])
-                self.log.error('SCP disconnect')
-                sys.exit(0)
-            elif 'sftp-server' in self.conf['ssh'] and self.conf['sftp'] is 1:
-                self.log.error('SFTP connect')
-                os.system(self.conf['ssh'])
-                self.log.error('SFTP disconnect')
-                sys.exit(0)
-            elif self.conf['ssh'].split()[0] in self.conf['overssh']:
-                self.log.error('Over SSH: "%s"' %self.conf['ssh'])
-                os.system(self.conf['ssh'])
-                self.log.error('Exited')
-                sys.exit(0)
+            if os.environ.has_key('SSH_CLIENT'):
+                if self.conf['ssh'].find('&') > -1 \
+                            or self.conf['ssh'].find(';') > -1:
+                    self.log.critical('WARN: forbidden char over ssh -> "%s"' 
+                                                            %self.conf['ssh'])
+                    self.stdout.write('Warning: This has been logged!\n')
+                    sys.exit(0)
+                if self.conf['ssh'].startswith('scp')                          \
+                                                and self.conf['scp'] is 1: 
+                    self.log.error('Over SSH: "%s"' %self.conf['ssh'])
+                    os.system(self.conf['ssh'])
+                    self.log.error('SCP disconnect')
+                    sys.exit(0)
+                elif 'sftp-server' in self.conf['ssh']                         \
+                                                and self.conf['sftp'] is 1:
+                    self.log.error('SFTP connect')
+                    os.system(self.conf['ssh'])
+                    self.log.error('SFTP disconnect')
+                    sys.exit(0)
+                elif self.conf['ssh'].split()[0] in self.conf['overssh']:
+                    self.log.error('Over SSH: "%s"' %self.conf['ssh'])
+                    os.system(self.conf['ssh'])
+                    self.log.error('Exited')
+                    sys.exit(0)
+                else:
+                    self.log.critical('WARN: forbidden command over SSH: "%s"' 
+                                                            %self.conf['ssh'])
+                    self.log.error('Exited')
+                    self.stdout.write('You are not allowed to execute '
+                                                 '"%s" command over ssh.\n'
+                                                 %self.conf['ssh'].split()[0])
+                    sys.exit(0)
             else:
-                self.log.critical('WARN: forbidden command over SSH: "%s"' 
-                                                        %self.conf['ssh'])
+                self.log.critical('*** forbidden shell escape execution: "%s"' 
+                                        %self.conf['ssh'])
                 self.log.error('Exited')
-                self.stdout.write('You are not allowed to execute '
-                                                '"%s" command over ssh.\n'
-                                                %self.conf['ssh'].split()[0])
+                self.stdout.write('This incident has been reported.\n')
                 sys.exit(0)
 
     def check_passwd(self):
@@ -715,6 +725,7 @@ class LshellTimeOut(Exception):
 
 def main():
     # get configuration
+    os.environ['SHELL'] = os.path.realpath(sys.argv[0])
     userconf = check_config(sys.argv[1:]).returnconf()
 
     try:

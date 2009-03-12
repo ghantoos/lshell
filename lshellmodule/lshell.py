@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.21 2009-03-11 00:28:29 ghantoos Exp $
+#    $Id: lshell.py,v 1.22 2009-03-12 00:06:47 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -266,7 +266,7 @@ class shell_cmd(cmd.Cmd,object):
             stripped = len(origline) - len(line)
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
-            if line.split()[0] in self.conf['allowed']:
+            if line.split(' ')[0] in self.conf['allowed']:
                 compfunc = self.completechdir
             elif begidx>0:
                 cmd, args, foo = self.parseline(line)
@@ -465,6 +465,12 @@ class check_config:
             if option in ['--version']:
                 self.version()
 
+        # put the expanded path of configfile and logpath (if exists) in 
+        # LSHELL_ARGS environment variable
+        args = ['--config', conf['configfile']]
+        if conf.has_key('logpath'): args += ['--log', conf['logpath']]
+        os.environ['LSHELL_ARGS'] = str(args)
+
         return conf, args
 
     def usage(self):
@@ -639,7 +645,7 @@ class check_config:
                     for item in os.listdir(directory):
                         if os.access(os.path.join(directory,item), os.X_OK):
                             self.conf['allowed'].append(item)
-                else: self.log.error('CONF: PATH entry "%s" does not exist'
+                else: self.log.error('CONF: PATH entry "%s" does not exist'    
                                                               % directory) 
 
         self.conf['allowed'].append('exit')
@@ -650,16 +656,18 @@ class check_config:
         SCP or not, and    acts as requested. : )
         """
         if self.conf.has_key('ssh'):
-            if os.environ.has_key('SSH_CLIENT'):
-                if self.conf['ssh'].find('&') > -1 \
+            if os.environ.has_key('SSH_CLIENT')                                \
+                                        and not os.environ.has_key('SSH_TTY'):
+                # case no tty is given to the session (sftp, scp, cmd over ssh)
+                if self.conf['ssh'].find('&') > -1                             \
                             or self.conf['ssh'].find(';') > -1:
-                    self.log.critical('WARN: forbidden char over ssh -> "%s"' 
+                    self.log.critical('*** forbidden char over ssh -> "%s"' 
                                                             %self.conf['ssh'])
-                    self.stdout.write('Warning: This has been logged!\n')
+                    self.stdout.write('This incident has been reported.\n')
                     sys.exit(0)
                 if self.conf['ssh'].startswith('scp')                          \
                                                 and self.conf['scp'] is 1: 
-                    self.log.error('Over SSH: "%s"' %self.conf['ssh'])
+                    self.log.error('SCP: "%s"' %self.conf['ssh'])
                     os.system(self.conf['ssh'])
                     self.log.error('SCP disconnect')
                     sys.exit(0)
@@ -675,17 +683,14 @@ class check_config:
                     self.log.error('Exited')
                     sys.exit(0)
                 else:
-                    self.log.critical('WARN: forbidden command over SSH: "%s"' 
+                    self.log.critical('*** forbidden command over SSH: "%s"' \
                                                             %self.conf['ssh'])
-                    self.log.error('Exited')
-                    self.stdout.write('You are not allowed to execute '
-                                                 '"%s" command over ssh.\n'
-                                                 %self.conf['ssh'].split()[0])
+                    self.stdout.write('This incident has been reported.\n')
                     sys.exit(0)
-            else:
-                self.log.critical('*** forbidden shell escape execution: "%s"' 
-                                        %self.conf['ssh'])
-                self.log.error('Exited')
+            else :
+                # case of shell escapes
+                self.log.critical('*** forbidden shell escape: "%s"'           \
+                                                            %self.conf['ssh'])
                 self.stdout.write('This incident has been reported.\n')
                 sys.exit(0)
 
@@ -724,9 +729,13 @@ class LshellTimeOut(Exception):
         return repr(self.value)
 
 def main():
-    # get configuration
+    # set SHELL and get LSHELL_ARGS env variables
     os.environ['SHELL'] = os.path.realpath(sys.argv[0])
-    userconf = check_config(sys.argv[1:]).returnconf()
+    if os.environ.has_key('LSHELL_ARGS'):
+        args = sys.argv[1:] + eval(os.environ['LSHELL_ARGS'])
+    else: args = sys.argv[1:]
+
+    userconf = check_config(args).returnconf()
 
     try:
         cli = shell_cmd(userconf)

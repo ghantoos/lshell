@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.22 2009-03-12 00:06:47 ghantoos Exp $
+#    $Id: lshell.py,v 1.23 2009-03-17 23:29:41 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -109,8 +109,8 @@ class shell_cmd(cmd.Cmd,object):
         elif self.g_cmd in self.conf['allowed']:
             if self.g_cmd in ['cd']:
                 if len(self.g_arg) >= 1:
-                    if os.path.isdir(self.g_arg): 
-                        os.chdir(self.g_arg)
+                    if os.path.isdir(os.path.realpath(self.g_arg)): 
+                        os.chdir(os.path.realpath(self.g_arg))
                         self.updateprompt(os.getcwd())
                     else: self.stdout.write('cd: %s: No such directory.\n'
                                                 % os.path.realpath(self.g_arg))
@@ -160,21 +160,20 @@ class shell_cmd(cmd.Cmd,object):
             self.stdout.write('This incident has been reported.\n')
 
     def check_path(self, line, completion=0):
-        path_ = eval(str(self.conf['path']))
-        for i in range(0,len(path_)):
-            path_[i] = os.path.normpath(path_[i])
-        path_re = string.join(path_,'.*|')
-        if './' or '/' in line:
-            line = line.strip().split()
-            for item in line:
-                if '/' in item:
-                    tomatch = os.path.realpath(item)
-                    if not re.findall(path_re,tomatch):
+        path_re = str(self.conf['path'][0])
+        path_not_re = str(self.conf['path'][1][:-1])
+        line = line.strip().split()[1:]
+        for item in line:
+            #if '/' in item or './' in item or '..' in item:
+            tomatch = os.path.realpath(item) + '/'
+            if os.path.exists(tomatch):
+                if not re.findall(path_re,tomatch)                             \
+                                            or re.findall(path_not_re,tomatch):
                         if completion == 0:
                             self.counter_update('path', tomatch)
                         return 0
-        elif completion == 0:
-            if not re.findall(path_re,os.getcwd()): 
+        if completion == 0:
+            if not re.findall(path_re,os.getcwd()+'/'): 
                 self.counter_update('path', os.getcwd())
                 os.chdir(self.conf['home_path'])
                 self.updateprompt(os.getcwd())
@@ -560,30 +559,116 @@ class check_config:
         """
         self.config.read(self.conf['configfile'])
         self.user = getuser()
-        conf_group, conf_default, conf_user = [], [], []
+
+        self.conf_raw = {}
+
+        # get 'default' configuration if any
+        self.get_config_sub('default')
+
         # get groups configuration if any.
         # for each group the user belongs to, check if specific configuration  \
-        # exists. Then merge all configuration in conf_group. The primary group\
-        # has the highest priority. 
+        # exists.  The primary group has the highest priority. 
         grplist = os.getgroups()
         grplist.reverse()
         for gid in grplist:
             grpname = grp.getgrgid(gid)[0]
             section = 'grp:' + grpname
-            if self.config.has_section(section):
-                conf_group += self.config.items(section)
-
-        # get default configuration if any
-        if self.config.has_section('default'):
-            conf_default = self.config.items('default')
+            self.get_config_sub(section)
 
         # get user configuration if any
-        if self.config.has_section(self.user):
-            conf_user = self.config.items(self.user)
+        self.get_config_sub(self.user)
 
-        # merge all configurations (tuples) in a single dict
-        # the order of the sum below set the priority defined above
-        self.conf_raw = dict(conf_default + conf_group + conf_user)
+        #print self.conf_raw
+
+    def get_config_sub(self, section):
+        """ self.get_config sub function """
+        if self.config.has_section(section):
+            for item in self.config.items(section):
+                key = item[0]
+                value = item[1]
+                split = re.split('([\+\-\s]+\[[^\]]+\])',value.replace(' ',''))
+                if len(split) > 1 and key in ['path',                          \
+                                              'overssh',                       \
+                                              'allowed',                       \
+                                              'forbidden']:
+                    for stuff in split:
+                        if stuff.startswith('-') or stuff.startswith('+'):
+                            self.conf_raw.update(self.minusplus(self.conf_raw, \
+                                                                    key,stuff))
+                        elif stuff == "'all'":
+                            self.conf_raw.update({key:self.expand_all()})
+                        elif stuff != '' and key == 'path':
+                            liste = ['','']
+                            for path in eval(stuff):
+                                liste[0] += os.path.realpath(path) + '/.*|'
+                            liste[0] = liste[0]
+                            self.conf_raw.update({key:str(liste)})
+                        elif stuff != '' and type(eval(stuff)) is list:
+                            self.conf_raw.update({key:stuff})
+                # case allowed is set to 'all'
+                elif key == 'allowed' and split[0] == "'all'":
+                    self.conf_raw.update({key:self.expand_all()})
+                elif key == 'path':
+                    liste = ['','']
+                    for path in self.myeval(value, 'path'):
+                        liste[0] += os.path.realpath(path) + '/.*|'
+                    liste[0] = liste[0]
+                    self.conf_raw.update({key:str(liste)})
+                else:
+                    self.conf_raw.update(dict([item]))
+
+    def minusplus(self,confdict, key, extra):
+        """ update configuration lists containing -/+ operators """
+        if confdict.has_key(key):
+            liste = self.myeval(confdict[key])
+        elif key == 'path':
+            liste = ['','']
+        else:
+            liste = []
+
+        sublist = self.myeval(extra[1:],key)
+        if extra.startswith('+'):
+            if key == 'path':
+                for path in sublist:
+                    liste[0] += os.path.realpath(path) + '/.*|' 
+            else:
+                for item in sublist:
+                    liste.append(item)
+        elif extra.startswith('-'):
+            if key == 'path':
+                for path in sublist:
+                    liste[1] += os.path.realpath(path) + '/.*|'
+                liste[1] = liste[1]
+            else:
+                for item in sublist:
+                    if item in liste:
+                        liste.remove(item)
+                    else:
+                        self.log.error("CONF: -['%s'] ignored in '%s' list."   \
+                                                                 %(item,key))
+        return {key:str(liste)}
+            
+
+    def expand_all(self):
+        """ expand allowed, if set to 'all' """
+        expanded_all = []
+        for directory in os.environ['PATH'].split(':'):
+            if os.path.exists(directory):
+                for item in os.listdir(directory):
+                    if os.access(os.path.join(directory,item), os.X_OK):
+                        expanded_all.append(item)
+            else: self.log.error('CONF: PATH entry "%s" does not exist'    
+                                                                    % directory)
+        return str(expanded_all)
+ 
+    def myeval(self, value, info=''):
+        try:
+            evaluated = eval(value)
+            return evaluated
+        except SyntaxError:
+            self.log.critical('CONF: Incomplete %s field in configuration file'\
+                                                            % info)
+            sys.exit(1)
 
     def check_user_integrity(self):
         """ This method checks if all the required fields by user are present
@@ -612,41 +697,39 @@ class check_config:
                     'sftp',
                     'overssh']:
             try:
-                self.conf[item] = eval(self.conf_raw[item])
+                self.conf[item] = self.myeval(self.conf_raw[item],item)
             except KeyError:
                 self.conf[item] = 0
+            except TypeError:
+                self.log.critical('ERR: in the -%s- field. Check the'          \
+                                  ' configuration file.' %item )
+                sys.exit(0)
 
         self.conf['username'] = self.user
 
         try:
-            self.conf['home_path'] = os.path.normpath(eval(self.conf_raw[
-                                                    'home_path']))
+            self.conf['home_path'] = os.path.normpath(self.myeval(self.conf_raw\
+                                                    ['home_path'],'home_path'))
+            if not os.path.isdir(self.conf['home_path']):
+                self.log.critical('CONF: home_path does not exist')
+                sys.exit(0)
         except KeyError:
             self.conf['home_path'] = os.environ['HOME']
 
         try:
             self.conf['path'] = eval(self.conf_raw['path'])
-            self.conf['path'].append(self.conf['home_path'])
+            self.conf['path'][0] += self.conf['home_path'] + '.*'
         except KeyError:
-            self.conf['path'] = [self.conf['home_path']]
+            self.conf['path'][0] = [self.conf['home_path']] + '.*'
 
         try:
-            self.conf['env_path'] = eval(self.conf_raw['env_path'])
+            self.conf['env_path'] = self.myeval(self.conf_raw['env_path'],     \
+                                                                    'env_path')
         except KeyError:
             self.conf['env_path'] = ''
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
-
-        if self.conf['allowed'] == 'all':
-            self.conf['allowed'] = []
-            for directory in os.environ['PATH'].split(':'):
-                if os.path.exists(directory):
-                    for item in os.listdir(directory):
-                        if os.access(os.path.join(directory,item), os.X_OK):
-                            self.conf['allowed'].append(item)
-                else: self.log.error('CONF: PATH entry "%s" does not exist'    
-                                                              % directory) 
 
         self.conf['allowed'].append('exit')
 
@@ -674,7 +757,7 @@ class check_config:
                 elif 'sftp-server' in self.conf['ssh']                         \
                                                 and self.conf['sftp'] is 1:
                     self.log.error('SFTP connect')
-                    os.system(self.conf['ssh'])
+                    os.system("SHELL=/usr/bin/lshell " + self.conf['ssh'])
                     self.log.error('SFTP disconnect')
                     sys.exit(0)
                 elif self.conf['ssh'].split()[0] in self.conf['overssh']:
@@ -718,6 +801,7 @@ class check_config:
         else: return 0
 
     def returnconf(self):
+        print self.conf
         return self.conf
 
 class LshellTimeOut(Exception):

@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.23 2009-03-17 23:29:41 ghantoos Exp $
+#    $Id: lshell.py,v 1.24 2009-03-17 23:42:54 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -720,7 +720,8 @@ class check_config:
             self.conf['path'] = eval(self.conf_raw['path'])
             self.conf['path'][0] += self.conf['home_path'] + '.*'
         except KeyError:
-            self.conf['path'][0] = [self.conf['home_path']] + '.*'
+            self.conf['path'] = ['','']
+            self.conf['path'][0] = self.conf['home_path'] + '.*'
 
         try:
             self.conf['env_path'] = self.myeval(self.conf_raw['env_path'],     \
@@ -748,9 +749,12 @@ class check_config:
                                                             %self.conf['ssh'])
                     self.stdout.write('This incident has been reported.\n')
                     sys.exit(0)
-                if self.conf['ssh'].startswith('scp')                          \
+                if self.conf['ssh'].startswith('scp ')                          \
                                                 and self.conf['scp'] is 1: 
-                    self.log.error('SCP: "%s"' %self.conf['ssh'])
+                    if ' -f ' in self.conf['ssh']:
+                        self.log.error('SCP: GET "%s"' %self.conf['ssh'])
+                    elif ' -t ' in self.conf['ssh']:
+                        self.log.error('SCP: PUT "%s"' %self.conf['ssh'])
                     os.system(self.conf['ssh'])
                     self.log.error('SCP disconnect')
                     sys.exit(0)
@@ -796,7 +800,7 @@ class check_config:
             password = getpass("Enter "+self.user+"'s password: ")
             if password != passwd:
                 self.stdout.write('Error: Wrong password \nExiting..\n')
-                self.log.critical('WARN: Wring password')
+                self.log.critical('WARN: Wrong password')
                 sys.exit(0)
         else: return 0
 

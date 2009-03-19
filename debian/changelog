@@ -10,6 +10,9 @@ lshell (0.9.0) unstable; urgency=low
       check_secure and check_path functions
     * redirections are forbidden by default (in the configuration file)
     * added flexible +/- possibilities in configuration file
+    * now supports completion after '|', ';' and '&'
+    * Command test are also done after '|', ';' and '&'
+    * Doesn't list hidden directories by default
 
  -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Wed, 9 Mar 2009 01:42:41 +0200
 

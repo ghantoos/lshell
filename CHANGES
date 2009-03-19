@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.26 2009-03-17 23:29:41 ghantoos Exp $
+# $Id: CHANGES,v 1.27 2009-03-19 00:02:22 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -19,6 +19,9 @@ http://sourceforge.net/projects/lshell/
       check_secure and check_path functions
     * added escape code handling (tested with ftp, gdb, vi)
     * added flexible +/- possibilities in configuration file
+    * now supports completion after '|', ';' and '&'
+    * Command test are also done after '|', ';' and '&'
+    * Doesn't list hidden directories by default
 
 === v0.2.6 02/03/2009 ===
     * added 'all' to allow all commands to a user

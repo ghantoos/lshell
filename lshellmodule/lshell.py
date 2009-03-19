@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.25 2009-03-19 00:02:29 ghantoos Exp $
+#    $Id: lshell.py,v 1.26 2009-03-19 23:58:12 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -120,9 +120,13 @@ class shell_cmd(cmd.Cmd,object):
                     self.updateprompt(os.getcwd())
             else:
                 os.system(self.g_line)
+            self.log.info('CMD: "%s"' %self.g_line)
         elif self.g_cmd not in ['','?','help',None] : 
-            self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
-            self.stdout.write('*** unknown syntax: %s\n' %self.g_cmd)
+            if self.conf['strict'] == 1:
+                self.counter_update('command')
+            else:
+                self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
+                self.stdout.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
@@ -533,7 +537,7 @@ class check_config:
         # log level must be 1, 2, 3  or 0
         if not self.conf.has_key('loglevel'): self.conf['loglevel'] = 0
         self.conf['loglevel'] = int(self.conf['loglevel'])
-        if self.conf['loglevel'] > 3: self.conf['loglevel'] = 3
+        if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
         elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
 
     def check_log(self):
@@ -542,12 +546,15 @@ class check_config:
         # define log levels dict
         levels = { 1 : logging.CRITICAL, 
                    2 : logging.ERROR, 
-                   3 : logging.WARNING }
+                   3 : logging.WARNING,
+                   4 : logging.DEBUG }
 
         # create logger for lshell application
         logger = logging.getLogger('lshell')
         formatter = logging.Formatter('%(asctime)s (' + getuser() \
                                                         + '): %(message)s')
+
+        logger.setLevel(logging.DEBUG)
 
         # set log to output error on stderr
         logsterr = logging.StreamHandler()
@@ -723,7 +730,8 @@ class check_config:
                     'timer',
                     'scp',
                     'sftp',
-                    'overssh']:
+                    'overssh',
+                    'strict']:
             try:
                 self.conf[item] = self.myeval(self.conf_raw[item],item)
             except KeyError:
@@ -772,11 +780,22 @@ class check_config:
                                         and not os.environ.has_key('SSH_TTY'):
                 # case no tty is given to the session (sftp, scp, cmd over ssh)
                 if self.conf['ssh'].find('&') > -1                             \
-                            or self.conf['ssh'].find(';') > -1:
-                    self.log.critical('*** forbidden char over ssh -> "%s"' 
-                                                            %self.conf['ssh'])
-                    self.stdout.write('This incident has been reported.\n')
-                    sys.exit(0)
+                            or self.conf['ssh'].find(';') > -1                 \
+                            or self.conf['ssh'].find('|') > -1 :
+                    self.ssh_warn('char over SSH',self.conf['ssh'])
+
+                # check path first
+                allowed_path_re = str(self.conf['path'][0])
+                denied_path_re = str(self.conf['path'][1][:-1])
+                for item in self.conf['ssh'].strip().split(' '):
+                    tomatch = os.path.realpath(item) + '/'
+                    match_allowed = re.findall(allowed_path_re,tomatch)
+                    if denied_path_re != '':
+                        match_denied = re.findall(denied_path_re,tomatch)
+                    else: match_denied = None
+                    if not match_allowed or match_denied:
+                        self.ssh_warn('path over SSH', self.conf['ssh'])
+                # check if scp is requested and allowed
                 if self.conf['ssh'].startswith('scp ')                         \
                                                 and self.conf['scp'] is 1: 
                     if ' -f ' in self.conf['ssh']:
@@ -786,28 +805,31 @@ class check_config:
                     os.system(self.conf['ssh'])
                     self.log.error('SCP disconnect')
                     sys.exit(0)
+                # check if sftp is requested and allowed
                 elif 'sftp-server' in self.conf['ssh']                         \
                                                 and self.conf['sftp'] is 1:
                     self.log.error('SFTP connect')
                     os.system("SHELL=/usr/bin/lshell " + self.conf['ssh'])
                     self.log.error('SFTP disconnect')
                     sys.exit(0)
-                elif self.conf['ssh'].split()[0] in self.conf['overssh']:
+                # check if command is in allowed overssh commands
+                elif self.conf['ssh'].strip().split()[0] in                    \
+                                                       self.conf['overssh']:
                     self.log.error('Over SSH: "%s"' %self.conf['ssh'])
                     os.system(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
+                # else warn and log
                 else:
-                    self.log.critical('*** forbidden command over SSH: "%s"'   \
-                                                            %self.conf['ssh'])
-                    self.stdout.write('This incident has been reported.\n')
-                    sys.exit(0)
+                    self.ssh_warn('command over SSH',self.conf['ssh'])
             else :
                 # case of shell escapes
-                self.log.critical('*** forbidden shell escape: "%s"'           \
-                                                            %self.conf['ssh'])
-                self.stdout.write('This incident has been reported.\n')
-                sys.exit(0)
+                self.ssh_warn('shell escape',self.conf['ssh'])
+
+    def ssh_warn(self, message, command):
+        self.log.critical('*** forbidden %s: "%s"' %(message, command))
+        self.stdout.write('This incident has been reported.\n')
+        sys.exit(0)
 
     def check_passwd(self):
         """ As a passwd field is required by user. This method checks in the   \

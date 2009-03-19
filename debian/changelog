@@ -13,8 +13,11 @@ lshell (0.9.0) unstable; urgency=low
     * now supports completion after '|', ';' and '&'
     * Command test are also done after '|', ';' and '&'
     * Doesn't list hidden directories by default
+    * There are now 4 logging levels (4: logs absolutely everything user types)
+    * added 'strict' behaviour. If set to 1, any unknown command is considered \
+      as forbidden, as warning counter is decreased.
 
- -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Wed, 9 Mar 2009 01:42:41 +0200
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Fri, 20 Mar 2009 01:42:41 +0200
 
 lshell (0.2.6) unstable; urgency=low
 

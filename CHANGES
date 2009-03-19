@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.27 2009-03-19 00:02:22 ghantoos Exp $
+# $Id: CHANGES,v 1.28 2009-03-19 23:58:12 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -22,6 +22,9 @@ http://sourceforge.net/projects/lshell/
     * now supports completion after '|', ';' and '&'
     * Command test are also done after '|', ';' and '&'
     * Doesn't list hidden directories by default
+    * There are now 4 logging levels (4: logs absolutely everything user types)
+    * added 'strict' behaviour. If set to 1, any unknown command is considered \
+      as forbidden, as warning counter is decreased.
 
 === v0.2.6 02/03/2009 ===
     * added 'all' to allow all commands to a user

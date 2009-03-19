@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.12 2009-03-09 00:44:11 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.13 2009-03-19 23:58:12 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "March 09, 2009" "v0.9.0" 
+.TH lshell 1 "March 20, 2009" "v0.9.0" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -51,14 +51,25 @@ Show version
 .LP
 .RE
 .fi
-
+Order of priority when loading preferences is the following:
+.RS
+.ft 3
+.nf
+.sp
+1- User configuration
+2- Group configuration
+3- Default configuration
+.ft
+.LP
+.RE
+.fi
 .SS [global]
 .TP
 .I logpath
 config path (default is /var/log/lshell/)
 .TP
 .I loglevel
-0, 1, 2 or 3  (0: no logs, 1: least verbose)
+0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
 .SS [default] and/or [grp:groupname] and/or [username]
 .TP
 .I allowed
@@ -89,29 +100,19 @@ to the $HOME environment variable
 update the environment variable $PATH of the user (optional)
 .TP
 .I scp
-1 or 0 to allow of forbid the use of scp connection
+1 or 0 - to allow of forbid the use of scp connection
 .TP
 .I sftp
-1 or 0 to allow of forbid the use of sftp connection
+1 or 0 - to allow of forbid the use of sftp connection
 .TP
 .I overssh
 list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, \
 etc.)
-
-.SH EXAMPLES
 .TP
-.B $ lshell
-.RS
-Tries to run lshell using default ${PREFIX}/etc/lshell.conf as configuration \
-file. If it fails a warning is printed and lshell is interrupted.
-lshell options are loaded from the configuration file
-.RE
-.TP
-.B $ lshell --config /path/to/myconf.file --log /path/to/mylog.log
-.RS
-This will override the default options specified for configuration and/or log \
-file
-.RE
+.I strict
+1 or 0 - If set to 1, any unknown command is considered as forbidden, and \
+user's warning counter is decreased. If set to 0, command is considered as \
+unknown, and user is only warned (i.e. *** unknown synthax)
 
 .SH TODO
 .TP
@@ -155,6 +156,84 @@ On *BSD:
 .LP
 .RE
 .fi
+
+.SH EXAMPLES
+.TP
+.B $ lshell
+.RS
+Tries to run lshell using default ${PREFIX}/etc/lshell.conf as configuration \
+file. If it fails a warning is printed and lshell is interrupted.
+lshell options are loaded from the configuration file
+.RE
+.TP
+.B $ lshell --config /path/to/myconf.file --log /path/to/mylog.log
+.RS
+This will override the default options specified for configuration and/or log \
+file
+.RE
+
+.SH USE CASE
+The primary goal of lshell, was to be able to create shell accounts \
+with ssh access and restrict their environment to a couple a needed \
+commands. 
+In this example, User 'bla' and user 'blu' both belong to the 'users' UNIX \
+group:
+.TP
+.B User bla:
+.RS 
+ - must be able to acces /usr and /var but not /usr/local
+ - user all command in his PATH but 'su'
+ - has a warning counter set to 5
+ - has his home path set to '/home/users'
+.RE
+.TP
+.B User blu:
+.RS
+ - must be able to access /etc and /usr but not /usr/local
+ - is allowed default commands plus 'ping' minus 'ls'
+ - strictness is set to 1 (meaning he is not allowed to type an unknown command)
+.RE
+
+In this case, my configuration file will look something like this:
+.RS
+.ft 3
+.nf
+.sp
+# CONFIURATION START
+[global]
+logpath         : /var/log/lshell/
+loglevel        : 2
+
+[default]
+allowed         : ['ls','pwd']
+forbidden       : [';', '&', '|'] 
+warning_counter : 2
+timer           : 0
+path            : ['/etc', '/usr']
+env_path        : ':/sbin:/usr/bla'
+scp             : 1 # or 0
+sftp            : 1 # or 0
+overssh         : ['rsync','ls']
+
+[grp:users]
+warning_counter : 5
+overssh         ! - ['ls']
+
+[bla]
+allowed         : 'all' - ['su']
+path            : ['/var', '/usr'] - ['/usr/local']
+home_path       : '/home/users'
+
+[blu]
+allowed         : + ['ping'] - ['ls'] 
+path            : - ['/usr/local']
+strict          : 1
+# CONFIURATION END
+.ft
+.LP
+.RE
+.fi
+
 .SH AUTHOR
 Currently maintained by Ignace Mouzannar -ghantoos- 
 

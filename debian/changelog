@@ -1,10 +1,10 @@
 lshell (0.9.0) unstable; urgency=low
 
+    * As lshell has reached the point where it can be  considered as a nearly  \
+      stable software. I decided to make a version jump to 0.9.0
     * corrected bug in case PATH does not exist and allowed set to 'all'
     * added support for UNIX groups in configuration file
     * cleaned up code
-    * As lshell has reached the point where it can be  considered as a nearly  \
-      stable software. I decided to make a version jump to 0.9.0
     * corrected major security bug
     * corrected path completion, to complete only allowed path simplified the  \
       check_secure and check_path functions

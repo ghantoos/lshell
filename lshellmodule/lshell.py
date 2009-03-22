@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.27 2009-03-22 20:25:14 ghantoos Exp $
+#    $Id: lshell.py,v 1.28 2009-03-22 23:45:56 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -759,32 +759,35 @@ class check_config:
                     self.conf[item] = 0
             except TypeError:
                 self.log.critical('ERR: in the -%s- field. Check the'          \
-                                  ' configuration file.' %item )
+                                                ' configuration file.' %item )
                 sys.exit(0)
 
         self.conf['username'] = self.user
 
-        try:
+        if self.conf_raw.has_key('home_path'):
             self.conf['home_path'] = os.path.normpath(self.myeval(self.conf_raw\
                                                     ['home_path'],'home_path'))
             if not os.path.isdir(self.conf['home_path']):
                 self.log.critical('CONF: home_path does not exist')
                 sys.exit(0)
-        except KeyError:
+        else:
             self.conf['home_path'] = os.environ['HOME']
 
-        try:
+        if self.conf_raw.has_key('path'):
             self.conf['path'] = eval(self.conf_raw['path'])
             self.conf['path'][0] += self.conf['home_path'] + '.*'
-        except KeyError:
+        else:
             self.conf['path'] = ['','']
             self.conf['path'][0] = self.conf['home_path'] + '.*'
 
-        try:
+        if self.conf_raw.has_key('env_path'):
             self.conf['env_path'] = self.myeval(self.conf_raw['env_path'],     \
                                                                     'env_path')
-        except KeyError:
+        else:
             self.conf['env_path'] = ''
+
+        if self.conf_raw.has_key('scpforcehome'):
+            self.conf['scpforcehome'] = self.conf_raw['scpforcehome']
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
@@ -799,6 +802,13 @@ class check_config:
         if self.conf.has_key('ssh'):
             if os.environ.has_key('SSH_CLIENT')                                \
                                         and not os.environ.has_key('SSH_TTY'):
+                # check if sftp is requested
+                if 'sftp-server' in self.conf['ssh']                         \
+                                                and self.conf['sftp'] is 1:
+                    self.log.error('SFTP connect')
+                    os.system(self.conf['ssh'])
+                    self.log.error('SFTP disconnect')
+                    sys.exit(0)
                 # case no tty is given to the session (sftp, scp, cmd over ssh)
                 if self.conf['ssh'].find('&') > -1                             \
                             or self.conf['ssh'].find(';') > -1                 \
@@ -828,13 +838,6 @@ class check_config:
                         sys.exit(0)
                     else:
                         self.ssh_warn('SCP', self.conf['ssh'], 'scp')
-                # check if sftp is requested and allowed
-                elif 'sftp-server' in self.conf['ssh']                         \
-                                                and self.conf['sftp'] is 1:
-                    self.log.error('SFTP connect')
-                    os.system("SHELL=/usr/bin/lshell " + self.conf['ssh'])
-                    self.log.error('SFTP disconnect')
-                    sys.exit(0)
                 # check if command is in allowed overssh commands
                 elif self.conf['ssh'].strip().split()[0] in                    \
                                                        self.conf['overssh']:
@@ -845,6 +848,7 @@ class check_config:
                 # else warn and log
                 else:
                     self.ssh_warn('command over SSH',self.conf['ssh'])
+                # check if sftp is requested and allowed
             else :
                 # case of shell escapes
                 self.ssh_warn('shell escape',self.conf['ssh'])

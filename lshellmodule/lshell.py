@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.26 2009-03-19 23:58:12 ghantoos Exp $
+#    $Id: lshell.py,v 1.27 2009-03-22 20:25:14 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -36,7 +36,7 @@ import readline
 import grp
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.9.0"
+__version__= "0.9.1"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -534,20 +534,14 @@ class check_config:
             if not self.conf.has_key(item[0]):
                 self.conf[item[0]] = item[1]
 
-        # log level must be 1, 2, 3  or 0
-        if not self.conf.has_key('loglevel'): self.conf['loglevel'] = 0
-        self.conf['loglevel'] = int(self.conf['loglevel'])
-        if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
-        elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
-
     def check_log(self):
         """ Sets the log level and log file 
         """
         # define log levels dict
-        levels = { 1 : logging.CRITICAL, 
-                   2 : logging.ERROR, 
-                   3 : logging.WARNING,
-                   4 : logging.DEBUG }
+        self.levels = { 1 : logging.CRITICAL, 
+                        2 : logging.ERROR, 
+                        3 : logging.WARNING,
+                        4 : logging.DEBUG }
 
         # create logger for lshell application
         logger = logging.getLogger('lshell')
@@ -562,15 +556,24 @@ class check_config:
         logsterr.setFormatter(logging.Formatter('%(message)s'))
         logsterr.setLevel(logging.CRITICAL)
 
+        # log level must be 1, 2, 3 , 4 or 0
+        if not self.conf.has_key('loglevel'): self.conf['loglevel'] = 0
+        try:
+            self.conf['loglevel'] = int(self.conf['loglevel'])
+        except ValueError:
+            self.conf['loglevel'] = 0
+        if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
+        elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
+
         if self.conf['loglevel'] > 0:
             try:
                 # if log file is writable add new log file handler
                 logfile = self.conf['logpath'] + '/' + getuser() + '.log'
                 fp=open(logfile,'a').close()
-                logfile = logging.FileHandler(logfile)
-                logger.addHandler(logfile)
-                logfile.setFormatter(formatter)
-                logfile.setLevel(levels[self.conf['loglevel']])
+                self.logfile = logging.FileHandler(logfile)
+                logger.addHandler(self.logfile)
+                self.logfile.setFormatter(formatter)
+                self.logfile.setLevel(self.levels[self.conf['loglevel']])
 
             except IOError:
                 # uncomment the 2 following lines to warn if log file is not   \
@@ -724,6 +727,21 @@ class check_config:
         values are entered in a dict to be used by the command line it self.
         The lshell command line is then launched!
         """
+        # first, check user's loglevel
+        if self.conf_raw.has_key('loglevel'):
+            try:
+                self.conf['loglevel'] = int(self.conf_raw['loglevel'])
+            except ValueError:
+                pass
+            if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
+            elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
+
+            # if log file exists:
+            try:
+                self.logfile.setLevel(self.levels[self.conf['loglevel']])
+            except AttributeError:
+                pass
+
         for item in ['allowed',
                     'forbidden',
                     'warning_counter',
@@ -735,7 +753,10 @@ class check_config:
             try:
                 self.conf[item] = self.myeval(self.conf_raw[item],item)
             except KeyError:
-                self.conf[item] = 0
+                if item in ['allowed','overssh']:
+                    self.conf[item] = []
+                else:
+                    self.conf[item] = 0
             except TypeError:
                 self.log.critical('ERR: in the -%s- field. Check the'          \
                                   ' configuration file.' %item )
@@ -796,15 +817,17 @@ class check_config:
                     if not match_allowed or match_denied:
                         self.ssh_warn('path over SSH', self.conf['ssh'])
                 # check if scp is requested and allowed
-                if self.conf['ssh'].startswith('scp ')                         \
-                                                and self.conf['scp'] is 1: 
-                    if ' -f ' in self.conf['ssh']:
-                        self.log.error('SCP: GET "%s"' %self.conf['ssh'])
-                    elif ' -t ' in self.conf['ssh']:
-                        self.log.error('SCP: PUT "%s"' %self.conf['ssh'])
-                    os.system(self.conf['ssh'])
-                    self.log.error('SCP disconnect')
-                    sys.exit(0)
+                if self.conf['ssh'].startswith('scp '):
+                    if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']: 
+                        if ' -f ' in self.conf['ssh']:
+                            self.log.error('SCP: GET "%s"' %self.conf['ssh'])
+                        elif ' -t ' in self.conf['ssh']:
+                            self.log.error('SCP: PUT "%s"' %self.conf['ssh'])
+                        os.system(self.conf['ssh'])
+                        self.log.error('SCP disconnect')
+                        sys.exit(0)
+                    else:
+                        self.ssh_warn('SCP', self.conf['ssh'], 'scp')
                 # check if sftp is requested and allowed
                 elif 'sftp-server' in self.conf['ssh']                         \
                                                 and self.conf['sftp'] is 1:
@@ -826,8 +849,12 @@ class check_config:
                 # case of shell escapes
                 self.ssh_warn('shell escape',self.conf['ssh'])
 
-    def ssh_warn(self, message, command):
-        self.log.critical('*** forbidden %s: "%s"' %(message, command))
+    def ssh_warn(self, message, command='', key=''):
+        if key == 'scp':
+            self.log.critical('*** forbidden %s' %message)
+            self.log.error('*** SCP command: %s' %command)
+        else:
+            self.log.critical('*** forbidden %s: "%s"' %(message, command))
         self.stdout.write('This incident has been reported.\n')
         sys.exit(0)
 

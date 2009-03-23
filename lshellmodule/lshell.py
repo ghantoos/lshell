@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.29 2009-03-23 23:14:30 ghantoos Exp $
+#    $Id: lshell.py,v 1.30 2009-03-23 23:18:37 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -26,7 +26,6 @@ import sys
 import os
 import ConfigParser
 from getpass import getpass, getuser
-import termios
 import string
 import re
 import getopt

@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.30 2009-03-23 23:18:37 ghantoos Exp $
+#    $Id: lshell.py,v 1.31 2009-03-23 23:50:37 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -120,6 +120,7 @@ class shell_cmd(cmd.Cmd,object):
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
+            self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd in ['cd']:
                 if len(self.g_arg) >= 1:
                     if os.path.isdir(os.path.realpath(self.g_arg)): 
@@ -132,7 +133,6 @@ class shell_cmd(cmd.Cmd,object):
                     self.updateprompt(os.getcwd())
             else:
                 os.system(self.g_line)
-            self.log.info('CMD: "%s"' %self.g_line)
         elif self.g_cmd not in ['','?','help',None] : 
             if self.conf['strict'] == 1:
                 self.counter_update('command')

@@ -1,3 +1,10 @@
+lshell (0.9.1) unstable; urgency=low
+
+    * loglevel can now be defined on global, group or user level 
+    * corrected sftp support (broken since in 0.9.0)
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Tue, 24 Mar 2009 00:15:29 +0200
+
 lshell (0.9.0) unstable; urgency=low
 
     * As lshell has reached the point where it can be  considered as a nearly  \

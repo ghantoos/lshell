@@ -2,13 +2,17 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.29 2009-03-20 11:44:47 ghantoos Exp $
+# $Id: CHANGES,v 1.30 2009-03-23 23:50:37 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.0 09/03/2009 ===
+=== v0.9.1 24/03/2009 ===
+    * loglevel can now be defined on global, group or user level 
+    * corrected sftp support (broken since in 0.9.0)
+
+=== v0.9.0 20/03/2009 ===
     * As lshell has reached the point where it can be considered as a nearly  \
       stable software. I decided to make a version jump to 0.9.0
     * corrected bug in case PATH does not exist and allowed set to 'all'

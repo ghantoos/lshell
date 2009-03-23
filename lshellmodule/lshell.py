@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.28 2009-03-22 23:45:56 ghantoos Exp $
+#    $Id: lshell.py,v 1.29 2009-03-23 23:14:30 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -77,7 +77,20 @@ class shell_cmd(cmd.Cmd,object):
     """ Main lshell CLI class
     """
 
-    def __init__(self, userconf):
+    def __init__(self, userconf, stdin=None, stdout=None, stderr=None):
+        if stdin is None:
+            self.stdin = sys.stdin
+        else:
+            self.stdin = stdin
+        if stdout is None:
+            self.stdout = sys.stdout
+        else:
+            self.stdout = stdout
+        if stderr is None:
+            self.stderr = sys.stderr
+        else:
+            self.stderr = stderr
+
         self.conf = userconf
         self.log = self.conf['logpath']
         # Set timer
@@ -113,7 +126,7 @@ class shell_cmd(cmd.Cmd,object):
                     if os.path.isdir(os.path.realpath(self.g_arg)): 
                         os.chdir(os.path.realpath(self.g_arg))
                         self.updateprompt(os.getcwd())
-                    else: self.stdout.write('cd: %s: No such directory.\n'     \
+                    else: self.stderr.write('cd: %s: No such directory.\n'     \
                                                 % os.path.realpath(self.g_arg))
                 else: 
                     os.chdir(self.conf['home_path'])
@@ -126,7 +139,7 @@ class shell_cmd(cmd.Cmd,object):
                 self.counter_update('command')
             else:
                 self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
-                self.stdout.write('*** unknown syntax: %s\n' %self.g_cmd)
+                self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
@@ -171,10 +184,10 @@ class shell_cmd(cmd.Cmd,object):
         else:
             self.log.critical('*** forbidden %s -> "%s"'                       \
                                                   % (messagetype ,line))
-            self.stdout.write('*** You have %s joker(s) left,'                 \
+            self.stderr.write('*** You have %s joker(s) left,'                 \
                                 ' before getting kicked out.\n'                \
                                 %(self.conf['warning_counter']-1))
-            self.stdout.write('This incident has been reported.\n')
+            self.stderr.write('This incident has been reported.\n')
 
     def check_path(self, line, completion=0):
         """ Check if a path is entered in the line. If so, it checks if user   \
@@ -517,8 +530,8 @@ class check_config:
         configuration file.
         """
         if not os.path.exists(config_file): 
-            self.stdout.write("Error: Config file doesn't exist\n")
-            self.stdout.write(help)
+            self.stderr.write("Error: Config file doesn't exist\n")
+            self.stderr.write(help)
             sys.exit(0)
         else: self.config = ConfigParser.ConfigParser()
 
@@ -527,7 +540,7 @@ class check_config:
         """
         self.config.read(self.conf['configfile'])
         if not self.config.has_section('global'):
-            self.stdout.write('Config file missing [global] section\n')
+            self.stderr.write('Config file missing [global] section\n')
             sys.exit(0)
 
         for item in self.config.items('global'):
@@ -803,12 +816,14 @@ class check_config:
             if os.environ.has_key('SSH_CLIENT')                                \
                                         and not os.environ.has_key('SSH_TTY'):
                 # check if sftp is requested
-                if 'sftp-server' in self.conf['ssh']                         \
-                                                and self.conf['sftp'] is 1:
-                    self.log.error('SFTP connect')
-                    os.system(self.conf['ssh'])
-                    self.log.error('SFTP disconnect')
-                    sys.exit(0)
+                if 'sftp-server' in self.conf['ssh']:
+                    if self.conf['sftp'] is 1:
+                        self.log.error('SFTP connect')
+                        os.system(self.conf['ssh'])
+                        self.log.error('SFTP disconnect')
+                        sys.exit(0)
+                    else:
+                        self.log.error('*** forbidden SFTP connection')
                 # case no tty is given to the session (sftp, scp, cmd over ssh)
                 if self.conf['ssh'].find('&') > -1                             \
                             or self.conf['ssh'].find(';') > -1                 \
@@ -837,7 +852,7 @@ class check_config:
                         self.log.error('SCP disconnect')
                         sys.exit(0)
                     else:
-                        self.ssh_warn('SCP', self.conf['ssh'], 'scp')
+                        self.ssh_warn('SCP connection', self.conf['ssh'], 'scp')
                 # check if command is in allowed overssh commands
                 elif self.conf['ssh'].strip().split()[0] in                    \
                                                        self.conf['overssh']:
@@ -859,7 +874,7 @@ class check_config:
             self.log.error('*** SCP command: %s' %command)
         else:
             self.log.critical('*** forbidden %s: "%s"' %(message, command))
-        self.stdout.write('This incident has been reported.\n')
+        self.stderr.write('This incident has been reported.\n')
         sys.exit(0)
 
     def check_passwd(self):
@@ -880,7 +895,7 @@ class check_config:
         if passwd:
             password = getpass("Enter "+self.user+"'s password: ")
             if password != passwd:
-                self.stdout.write('Error: Wrong password \nExiting..\n')
+                self.stderr.write('Error: Wrong password \nExiting..\n')
                 self.log.critical('WARN: Wrong password')
                 sys.exit(0)
         else: return 0

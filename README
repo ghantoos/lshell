@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.20 2009-03-19 23:58:12 ghantoos Exp $
+# $Id: README,v 1.21 2009-03-29 18:29:22 ghantoos Exp $
 
 Contact: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
@@ -56,7 +56,7 @@ file (lshell.conf) as much as thought would be enough.
                             value before getting exited from lshell.
         * timer           : a value in seconds for the session timer
         * passwd          : password of specific user
-        * path            : list of path to restrict the user geographicaly
+        * path            : list of path to restrict the user geographically
         * home_path       : set the home folder of your user. If not specified,\ 
                             the home_path is set to the $HOME env. variable
         * env_path        : update the environment variable $PATH of the user
@@ -82,7 +82,7 @@ file (lshell.conf) as much as thought would be enough.
     commands. 
     For example User 'bla' and user 'blu' both belong to the 'users' UNIX group:
     User bla: 
-        - must be able to acces /usr and /var but not /usr/local
+        - must be able to access /usr and /var but not /usr/local
         - user all command in his PATH but 'su'
         - has a warning counter set to 5
         - has his home path set to '/home/users'

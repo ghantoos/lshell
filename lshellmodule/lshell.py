@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.31 2009-03-23 23:50:37 ghantoos Exp $
+#    $Id: lshell.py,v 1.32 2009-03-29 18:29:22 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -799,7 +799,13 @@ class check_config:
             self.conf['env_path'] = ''
 
         if self.conf_raw.has_key('scpforcehome'):
-            self.conf['scpforcehome'] = self.conf_raw['scpforcehome']
+            self.conf_raw['scpforcehome'] = self.myeval(                       \
+                                                self.conf_raw['scpforcehome'])
+            if os.path.exists(self.conf_raw['scpforcehome']):
+                self.conf['scpforcehome'] = self.conf_raw['scpforcehome']
+            else:
+                self.log.error('CONF: scpforcehome no such directory: %s'      \
+                                                % self.conf_raw['scpforcehome'])
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
@@ -814,7 +820,8 @@ class check_config:
         if self.conf.has_key('ssh'):
             if os.environ.has_key('SSH_CLIENT')                                \
                                         and not os.environ.has_key('SSH_TTY'):
-                # check if sftp is requested
+
+                # check if sftp is requested and allowed
                 if 'sftp-server' in self.conf['ssh']:
                     if self.conf['sftp'] is 1:
                         self.log.error('SFTP connect')
@@ -823,6 +830,8 @@ class check_config:
                         sys.exit(0)
                     else:
                         self.log.error('*** forbidden SFTP connection')
+                        sys.exit(0)
+
                 # case no tty is given to the session (sftp, scp, cmd over ssh)
                 if self.conf['ssh'].find('&') > -1                             \
                             or self.conf['ssh'].find(';') > -1                 \
@@ -840,18 +849,29 @@ class check_config:
                     else: match_denied = None
                     if not match_allowed or match_denied:
                         self.ssh_warn('path over SSH', self.conf['ssh'])
+
                 # check if scp is requested and allowed
                 if self.conf['ssh'].startswith('scp '):
                     if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']: 
                         if ' -f ' in self.conf['ssh']:
                             self.log.error('SCP: GET "%s"' %self.conf['ssh'])
                         elif ' -t ' in self.conf['ssh']:
+                            if self.conf.has_key('scpforcehome'):
+                                cmdsplit = self.conf['ssh'].split(' ')
+                                scppath = os.path.realpath(cmdsplit[-1])
+                                forcedpath = os.path.realpath(self.conf['scpforcehome'])
+                                if scppath != forcedpath:
+                                    self.log.error('SCP: forced SCP directory: %s' %scppath)
+                                    cmdsplit.pop(-1)
+                                    cmdsplit.append(forcedpath)
+                                    self.conf['ssh'] = string.join(cmdsplit)
                             self.log.error('SCP: PUT "%s"' %self.conf['ssh'])
                         os.system(self.conf['ssh'])
                         self.log.error('SCP disconnect')
                         sys.exit(0)
                     else:
                         self.ssh_warn('SCP connection', self.conf['ssh'], 'scp')
+
                 # check if command is in allowed overssh commands
                 elif self.conf['ssh'].strip().split()[0] in                    \
                                                        self.conf['overssh']:
@@ -859,10 +879,11 @@ class check_config:
                     os.system(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
+
                 # else warn and log
                 else:
                     self.ssh_warn('command over SSH',self.conf['ssh'])
-                # check if sftp is requested and allowed
+
             else :
                 # case of shell escapes
                 self.ssh_warn('shell escape',self.conf['ssh'])

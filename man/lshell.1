@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.14 2009-03-29 18:29:22 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.15 2009-04-05 20:04:58 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -113,6 +113,12 @@ etc.)
 1 or 0 - If set to 1, any unknown command is considered as forbidden, and \
 user's warning counter is decreased. If set to 0, command is considered as \
 unknown, and user is only warned (i.e. *** unknown synthax)
+.TP
+.I scpforce
+force files sent through scp to a specific directory
+.TP
+.I aliases
+dict of command aliases
 
 .SH TODO
 .TP
@@ -214,6 +220,7 @@ env_path        : ':/sbin:/usr/bla'
 scp             : 1 # or 0
 sftp            : 1 # or 0
 overssh         : ['rsync','ls']
+aliases         : {'ls':'ls --color=auto','ll':'ls -l'}
 
 [grp:users]
 warning_counter : 5

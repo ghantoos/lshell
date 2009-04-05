@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.32 2009-03-29 18:29:22 ghantoos Exp $
+#    $Id: lshell.py,v 1.33 2009-04-05 20:04:58 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -35,7 +35,7 @@ import readline
 import grp
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.9.1"
+__version__= "0.9.2"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -120,6 +120,7 @@ class shell_cmd(cmd.Cmd,object):
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
+            self.g_line = self.get_aliases(self.g_line)
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd in ['cd']:
                 if len(self.g_arg) >= 1:
@@ -221,7 +222,29 @@ class shell_cmd(cmd.Cmd,object):
                 return 1
         return 0
 
+    def get_aliases(self,line):
+        """ Replace all configured aliases in the line
+        """
+
+        for char in [';','&','|']:
+            # remove spaces after char
+            line = line.replace('%s ' %char,'%s' %char)
+            # double char
+            line = line.replace('%s' %char,'%s%s' %(char,char))
+
+        for item in self.conf['aliases'].keys():
+            line = re.sub('(^|;|&|\|)%s' %item,self.conf['aliases'][item],line)
+
+        for char in [';','&','|']:
+            # remove all remaining double char
+            line = line.replace('%s%s' %(char,char),'%s' %char)
+
+        return line
+
     def updateprompt(self, path):
+        """ Update prompt when changing directory
+        """
+
         if path is self.conf['home_path']:
             self.prompt = self.conf['username'] + ':~$ '
         elif re.findall(self.conf['home_path'], path) :
@@ -761,7 +784,8 @@ class check_config:
                     'scp',
                     'sftp',
                     'overssh',
-                    'strict']:
+                    'strict',
+                    'aliases']:
             try:
                 self.conf[item] = self.myeval(self.conf_raw[item],item)
             except KeyError:
@@ -798,14 +822,14 @@ class check_config:
         else:
             self.conf['env_path'] = ''
 
-        if self.conf_raw.has_key('scpforcehome'):
-            self.conf_raw['scpforcehome'] = self.myeval(                       \
-                                                self.conf_raw['scpforcehome'])
-            if os.path.exists(self.conf_raw['scpforcehome']):
-                self.conf['scpforcehome'] = self.conf_raw['scpforcehome']
+        if self.conf_raw.has_key('scpforce'):
+            self.conf_raw['scpforce'] = self.myeval(                       \
+                                                self.conf_raw['scpforce'])
+            if os.path.exists(self.conf_raw['scpforce']):
+                self.conf['scpforce'] = self.conf_raw['scpforce']
             else:
-                self.log.error('CONF: scpforcehome no such directory: %s'      \
-                                                % self.conf_raw['scpforcehome'])
+                self.log.error('CONF: scpforce no such directory: %s'      \
+                                                % self.conf_raw['scpforce'])
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
@@ -856,10 +880,10 @@ class check_config:
                         if ' -f ' in self.conf['ssh']:
                             self.log.error('SCP: GET "%s"' %self.conf['ssh'])
                         elif ' -t ' in self.conf['ssh']:
-                            if self.conf.has_key('scpforcehome'):
+                            if self.conf.has_key('scpforce'):
                                 cmdsplit = self.conf['ssh'].split(' ')
                                 scppath = os.path.realpath(cmdsplit[-1])
-                                forcedpath = os.path.realpath(self.conf['scpforcehome'])
+                                forcedpath = os.path.realpath(self.conf['scpforce'])
                                 if scppath != forcedpath:
                                     self.log.error('SCP: forced SCP directory: %s' %scppath)
                                     cmdsplit.pop(-1)

@@ -2,14 +2,15 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.31 2009-03-29 18:29:22 ghantoos Exp $
+# $Id: CHANGES,v 1.32 2009-04-05 20:04:58 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.2 XX/XX/2009 ===
-    * Force SCP home feature
+=== v0.9.2 05/04/2009 ===
+    * added Force SCP directory feature
+    * added command alias feature
 
 === v0.9.1 24/03/2009 ===
     * loglevel can now be defined on global, group or user level 

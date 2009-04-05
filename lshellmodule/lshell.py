@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.35 2009-04-05 21:29:35 ghantoos Exp $
+#    $Id: lshell.py,v 1.36 2009-04-05 22:18:54 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -826,11 +826,14 @@ class check_config:
         if self.conf_raw.has_key('scpforce'):
             self.conf_raw['scpforce'] = self.myeval(                       \
                                                 self.conf_raw['scpforce'])
-            if os.path.exists(self.conf_raw['scpforce']):
-                self.conf['scpforce'] = self.conf_raw['scpforce']
-            else:
-                self.log.error('CONF: scpforce no such directory: %s'      \
-                                                % self.conf_raw['scpforce'])
+            try:
+                if os.path.exists(self.conf_raw['scpforce']):
+                    self.conf['scpforce'] = self.conf_raw['scpforce']
+                else:
+                    self.log.error('CONF: scpforce no such directory: %s'      \
+                                                    % self.conf_raw['scpforce'])
+            except TypeError:
+                self.log.error('CONF: scpforce must be a string!')
 
         os.chdir(self.conf['home_path'])
         os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']

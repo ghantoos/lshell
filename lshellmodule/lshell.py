@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.33 2009-04-05 20:04:58 ghantoos Exp $
+#    $Id: lshell.py,v 1.34 2009-04-05 21:22:14 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -226,6 +226,7 @@ class shell_cmd(cmd.Cmd,object):
         """ Replace all configured aliases in the line
         """
 
+        line = line.strip()
         for char in [';','&','|']:
             # remove spaces after char
             line = line.replace('%s ' %char,'%s' %char)

@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.23 2009-04-06 10:00:01 ghantoos Exp $
+# $Id: README,v 1.24 2009-04-06 12:17:18 ghantoos Exp $
 
 Contact: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
@@ -113,12 +113,12 @@ All this information is in the man (man lshell)
     env_path        : ':/sbin:/usr/bla'
     scp             : 1 # or 0
     sftp            : 1 # or 0
-	overssh         : ['rsync','ls']
+    overssh         : ['rsync','ls']
     aliases         : {'ls':'ls --color=auto','ll':'ls -l'}
 
     [grp:users]
     warning_counter : 5
-    overssh         ! - ['ls']
+    overssh         : - ['ls']
 
     [bla]
     allowed         : 'all' - ['su']

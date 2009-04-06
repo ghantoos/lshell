@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.22 2009-04-05 20:04:58 ghantoos Exp $
+# $Id: README,v 1.23 2009-04-06 10:00:01 ghantoos Exp $
 
 Contact: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
@@ -71,7 +71,8 @@ All this information is in the man (man lshell)
                             decreased. If set to 0, command is considered as   \
                             unknown
         * scpforce       : force files sent through scp to a specific directory
-        * aliases        : dict of command aliases
+        * aliases        : dict of command aliases (similar to bash’s alias    \
+                           directive)
 
     A [default] profile is available for all users using lshell. Nevertheless, \
     you can create a [username] section or a [grp:groupname] section to        \
@@ -128,6 +129,7 @@ All this information is in the man (man lshell)
     allowed         : + ['ping'] - ['ls'] 
     path            : - ['/usr/local']
     strict          : 1
+    scpforce        : '/home/blu/uploads/'
     # CONFIGURATION END
 
 ###

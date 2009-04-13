@@ -2,11 +2,14 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.32 2009-04-05 20:04:58 ghantoos Exp $
+# $Id: CHANGES,v 1.33 2009-04-13 18:35:43 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.3 13/04/2009 ===
+    * corrected major bug (alias related)
 
 === v0.9.2 05/04/2009 ===
     * added Force SCP directory feature

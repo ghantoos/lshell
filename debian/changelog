@@ -1,3 +1,9 @@
+lshell (0.9.3) unstable; urgency=low
+
+    * corrected major bug (alias related)
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sun, 13 Apr 2009 17:58:07 +0200
+
 lshell (0.9.2) unstable; urgency=low
 
     * added Force SCP home feature

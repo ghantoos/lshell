@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.36 2009-04-05 22:18:54 ghantoos Exp $
+#    $Id: lshell.py,v 1.37 2009-04-13 18:35:43 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -35,7 +35,7 @@ import readline
 import grp
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.9.2"
+__version__= "0.9.3"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -120,7 +120,8 @@ class shell_cmd(cmd.Cmd,object):
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
-            self.g_line = self.get_aliases(self.g_line)
+            if type(self.conf['aliases']) == dict:
+                self.g_line = self.get_aliases(self.g_line)
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd in ['cd']:
                 if len(self.g_arg) >= 1:

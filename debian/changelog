@@ -1,3 +1,9 @@
+lshell (0.9.3-2) unstable; urgency=low
+
+    * lshell debian package is now lintian clean
+
+ -- Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>  Sun, 19 Apr 2009 22:42:55 +0200
+
 lshell (0.9.3) unstable; urgency=low
 
     * corrected major bug (alias related)

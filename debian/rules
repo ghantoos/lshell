@@ -6,7 +6,7 @@
 # dh-make output file, you may use that output file without restriction.
 # This special exception was added by Craig Small in version 0.37 of dh-make.
 #
-# $Id: rules,v 1.7 2008-12-04 22:37:58 ghantoos Exp $
+# $Id: rules,v 1.8 2009-04-19 21:40:55 ghantoos Exp $
 #
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
@@ -24,20 +24,20 @@ build: build-stamp
 
 build-stamp: configure-stamp 
 	dh_testdir
-
 	# Add here commands to compile the package.
-	$(MAKE)
 
 	touch $@
 
 clean:
 	dh_testdir
-	rm -f build-stamp configure-stamp
+	rm -rf build-stamp configure-stamp build/ MANIFEST
 	dh_clean 
 
 install: build
 	# Add here commands to install the package into debian/lshell.
-	$(MAKE) DESTDIR=${DESTDIR} COMPILE=--no-compile install
+	$(MAKE) DESTDIR=$(DESTDIR) COMPILE=--no-compile install
+	find $(DESTDIR)/ -name 'COPYING*' -delete -or -name 'CHANGES' -delete \
+    -or -name '*.log' -delete
 
 # Build architecture-independent files here.
 binary-indep: build install
@@ -46,7 +46,8 @@ binary-indep: build install
 # Build architecture-dependent files here.
 binary-arch: build install
 	dh_testroot
-	dh_installchangelogs CHANGES
+	dh_installchangelogs
+	dh_installdocs
 	dh_pycentral
 	dh_link
 	dh_strip

@@ -1,6 +1,6 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.13 2009-02-15 18:46:58 ghantoos Exp $
+# $Id: Makefile,v 1.14 2009-04-19 21:40:55 ghantoos Exp $
 #
 
 PYTHON=`which python`
@@ -21,8 +21,8 @@ buildrpm:
 		$(PYTHON) setup.py bdist_rpm --pre-install=rpm/preinstall --post-install=rpm/postinstall --post-uninstall=rpm/postuninstall
 
 builddeb:
-		mkdir -p ${BUILDIR}
-		DESTDIR=$(BUILDIR) dpkg-buildpackage -rfakeroot
+		mkdir -p $(BUILDIR)
+		DESTDIR=$(BUILDIR) dpkg-buildpackage -i -I -rfakeroot
 
 clean:
 		$(PYTHON) setup.py clean

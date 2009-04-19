@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.19 2009-04-13 18:35:43 ghantoos Exp $
+# $Id: setup.py,v 1.20 2009-04-19 21:40:55 ghantoos Exp $
 
 from distutils.core import setup
 
 if __name__ == '__main__':
 
     setup(name='lshell',
-        version='0.9.3',
+        version='0.9.4',
         description='Limited Shell',
         long_description="""Limited Shell (lshell) is lets you restrict the \
 environment of any user. It provides an easily configurable shell: just \

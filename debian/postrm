@@ -3,7 +3,7 @@
 #
 # see: dh_installdeb(1)
 #
-# $Id: postrm,v 1.4 2009-03-09 13:59:39 ghantoos Exp $
+# $Id: postrm,v 1.5 2009-04-19 21:40:55 ghantoos Exp $
 
 set -e
 
@@ -12,7 +12,7 @@ case "$1" in
         # delete lshell group
         #groupdel lshellg
         pycentral pkgremove lshell
-        /usr/sbin/remove-shell /usr/bin/lshell 
+        remove-shell /usr/bin/lshell 
         ;;
 
     remove|upgrade|failed-upgrade|abort-upgrade|disappear)

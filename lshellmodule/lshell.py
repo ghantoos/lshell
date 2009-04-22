@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.37 2009-04-13 18:35:43 ghantoos Exp $
+#    $Id: lshell.py,v 1.38 2009-04-22 22:21:30 ghantoos Exp $
 #
 #    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
 #    Email: ghantoos@ghantoos.org
@@ -33,9 +33,10 @@ import logging
 import signal
 import readline
 import grp
+import time
 
 __author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
-__version__= "0.9.3"
+__version__= "0.9.4"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -602,10 +603,23 @@ class check_config:
         if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
         elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
 
+        # read logformat is exists, and set logfilename
+        if self.conf.has_key('logformat'):
+            logfilename = self.conf['logformat']
+            currentime = time.localtime()
+            logfilename = logfilename.replace('%y','%s'   %currentime[0])
+            logfilename = logfilename.replace('%m','%02d' %currentime[1])
+            logfilename = logfilename.replace('%d','%02d' %currentime[2])
+            logfilename = logfilename.replace('%h','%02d%02d' % (currentime[3]\
+                                                                ,currentime[4]))
+            logfilename = logfilename.replace('%u',getuser())
+        else: 
+            logfilename = getuser()
+
         if self.conf['loglevel'] > 0:
             try:
                 # if log file is writable add new log file handler
-                logfile = self.conf['logpath'] + '/' + getuser() + '.log'
+                logfile = os.path.join(self.conf['logpath'],logfilename+'.log')
                 fp=open(logfile,'a').close()
                 self.logfile = logging.FileHandler(logfile)
                 logger.addHandler(self.logfile)

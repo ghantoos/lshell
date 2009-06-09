@@ -2,15 +2,16 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.34 2009-04-22 22:21:30 ghantoos Exp $
+# $Id: CHANGES,v 1.35 2009-06-09 19:53:46 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.4 XX/XXXXXXXXXXXXXXX/2009 ===
+=== v0.9.4 09/06/2009 ===
     * Log file name is now configurable using 'logfilename' variable inside the\
       configuration file
+    * Corrected aliases in lshell.conf to work with *BSD
 
 === v0.9.3 13/04/2009 ===
     * corrected major bug (alias related)

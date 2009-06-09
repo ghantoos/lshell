@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.19 2009-04-13 18:35:43 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.20 2009-06-09 19:53:46 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "April 13, 2009" "v0.9.3" 
+.TH lshell 1 "June 9, 2009" "v0.9.4" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -45,8 +45,8 @@ Show version
 .sp
 [global]   -> lshell system configuration (only 1)
 [default]  -> lshell default user configuration (only 1)
-[blah]     -> UNIX username "blah" specific configuration
-[grp:blah] -> UNIX groupname "blah" specific configuration
+[foo]      -> UNIX username "foo" specific configuration
+[grp:bar]  -> UNIX groupname "bar" specific configuration
 .ft
 .LP
 .RE
@@ -70,14 +70,37 @@ config path (default is /var/log/lshell/)
 .TP
 .I loglevel
 0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
-.SS [default] and/or [grp:groupname] and/or [username]
+.TP
+.I logfilename
+set log file name, e.g. %u-%y%m%d (i.e foo-20091009.log)
+.RS
+.BR \ \ \ \ %u
+-> username
+.RE
+.RS
+.BR \ \ \ \ %d
+-> day   [1..31]
+.RE
+.RS
+.BR \ \ \ \ %m
+-> month [1..12]
+.RE
+.RS
+.BR \ \ \ \ %y
+-> year  [00..99]
+.RE
+.RS
+.BR \ \ \ \ %h
+-> time  [00:00..23:59]
+.RE
+.SS [default] and/or [username] and/or [grp:groupname]
 .TP
 .I allowed
 a list of the allowed commands or set to 'all' to allow all commands in user's \
 PATH
 .TP
 .I forbidden
-a list of forbidden character or commands
+a list of forbidden characters or commands
 .TP
 .I warning_counter
 number of warnings when user enters a forbidden value before getting exited \
@@ -100,25 +123,25 @@ to the $HOME environment variable
 update the environment variable $PATH of the user (optional)
 .TP
 .I scp
-1 or 0 - to allow of forbid the use of scp connection
+allow or forbid the use of scp connection - set to 1 or 0
 .TP
 .I sftp
-1 or 0 - to allow of forbid the use of sftp connection
+allow or forbid the use of sftp connection - set to 1 or 0
 .TP
 .I overssh
 list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, \
 etc.)
 .TP
 .I strict
-1 or 0 - If set to 1, any unknown command is considered as forbidden, and \
-user's warning counter is decreased. If set to 0, command is considered as \
-unknown, and user is only warned (i.e. *** unknown synthax)
+logging strictness. If set to 1, any unknown command is considered as \
+forbidden, and user's warning counter is decreased. If set to 0, command is \
+considered as unknown, and user is only warned (i.e. *** unknown synthax)
 .TP
 .I scpforce
 force files sent through scp to a specific directory
 .TP
 .I aliases
-dict of command aliases (similar to bash's alias directive)
+command aliases list (similar to bash’s alias directive)
 
 .SH TODO
 .TP
@@ -142,7 +165,7 @@ then add the user to the \fIlshellg\fR group:
 .ft 3
 .nf
 .sp
-# usermod -aG lshellg user_name
+# usermod \-aG lshellg user_name
 .ft
 .LP
 .RE
@@ -154,10 +177,10 @@ In order to set lshell as default shell for a user:
 .nf
 .sp
 On Linux:
-# chsh -s /usr/bin/lshell user_name
+# chsh \-s /usr/bin/lshell user_name
 
 On *BSD:
-# chsh -s /usr/{pkg,local}/bin/lshell user_name
+# chsh \-s /usr/{pkg,local}/bin/lshell user_name
 .ft
 .LP
 .RE
@@ -182,10 +205,10 @@ file
 The primary goal of lshell, was to be able to create shell accounts \
 with ssh access and restrict their environment to a couple a needed \
 commands. 
-In this example, User 'bla' and user 'blu' both belong to the 'users' UNIX \
+In this example, User 'foo' and user 'bar' both belong to the 'users' UNIX \
 group:
 .TP
-.B User bla:
+.B User foo:
 .RS 
  - must be able to access /usr and /var but not /usr/local
  - user all command in his PATH but 'su'
@@ -193,7 +216,7 @@ group:
  - has his home path set to '/home/users'
 .RE
 .TP
-.B User blu:
+.B User bar:
 .RS
  - must be able to access /etc and /usr but not /usr/local
  - is allowed default commands plus 'ping' minus 'ls'
@@ -216,26 +239,26 @@ forbidden       : [';', '&', '|']
 warning_counter : 2
 timer           : 0
 path            : ['/etc', '/usr']
-env_path        : ':/sbin:/usr/bla'
+env_path        : ':/sbin:/usr/bin/'
 scp             : 1 # or 0
 sftp            : 1 # or 0
 overssh         : ['rsync','ls']
-aliases         : {'ls':'ls --color=auto','ll':'ls -l'}
+aliases         : {'ls':'ls \-\-color=auto','ll':'ls \-l'}
 
 [grp:users]
 warning_counter : 5
 overssh         : - ['ls']
 
-[bla]
+[foo]
 allowed         : 'all' - ['su']
 path            : ['/var', '/usr'] - ['/usr/local']
 home_path       : '/home/users'
 
-[blu]
+[bar]
 allowed         : + ['ping'] - ['ls'] 
 path            : - ['/usr/local']
 strict          : 1
-scpforce        : '/home/blu/uploads/'
+scpforce        : '/home/bar/uploads/'
 # CONFIURATION END
 .ft
 .LP
@@ -243,7 +266,7 @@ scpforce        : '/home/blu/uploads/'
 .fi
 
 .SH AUTHOR
-Currently maintained by Ignace Mouzannar -ghantoos- 
+Currently maintained by Ignace Mouzannar (ghantoos) 
 
 .SH EMAIL
 Feel free to send me your recommendations at <ghantoos@ghantoos.org>

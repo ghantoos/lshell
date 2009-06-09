@@ -2,9 +2,9 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.24 2009-04-06 12:17:18 ghantoos Exp $
+# $Id: README,v 1.25 2009-06-09 19:53:46 ghantoos Exp $
 
-Contact: Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
+Contact: Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
 #####################################
 
@@ -48,6 +48,13 @@ All this information is in the man (man lshell)
     [global]
         * logpath         : log directory (default /var/log/lshell/ )
         * loglevel        : 0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
+        * logfilename     : set log file name, e.g. %u-%y%m%d
+                            (i.e foo-20091009.log)
+                                %u -> username
+                                %d -> day   [1..31]
+                                %m -> month [1..12]
+                                %y -> year  [00..99]
+                                %h -> time  [00:00..23:59]
 
     [default] 
     or [username] (UNIX username)
@@ -71,7 +78,7 @@ All this information is in the man (man lshell)
                             decreased. If set to 0, command is considered as   \
                             unknown
         * scpforce       : force files sent through scp to a specific directory
-        * aliases        : dict of command aliases (similar to bash’s alias    \
+        * aliases        : command aliases list (similar to bashs alias        \
                            directive)
 
     A [default] profile is available for all users using lshell. Nevertheless, \
@@ -85,13 +92,13 @@ All this information is in the man (man lshell)
     The primary goal of lshell, was to be able to create shell accounts        \
     with ssh access and restrict their environment to a couple a needed        \
     commands. 
-    For example User 'bla' and user 'blu' both belong to the 'users' UNIX group:
-    User bla: 
+    For example User 'foo' and user 'bar' both belong to the 'users' UNIX group:
+    User foo: 
         - must be able to access /usr and /var but not /usr/local
         - user all command in his PATH but 'su'
         - has a warning counter set to 5
         - has his home path set to '/home/users'
-    User blu:
+    User bar:
         - must be able to access /etc and /usr but not /usr/local
         - is allowed default commands plus 'ping' minus 'ls'
         - strictness is set to 1 (meaning he is not allowed to type an unknown \
@@ -110,7 +117,7 @@ All this information is in the man (man lshell)
     warning_counter : 2
     timer           : 0
     path            : ['/etc', '/usr']
-    env_path        : ':/sbin:/usr/bla'
+    env_path        : ':/sbin:/usr/foo'
     scp             : 1 # or 0
     sftp            : 1 # or 0
     overssh         : ['rsync','ls']
@@ -120,16 +127,16 @@ All this information is in the man (man lshell)
     warning_counter : 5
     overssh         : - ['ls']
 
-    [bla]
+    [foo]
     allowed         : 'all' - ['su']
     path            : ['/var', '/usr'] - ['/usr/local']
     home_path       : '/home/users'
 
-    [blu]
+    [bar]
     allowed         : + ['ping'] - ['ls'] 
     path            : - ['/usr/local']
     strict          : 1
-    scpforce        : '/home/blu/uploads/'
+    scpforce        : '/home/bar/uploads/'
     # CONFIGURATION END
 
 ###
@@ -165,11 +172,11 @@ All this information is in the man (man lshell)
     
     In order to launch lshell limited to the 'ssh' command, I used ssh's       \
     authorized_keys:
-    $> vi /home/bla/.ssh/authorized_keys
+    $> vi /home/foo/.ssh/authorized_keys
     and add :
         command="/usr/bin/lshell --config /path/to/lshell.conf",no-port-for    \
         warding,no-X11-forwarding,no-agent-forwarding,no-pty
-    just before the "ssh-dss blablablabla" part.
+    just before the "ssh-dss blabla" part.
 
     This will have the effect of executing lshell upon user's connection.
     The great thing about it, is that when the user exist lshell, the ssh      \
@@ -187,10 +194,10 @@ All this information is in the man (man lshell)
     G/8rdCgShZflCbpFZL865fKmUH2pefSZwl/12VXWDqQmukNp6+XrA3LPXdElIeQAA          \
     ACAHoQ3GpC4/BcxuHj1TBNg7Hw3KxZMeL1vQNVF2+cfJ22U1hERNBcRuUjqe5Gv9Q          \
     GoCMcsNpG8/FtV5Pnoq8nPPWuUkrBeBxY6KSgzaZ/DTSd+WvPOwNonntRkEwxpSdk          \
-    lSqXpmqNlw2fPodg6QAAAIEVdZiSZZ9EoH+4MJjKDSvE= bla@somewhere.somet          \
+    lSqXpmqNlw2fPodg6QAAAIEVdZiSZZ9EoH+4MJjKDSvE= foo@somewhere.somet          \
     hing
 
-    Now, when "sshing" to your machine, with the bla user, he will be          \
+    Now, when "sshing" to your machine, with the foo user, he will be          \
     forced to lshell! And when quitting lshell, the ssh session is             \
     automatically ended! : )
 
@@ -203,4 +210,4 @@ All this information is in the man (man lshell)
     http://sourceforge.net/projects/lshell/
 
     Cheers,
-    Ignace Mouzannar (-ghantoos-) <ghantoos@ghantoos.org>
+    Ignace Mouzannar ((ghantoos)) <ghantoos@ghantoos.org>

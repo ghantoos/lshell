@@ -2,22 +2,23 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.38 2009-04-22 22:21:30 ghantoos Exp $
+#    $Id: lshell.py,v 1.39 2009-06-09 19:53:46 ghantoos Exp $
 #
-#    "Copyright 2008 Ignace Mouzannar ( http://ghantoos.org )"
-#    Email: ghantoos@ghantoos.org
+#    Copyright (C) 2008-2009  Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
-#    This program is free software: you can redistribute it and/or modify      \
-#    it under the terms of the GNU General Public License as published by      \
-#    the Free Software Foundation, either version 3 of the License, or         \
+#    This file is part of lshell
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,           \
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of            \
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             \
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License         \
+#    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
@@ -35,7 +36,7 @@ import readline
 import grp
 import time
 
-__author__ = "Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>"
+__author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
 __version__= "0.9.4"
 
 # Required config variable list per user
@@ -603,9 +604,9 @@ class check_config:
         if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
         elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
 
-        # read logformat is exists, and set logfilename
-        if self.conf.has_key('logformat'):
-            logfilename = self.conf['logformat']
+        # read logfilename is exists, and set logfilename
+        if self.conf.has_key('logfilename'):
+            logfilename = self.conf['logfilename']
             currentime = time.localtime()
             logfilename = logfilename.replace('%y','%s'   %currentime[0])
             logfilename = logfilename.replace('%m','%02d' %currentime[1])

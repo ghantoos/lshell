@@ -1,16 +1,15 @@
-This package was debianized by Ignace Mouzannar -ghantoos- 
+This package was debianized by Ignace Mouzannar (ghantoos) 
 <ghantoos@ghantoos.org> on Sat, 18 Oct 2008 20:13:44 +0200.
 
 It was downloaded from http://sourceforge.net/projects/lshell
 
 Upstream Author: 
 
-    Ignace Mouzannar -ghantoos- <ghantoos@ghantoos.org>
+    Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 
 Copyright: 
 
     Copyright (C) 2008-2009 Ignace Mouzannar
-
 
 License:
 
@@ -28,8 +27,4 @@ License:
    along with this package; if not, see <http://www.gnu.org/licenses/>.
 
 On Debian systems, the complete text of the GNU General
-Public License can be found in `/usr/share/common-licenses/GPL'.
-
-The Debian packaging is (C) 2008, Ignace Mouzannar -ghantoos- 
-<ghantoos@ghantoos.org> and is licensed under the GPL, see above.
-
+Public License can be found in `/usr/share/common-licenses/GPL-3'.

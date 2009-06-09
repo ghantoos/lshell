@@ -1,0 +1,32 @@
+#!/bin/sh
+# postinst script for lshell
+#
+# $Id: lshell.postinst,v 1.1 2009-06-09 19:56:16 ghantoos Exp $
+#
+
+#DEBHELPER#
+
+set -e
+
+case "$1" in
+    configure)
+    # add lshell group, and make it own the default log file
+    groupadd --force lshellg
+    mkdir -p /var/log/lshell/
+    chown root:lshellg /var/log/lshell/
+    chmod -R 770 /var/log/lshell/
+    add-shell /usr/bin/lshell
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+exit 0
+
+

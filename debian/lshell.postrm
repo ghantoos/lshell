@@ -3,18 +3,18 @@
 #
 # see: dh_installdeb(1)
 #
-# $Id: lshell.postrm,v 1.2 2009-06-13 22:04:43 ghantoos Exp $
+# $Id: lshell.postrm,v 1.3 2009-06-15 19:13:18 ghantoos Exp $
 
 set -e
 
 case "$1" in
-    remove|purge|disappear|abort-install)
+    remove|purge|disappear)
         if [ -x /usr/sbin/remove-shell ] && [ -f /etc/shells ]; then
-            pycentral pkgremove lshell
             remove-shell /usr/bin/lshell 
         fi
+        pycentral pkgremove lshell
         ;;
-    upgrade|failed-upgrade|abort-upgrade)
+    upgrade|failed-upgrade|abort-upgrade|abort-install)
         # do nothing
         ;;
 

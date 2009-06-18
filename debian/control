@@ -4,14 +4,15 @@ Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
 Build-Depends: debhelper (>=7.0.0), python-central (>= 0.6), cdbs (>= 0.4.49), python-all-dev
 XS-Python-Version: >=2.4
-Standards-Version: 3.8.1
+Standards-Version: 3.8.2
 
 Package: lshell
 Architecture: all
-Homepage: http://ghantoos.org/limited-shell-lshell/
+Homepage: http://lshell.ghantoos.org/
 XB-Python-Version: ${python:Versions}
 Depends: ${misc:Depends}, ${python:Depends}, python-central (>= 0.6)
-Description: limited shell configurable per user
- Limited Shell (lshell) lets you restrict users to limited sets of commands, 
- choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), 
- log user's commands, implement timing restrictions, and more.
+Description: restricts a user's shell environment to limited sets of commands
+ lshell is a shell coded in Python that lets you restrict a user's environment
+ to limited sets of commands, choose to enable/disable any command over SSH 
+ (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing 
+ restrictions, and more.

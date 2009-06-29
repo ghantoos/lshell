@@ -1,7 +1,7 @@
 #!/bin/sh
 # postinst script for lshell
 #
-# $Id: lshell.postinst,v 1.2 2009-06-13 22:04:43 ghantoos Exp $
+# $Id: lshell.postinst,v 1.3 2009-06-29 08:53:40 ghantoos Exp $
 #
 
 #DEBHELPER#
@@ -12,9 +12,10 @@ case "$1" in
     configure)
     # add lshell group, and make it own the default log file
     groupadd --force lshellg
-    mkdir -p /var/log/lshell/
+
     chown root:lshellg /var/log/lshell/
     chmod -R 770 /var/log/lshell/
+
     if [ -x /usr/sbin/add-shell ]; then
         add-shell /usr/bin/lshell
     fi

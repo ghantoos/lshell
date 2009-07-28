@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: postinstall,v 1.6 2009-07-28 18:20:50 ghantoos Exp $
+# $Id: postinstall,v 1.7 2009-07-28 18:33:02 ghantoos Exp $
 #
 # RPM build postinstall script
 
@@ -10,7 +10,7 @@
 # case of installation
 if [ "$1" = "1" ] ; then
 
-    if ! getent group lshell 2> /dev/null; then
+    if ! getent group lshell 2>&1 > /dev/null; then
         addgroup --system lshell
     fi
 

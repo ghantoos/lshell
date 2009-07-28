@@ -2,9 +2,9 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.39 2009-06-09 19:53:46 ghantoos Exp $
+#    $Id: lshell.py,v 1.40 2009-07-28 14:31:26 ghantoos Exp $
 #
-#    Copyright (C) 2008-2009  Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
+#    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
 #    This file is part of lshell
 #
@@ -37,7 +37,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__= "0.9.4"
+__version__ = "0.9.4"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -74,7 +74,7 @@ Cheers.
 intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
 
-class shell_cmd(cmd.Cmd,object): 
+class shell_cmd(cmd.Cmd, object): 
     """ Main lshell CLI class
     """
 
@@ -137,7 +137,7 @@ class shell_cmd(cmd.Cmd,object):
                     self.updateprompt(os.getcwd())
             else:
                 os.system(self.g_line)
-        elif self.g_cmd not in ['','?','help',None] : 
+        elif self.g_cmd not in ['', '?', 'help', None] : 
             if self.conf['strict'] == 1:
                 self.counter_update('command')
             else:
@@ -146,7 +146,7 @@ class shell_cmd(cmd.Cmd,object):
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
-    def check_secure(self,line):
+    def check_secure(self, line):
         """This method is used to check the content on the typed command.      \
         Its purpose is to forbid the user to user to override the lshell       \
         command restrictions. 
@@ -209,39 +209,40 @@ class shell_cmd(cmd.Cmd,object):
         for item in line:
             tomatch = os.path.realpath(item) + '/'
             if os.path.exists(tomatch):
-                match_allowed = re.findall(allowed_path_re,tomatch)
+                match_allowed = re.findall(allowed_path_re, tomatch)
                 if denied_path_re != '': 
-                    match_denied = re.findall(denied_path_re,tomatch)
+                    match_denied = re.findall(denied_path_re, tomatch)
                 else: match_denied = None
                 if not match_allowed or match_denied:
-                        if completion == 0:
-                            self.counter_update('path', tomatch[:-1])
-                        return 1
+                    if completion == 0:
+                        self.counter_update('path', tomatch[:-1])
+                    return 1
         if completion == 0:
-            if not re.findall(allowed_path_re,os.getcwd()+'/'): 
+            if not re.findall(allowed_path_re, os.getcwd()+'/'): 
                 self.counter_update('path', os.getcwd())
                 os.chdir(self.conf['home_path'])
                 self.updateprompt(os.getcwd())
                 return 1
         return 0
 
-    def get_aliases(self,line):
+    def get_aliases(self, line):
         """ Replace all configured aliases in the line
         """
 
-        line = re.sub('\s+', ' ',line.strip())
-        for char in [';','&','|']:
+        line = re.sub('\s+', ' ', line.strip())
+        for char in [';', '&', '|']:
             # remove spaces after char
-            line = line.replace('%s ' %char,'%s' %char)
+            line = line.replace('%s ' %char, '%s' %char)
             # double char
-            line = line.replace('%s' %char,'%s%s' %(char,char))
+            line = line.replace('%s' %char, '%s%s' %(char, char))
 
         for item in self.conf['aliases'].keys():
-            line = re.sub('(^|;|&|\|)%s' %item,self.conf['aliases'][item],line)
+            line = re.sub('(^|;|&|\|)%s' %item, self.conf['aliases'][item],    \
+                                                                        line)
 
-        for char in [';','&','|']:
+        for char in [';', '&', '|']:
             # remove all remaining double char
-            line = line.replace('%s%s' %(char,char),'%s' %char)
+            line = line.replace('%s%s' %(char, char), '%s' %char)
 
         return line
 
@@ -329,13 +330,13 @@ class shell_cmd(cmd.Cmd,object):
             origline = readline.get_line_buffer()
             line = origline.lstrip()
             # in case '|', ';', '&' used, take last part of line to complete
-            line = re.split('&|\||;',line)[-1].lstrip()
+            line = re.split('&|\||;', line)[-1].lstrip()
             stripped = len(origline) - len(line)
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
             if line.split(' ')[0] in self.conf['allowed']:
                 compfunc = self.completechdir
-            elif begidx>0:
+            elif begidx > 0:
                 cmd, args, foo = self.parseline(line)
                 if cmd == '':
                     compfunc = self.completedefault
@@ -372,7 +373,7 @@ class shell_cmd(cmd.Cmd,object):
             names.append('do_' + command)
         return [a[3:] for a in names if a.startswith(dotext)]
 
-    def completechdir(self,text, line, begidx, endidx):
+    def completechdir(self, text, line, begidx, endidx):
         toreturn = []
         try:
             directory = os.path.realpath(line.split()[-1])
@@ -380,14 +381,14 @@ class shell_cmd(cmd.Cmd,object):
             directory = os.getcwd()
 
         if not os.path.isdir(directory):
-            directory = directory.rsplit('/',1)[0]
+            directory = directory.rsplit('/', 1)[0]
             if directory == '': directory = '/'
             if not os.path.isdir(directory):
                 directory = os.getcwd()
 
         if self.check_path(directory, 1) == 0:
             for instance in os.listdir(directory):
-                if os.path.isdir(os.path.join(directory,instance)):
+                if os.path.isdir(os.path.join(directory, instance)):
                     instance = instance + '/'
                 else: instance = instance + ' '
                 if instance.startswith('.'):
@@ -441,7 +442,7 @@ class shell_cmd(cmd.Cmd,object):
                 func = getattr(self, 'help_' + arg)
             except AttributeError:
                 try:
-                    doc=getattr(self, 'do_' + arg).__doc__
+                    doc = getattr(self, 'do_' + arg).__doc__
                     if doc:
                         self.stdout.write("%s\n"%str(doc))
                         return
@@ -457,9 +458,10 @@ class shell_cmd(cmd.Cmd,object):
             self.columnize(list_tmp)
 
     def help_help(self):
+        """ Print Help on Help """
         self.stdout.write(help_help)
 
-    def mytimer(self,timeout):
+    def mytimer(self, timeout):
         """ This function is kicks you out the the lshell after      \
         the 'timer' variable exprires. 'timer' is set in seconds.
         """ 
@@ -612,16 +614,16 @@ class check_config:
             logfilename = logfilename.replace('%m','%02d' %currentime[1])
             logfilename = logfilename.replace('%d','%02d' %currentime[2])
             logfilename = logfilename.replace('%h','%02d%02d' % (currentime[3]\
-                                                                ,currentime[4]))
-            logfilename = logfilename.replace('%u',getuser())
+                                                              , currentime[4]))
+            logfilename = logfilename.replace('%u', getuser())
         else: 
             logfilename = getuser()
 
         if self.conf['loglevel'] > 0:
             try:
                 # if log file is writable add new log file handler
-                logfile = os.path.join(self.conf['logpath'],logfilename+'.log')
-                fp=open(logfile,'a').close()
+                logfile = os.path.join(self.conf['logpath'], logfilename+'.log')
+                fp = open(logfile,'a').close()
                 self.logfile = logging.FileHandler(logfile)
                 logger.addHandler(self.logfile)
                 self.logfile.setFormatter(formatter)
@@ -674,7 +676,8 @@ class check_config:
             for item in self.config.items(section):
                 key = item[0]
                 value = item[1]
-                split = re.split('([\+\-\s]+\[[^\]]+\])',value.replace(' ',''))
+                split = re.split('([\+\-\s]+\[[^\]]+\])', value.replace(' ',   \
+                                                                            ''))
                 if len(split) > 1 and key in ['path',                          \
                                               'overssh',                       \
                                               'allowed',                       \
@@ -686,7 +689,7 @@ class check_config:
                         elif stuff == "'all'":
                             self.conf_raw.update({key:self.expand_all()})
                         elif stuff != '' and key == 'path':
-                            liste = ['','']
+                            liste = ['', '']
                             for path in eval(stuff):
                                 liste[0] += os.path.realpath(path) + '/.*|'
                             liste[0] = liste[0]
@@ -697,7 +700,7 @@ class check_config:
                 elif key == 'allowed' and split[0] == "'all'":
                     self.conf_raw.update({key:self.expand_all()})
                 elif key == 'path':
-                    liste = ['','']
+                    liste = ['', '']
                     for path in self.myeval(value, 'path'):
                         liste[0] += os.path.realpath(path) + '/.*|'
                     liste[0] = liste[0]
@@ -705,17 +708,17 @@ class check_config:
                 else:
                     self.conf_raw.update(dict([item]))
 
-    def minusplus(self,confdict, key, extra):
+    def minusplus(self, confdict, key, extra):
         """ update configuration lists containing -/+ operators
         """
         if confdict.has_key(key):
             liste = self.myeval(confdict[key])
         elif key == 'path':
-            liste = ['','']
+            liste = ['', '']
         else:
             liste = []
 
-        sublist = self.myeval(extra[1:],key)
+        sublist = self.myeval(extra[1:], key)
         if extra.startswith('+'):
             if key == 'path':
                 for path in sublist:
@@ -745,13 +748,14 @@ class check_config:
         for directory in os.environ['PATH'].split(':'):
             if os.path.exists(directory):
                 for item in os.listdir(directory):
-                    if os.access(os.path.join(directory,item), os.X_OK):
+                    if os.access(os.path.join(directory, item), os.X_OK):
                         expanded_all.append(item)
             else: self.log.error('CONF: PATH entry "%s" does not exist'        \
                                                                     % directory)
         return str(expanded_all)
  
     def myeval(self, value, info=''):
+        """ if eval returns SyntaxError, log it as critical iconf missing """
         try:
             evaluated = eval(value)
             return evaluated
@@ -804,9 +808,9 @@ class check_config:
                     'strict',
                     'aliases']:
             try:
-                self.conf[item] = self.myeval(self.conf_raw[item],item)
+                self.conf[item] = self.myeval(self.conf_raw[item], item)
             except KeyError:
-                if item in ['allowed','overssh']:
+                if item in ['allowed', 'overssh']:
                     self.conf[item] = []
                 else:
                     self.conf[item] = 0
@@ -830,7 +834,7 @@ class check_config:
             self.conf['path'] = eval(self.conf_raw['path'])
             self.conf['path'][0] += self.conf['home_path'] + '.*'
         else:
-            self.conf['path'] = ['','']
+            self.conf['path'] = ['', '']
             self.conf['path'][0] = self.conf['home_path'] + '.*'
 
         if self.conf_raw.has_key('env_path'):
@@ -852,7 +856,7 @@ class check_config:
                 self.log.error('CONF: scpforce must be a string!')
 
         os.chdir(self.conf['home_path'])
-        os.environ['PATH']=os.environ['PATH'] + self.conf['env_path']
+        os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         self.conf['allowed'].append('exit')
 
@@ -880,16 +884,16 @@ class check_config:
                 if self.conf['ssh'].find('&') > -1                             \
                             or self.conf['ssh'].find(';') > -1                 \
                             or self.conf['ssh'].find('|') > -1 :
-                    self.ssh_warn('char over SSH',self.conf['ssh'])
+                    self.ssh_warn('char over SSH', self.conf['ssh'])
 
                 # check path first
                 allowed_path_re = str(self.conf['path'][0])
                 denied_path_re = str(self.conf['path'][1][:-1])
                 for item in self.conf['ssh'].strip().split(' '):
                     tomatch = os.path.realpath(item) + '/'
-                    match_allowed = re.findall(allowed_path_re,tomatch)
+                    match_allowed = re.findall(allowed_path_re, tomatch)
                     if denied_path_re != '':
-                        match_denied = re.findall(denied_path_re,tomatch)
+                        match_denied = re.findall(denied_path_re, tomatch)
                     else: match_denied = None
                     if not match_allowed or match_denied:
                         self.ssh_warn('path over SSH', self.conf['ssh'])
@@ -903,9 +907,11 @@ class check_config:
                             if self.conf.has_key('scpforce'):
                                 cmdsplit = self.conf['ssh'].split(' ')
                                 scppath = os.path.realpath(cmdsplit[-1])
-                                forcedpath = os.path.realpath(self.conf['scpforce'])
+                                forcedpath = os.path.realpath(self.conf
+                                                                ['scpforce'])
                                 if scppath != forcedpath:
-                                    self.log.error('SCP: forced SCP directory: %s' %scppath)
+                                    self.log.error('SCP: forced SCP directory:'
+                                                          + ' %s' %scppath)
                                     cmdsplit.pop(-1)
                                     cmdsplit.append(forcedpath)
                                     self.conf['ssh'] = string.join(cmdsplit)
@@ -926,13 +932,14 @@ class check_config:
 
                 # else warn and log
                 else:
-                    self.ssh_warn('command over SSH',self.conf['ssh'])
+                    self.ssh_warn('command over SSH', self.conf['ssh'])
 
             else :
                 # case of shell escapes
-                self.ssh_warn('shell escape',self.conf['ssh'])
+                self.ssh_warn('shell escape', self.conf['ssh'])
 
     def ssh_warn(self, message, command='', key=''):
+        """ log and warn if forbidden action over SSH """
         if key == 'scp':
             self.log.critical('*** forbidden %s' %message)
             self.log.error('*** SCP command: %s' %command)
@@ -965,6 +972,7 @@ class check_config:
         else: return 0
 
     def returnconf(self):
+        """ returns the configuration dict """
         return self.conf
 
 class LshellTimeOut(Exception):
@@ -977,6 +985,7 @@ class LshellTimeOut(Exception):
         return repr(self.value)
 
 def main():
+    """ main function """
     # set SHELL and get LSHELL_ARGS env variables
     os.environ['SHELL'] = os.path.realpath(sys.argv[0])
     if os.environ.has_key('LSHELL_ARGS'):

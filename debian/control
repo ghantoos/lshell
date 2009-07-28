@@ -2,15 +2,15 @@ Source: lshell
 Section: shells
 Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
-Build-Depends: debhelper (>=7), python-central, cdbs, python-all-dev
-XS-Python-Version: >=2.4
+Build-Depends: debhelper (>=7)
+Build-Depends-Indep: python-support, python-all-dev
 Standards-Version: 3.8.2
 
 Package: lshell
 Architecture: all
 Homepage: http://lshell.ghantoos.org/
+Depends: ${misc:Depends}, ${python:Depends}
 XB-Python-Version: ${python:Versions}
-Depends: ${misc:Depends}, ${python:Depends}, python-central (>= 0.6)
 Description: restricts a user's shell environment to limited sets of commands
  lshell is a shell coded in Python that lets you restrict a user's environment
  to limited sets of commands, choose to enable/disable any command over SSH 

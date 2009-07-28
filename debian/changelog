@@ -1,5 +1,5 @@
-lshell (0.9.4-1) unstable; urgency=low
+lshell (0.9.5-1) unstable; urgency=low
 
   * Initial release. (Closes: #503437)
 
- -- Ignace Mouzannar <mouzannar@gmail.com>  Sun, 28 Jun 2009 18:20:40 +0200
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Tue, 28 Jul 2009 19:50:43 +0200

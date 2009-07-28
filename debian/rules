@@ -1,13 +1,49 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-DEB_PYTHON_SYSTEM := pycentral
-DEB_DH_ALWAYS_EXCLUDE := COPYING.gz:CHANGES.gz
-DEB_DH_MD5SUMS_ARGS := --exclude=COPYING.gz --exclude=CHANGES.gz
+export DH_ALWAYS_EXCLUDE=COPYING
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	touch configure-stamp
 
-clean::
-	rm -rf build build-stamp configure-stamp build/ MANIFEST
-	dh_clean
+build: build-stamp
+
+build-stamp: configure-stamp
+	dh_testdir
+	touch $@
+
+clean:
+	dh_testdir
+	rm -f build-stamp configure-stamp
+	rm -rf build/ $(CURDIR)/debian/lshell/
+	dh_clean 
+
+install: build
+	python setup.py install --root=$(CURDIR)/debian/lshell/ --no-compile
+	# patch lshell.1.gz man page changing "lshellg" to "lshell" group
+	gunzip $(CURDIR)/debian/lshell/usr/share/man/man1/lshell.1.gz
+	sed -i "s/lshellg/lshell/g" $(CURDIR)/debian/lshell/usr/share/man/man1/lshell.1
+
+binary-indep: build install
+	dh_testdir
+	dh_testroot
+	dh_install -i
+	dh_pysupport -i
+	dh_installchangelogs -i CHANGES
+	dh_installdocs -i
+	dh_installman -i
+	dh_installdirs -i
+	dh_link -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+binary-arch:
+
+binary: binary-indep
+.PHONY: build clean binary binary-indep binary-arch

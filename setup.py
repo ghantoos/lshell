@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.21 2009-06-09 19:53:46 ghantoos Exp $
+# $Id: setup.py,v 1.22 2009-07-28 18:20:50 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009  Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -24,7 +24,7 @@ from distutils.core import setup
 if __name__ == '__main__':
 
     setup(name='lshell',
-        version='0.9.4',
+        version='0.9.5',
         description='Limited Shell',
         long_description="""Limited Shell (lshell) is lets you restrict the \
 environment of any user. It provides an easily configurable shell: just \
@@ -42,7 +42,7 @@ choose a list of allowed commands for every limited account.""",
         packages = [''],
         data_files = [('/etc', ['etc/lshell.conf']),
             ('share/doc/lshell',['README', 'COPYING', 'CHANGES']),
-            ('share/man/man1/', ['man/lshell.1.gz']) ],
+            ('share/man/man1/', ['man/lshell.1']) ],
         classifiers=[
                 'Development Status :: 4 - Beta',
                 'Environment :: Console'

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: postinstall,v 1.5 2009-02-15 18:46:58 ghantoos Exp $
+# $Id: postinstall,v 1.6 2009-07-28 18:20:50 ghantoos Exp $
 #
 # RPM build postinstall script
 
@@ -9,11 +9,13 @@
 # source: http://www.ibm.com/developerworks/library/l-rpm3.html
 # case of installation
 if [ "$1" = "1" ] ; then
-    groupadd --force lshellg
-    mkdir -p /var/log/lshell/
-    chown root:lshellg /var/log/lshell/
-    chmod -R 770 /var/log/lshell/
 
+    if ! getent group lshell 2> /dev/null; then
+        addgroup --system lshell
+    fi
+
+    chown root:lshell /var/log/lshell/
+    chmod 770 /var/log/lshell/
 
     #####
     # This part is taken from debian add-shell(8) script
@@ -51,9 +53,8 @@ EOF
 
 # case of upgrade
 else
-    mkdir -p /var/log/lshell/
-    chown root:lshellg /var/log/lshell/
-    chmod -R 774 /var/log/lshell/
+    chown root:lshell /var/log/lshell/
+    chmod -R 770 /var/log/lshell/
 
     mv /etc/lshell.conf /etc/lshell.conf-rpm
     mv /etc/lshell.conf-preinstall /etc/lshell.conf

@@ -2,11 +2,16 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.35 2009-06-09 19:53:46 ghantoos Exp $
+# $Id: CHANGES,v 1.36 2009-07-28 18:20:50 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+=== v0.9.5 28/07/2009 ===
+    * Minor release
+    * Changed lshell's group from lshellg to lshell (this should not have an   \
+      impact on older installations)
+    * Minor typo correction in the lshell.py code
 
 === v0.9.4 09/06/2009 ===
     * Log file name is now configurable using 'logfilename' variable inside the\

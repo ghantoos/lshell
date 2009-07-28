@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.20 2009-06-09 19:53:46 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.21 2009-07-28 18:20:50 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "June 9, 2009" "v0.9.4" 
+.TH lshell 1 "June 9, 2009" "v0.9.5" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -38,6 +38,18 @@ Show help message
 Show version
 
 .SH CONFIGURATION
+You can cofigure lshell through its configuration file:
+.RS
+.ft 3
+.nf
+.sp
+On Linux \-> /etc/lshell.conf
+On *BSD  \-> /usr/{pkg,local}/etc/lshell.conf
+.ft
+.LP
+.RE
+.fi
+
 \fBlshell\fR configuration has 4 types of sections:
 .RS
 .ft 3
@@ -143,49 +155,6 @@ force files sent through scp to a specific directory
 .I aliases
 command aliases list (similar to bash’s alias directive)
 
-.SH TODO
-.TP
-In order to log a user's warnings into the logging directory (default \
-\fI/var/log/lshell/\fR) , you must firt create the folder (if it doesn't \
-exist yet) and chown it to lshellg group:
-.RS
-.ft 3
-.nf
-.sp
-# mkdir /var/log/lshell
-# chown :lshellg /var/log/lshell
-# chmod 770 /var/log/lshell
-.ft
-.LP
-.RE
-.fi
-
-then add the user to the \fIlshellg\fR group:
-.RS
-.ft 3
-.nf
-.sp
-# usermod \-aG lshellg user_name
-.ft
-.LP
-.RE
-.fi
-
-In order to set lshell as default shell for a user:
-.RS
-.ft 3
-.nf
-.sp
-On Linux:
-# chsh \-s /usr/bin/lshell user_name
-
-On *BSD:
-# chsh \-s /usr/{pkg,local}/bin/lshell user_name
-.ft
-.LP
-.RE
-.fi
-
 .SH EXAMPLES
 .TP
 .B $ lshell
@@ -260,6 +229,49 @@ path            : - ['/usr/local']
 strict          : 1
 scpforce        : '/home/bar/uploads/'
 # CONFIURATION END
+.ft
+.LP
+.RE
+.fi
+
+.SH NOTES
+.TP
+In order to log a user's warnings into the logging directory (default \
+\fI/var/log/lshell/\fR) , you must firt create the folder (if it doesn't \
+exist yet) and chown it to lshell group:
+.RS
+.ft 3
+.nf
+.sp
+# mkdir /var/log/lshell
+# chown :lshell /var/log/lshell
+# chmod 770 /var/log/lshell
+.ft
+.LP
+.RE
+.fi
+
+then add the user to the \fIlshell\fR group:
+.RS
+.ft 3
+.nf
+.sp
+# usermod \-aG lshell user_name
+.ft
+.LP
+.RE
+.fi
+
+In order to set lshell as default shell for a user:
+.RS
+.ft 3
+.nf
+.sp
+On Linux:
+# chsh \-s /usr/bin/lshell user_name
+
+On *BSD:
+# chsh \-s /usr/{pkg,local}/bin/lshell user_name
 .ft
 .LP
 .RE

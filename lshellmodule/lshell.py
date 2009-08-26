@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.41 2009-07-28 18:20:50 ghantoos Exp $
+#    $Id: lshell.py,v 1.42 2009-08-26 13:56:42 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -207,16 +207,16 @@ class shell_cmd(cmd.Cmd, object):
             line = line.strip().split()[1:]
 
         for item in line:
-            tomatch = os.path.realpath(item) + '/'
-            if os.path.exists(tomatch):
-                match_allowed = re.findall(allowed_path_re, tomatch)
-                if denied_path_re != '': 
-                    match_denied = re.findall(denied_path_re, tomatch)
-                else: match_denied = None
-                if not match_allowed or match_denied:
-                    if completion == 0:
-                        self.counter_update('path', tomatch[:-1])
-                    return 1
+            tomatch = os.path.realpath(item)
+            if os.path.isdir(tomatch): tomatch += '/'
+            match_allowed = re.findall(allowed_path_re, tomatch)
+            if denied_path_re != '': 
+                match_denied = re.findall(denied_path_re, tomatch)
+            else: match_denied = None
+            if not match_allowed or match_denied:
+                if completion == 0:
+                    self.counter_update('path', tomatch)
+                return 1
         if completion == 0:
             if not re.findall(allowed_path_re, os.getcwd()+'/'): 
                 self.counter_update('path', os.getcwd())

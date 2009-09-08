@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-export DH_ALWAYS_EXCLUDE=COPYING
+export DH_ALWAYS_EXCLUDE=COPYING:CHANGES
 
 configure: configure-stamp
 configure-stamp:
@@ -22,9 +22,6 @@ clean:
 
 install: build
 	python setup.py install --root=$(CURDIR)/debian/lshell/ --no-compile
-	# patch lshell.1.gz man page changing "lshellg" to "lshell" group
-	gunzip $(CURDIR)/debian/lshell/usr/share/man/man1/lshell.1.gz
-	sed -i "s/lshellg/lshell/g" $(CURDIR)/debian/lshell/usr/share/man/man1/lshell.1
 
 binary-indep: build install
 	dh_testdir

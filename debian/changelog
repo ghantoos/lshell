@@ -1,3 +1,12 @@
+lshell (0.9.5-2) unstable; urgency=low
+
+  * Added a dependency on adduser as addgroup(8) is used is the post 
+    installation.
+  * Corrected the debian/rules file to install only one copy of upstream's 
+    changelog.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 19 Aug 2009 22:43:22 +0200
+
 lshell (0.9.5-1) unstable; urgency=low
 
   * Initial release. (Closes: #503437)

@@ -9,7 +9,7 @@ Standards-Version: 3.8.2
 Package: lshell
 Architecture: all
 Homepage: http://lshell.ghantoos.org/
-Depends: ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}, adduser
 XB-Python-Version: ${python:Versions}
 Description: restricts a user's shell environment to limited sets of commands
  lshell is a shell coded in Python that lets you restrict a user's environment

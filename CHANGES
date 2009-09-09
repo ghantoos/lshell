@@ -2,11 +2,18 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.36 2009-07-28 18:20:50 ghantoos Exp $
+# $Id: CHANGES,v 1.37 2009-09-09 16:38:00 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.6 9/09/2009 ===
+    * Major security fix. User had access to all files located in forbidden 
+      directories (Closes: https://sourceforge.net/tracker/?func=detail&aid=2838542&group_id=215792&atid=1035093)
+    * Corrects RPM generation bug (Closes: https://sourceforge.net/tracker/index.php?func=detail&aid=2838283&group_id=215792&atid=1035093)
+    * lshell exits gracefully when user home directory doesn't exist
+
 === v0.9.5 28/07/2009 ===
     * Minor release
     * Changed lshell's group from lshellg to lshell (this should not have an   \

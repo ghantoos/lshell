@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.44 2009-09-09 14:12:18 ghantoos Exp $
+#    $Id: lshell.py,v 1.45 2009-09-09 16:38:00 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -566,7 +566,13 @@ class check_config:
     def get_global(self):
         """ Loads the [global] parameters from the configuration file 
         """
-        self.config.read(self.conf['configfile'])
+        try:
+            self.config.read(self.conf['configfile'])
+        except (ConfigParser.MissingSectionHeaderError,                        \
+                                    ConfigParser.ParsingError), argument:
+            self.stderr.write('ERR: %s\n' %argument)
+            sys.exit(0)
+
         if not self.config.has_section('global'):
             self.stderr.write('Config file missing [global] section\n')
             sys.exit(0)

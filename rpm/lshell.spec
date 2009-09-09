@@ -39,7 +39,7 @@ rm -rf $RPM_BUILD_ROOT
 %post
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.2 2009-09-09 16:15:41 ghantoos Exp $
+# $Id: lshell.spec,v 1.3 2009-09-09 16:38:00 ghantoos Exp $
 #
 # RPM build postinstall script
 
@@ -102,7 +102,7 @@ fi
 %postun
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.2 2009-09-09 16:15:41 ghantoos Exp $
+# $Id: lshell.spec,v 1.3 2009-09-09 16:38:00 ghantoos Exp $
 #
 # RPM build postuninstall script
 
@@ -142,7 +142,6 @@ mv ${tmpfile} ${file}
 trap "" EXIT
 exit 0
     fi
-
 
 %files
 %defattr(644,root,root,755)

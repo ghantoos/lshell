@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.43 2009-08-26 13:58:36 ghantoos Exp $
+#    $Id: lshell.py,v 1.44 2009-09-09 14:12:18 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -855,7 +855,12 @@ class check_config:
             except TypeError:
                 self.log.error('CONF: scpforce must be a string!')
 
-        os.chdir(self.conf['home_path'])
+        if os.path.isdir(self.conf['home_path']):
+            os.chdir(self.conf['home_path'])
+        else:
+            self.log.critical('ERR: home directory "%s" does not exist.' % self.conf['home_path'])
+            sys.exit(0)
+
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         self.conf['allowed'].append('exit')

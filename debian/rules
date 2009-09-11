@@ -30,6 +30,7 @@ binary-indep: build install
 	dh_pysupport -i
 	dh_installchangelogs -i CHANGES
 	dh_installdocs -i
+	dh_installexamples -i
 	dh_installman -i
 	dh_installdirs -i
 	dh_link -i

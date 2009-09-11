@@ -1,3 +1,14 @@
+lshell (0.9.6-1) unstable; urgency=low
+
+  * Major security fix. User had access to all files located in forbidden 
+    directories.
+  * lshell exits gracefully when user home directory doesn't exist.
+  * Added makejail(8) configuration example to help create a chroot with all 
+    the required files to run lshell.
+  * Updated the debian/watch file.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 09 Sep 2009 20:17:45 +0200
+
 lshell (0.9.5-2) unstable; urgency=low
 
   * Added a dependency on adduser as addgroup(8) is used is the post 

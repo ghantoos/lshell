@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.45 2009-09-09 16:38:00 ghantoos Exp $
+#    $Id: lshell.py,v 1.46 2009-10-03 23:09:37 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -20,7 +20,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+"""lshell restricts a user's shell environment to limited sets of commands
+lshell is a shell coded in Python that lets you restrict a user's environment
+to limited sets of commands, choose to enable/disable any command over SSH
+(e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing 
+"""
 
 import cmd
 import sys
@@ -37,7 +41,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.6"
+__version__ = "0.9.7"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -53,18 +57,18 @@ if sys.exec_prefix != '/usr':
 else:
     # for *Linux
     conf_prefix = ''
-CONFIGFILE = conf_prefix + '/etc/lshell.conf'
+config_file = conf_prefix + '/etc/lshell.conf'
 
 # history file
-HISTORY = ".lhistory"
+hisory_file = ".lhistory"
 
 # help text
-help = """Usage: lshell [OPTIONS]
+usage = """Usage: lshell [OPTIONS]
   --config <file> : Config file location (default %s)
   --log    <dir>  : Log files directory
   -h, --help      : Show this help message
   --version       : Show version
-""" % CONFIGFILE
+""" % config_file
 
 help_help = """Limited Shell (lshell) limited help.
 Cheers.
@@ -74,7 +78,7 @@ Cheers.
 intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
 
-class shell_cmd(cmd.Cmd, object): 
+class ShellCmd(cmd.Cmd, object): 
     """ Main lshell CLI class
     """
 
@@ -98,7 +102,7 @@ class shell_cmd(cmd.Cmd, object):
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
         self.log.error('Logged in')
-        self.history = os.path.normpath(self.conf['home_path']) + '/' + HISTORY
+        self.history = os.path.normpath(self.conf['home_path']) + '/' + hisory_file
         cmd.Cmd.__init__(self)
         self.prompt = self.conf['username'] + ':~$ '
         self.intro = intro
@@ -110,7 +114,7 @@ class shell_cmd(cmd.Cmd, object):
 
         e.g. You just have to add 'uname' in list of allowed commands in       \
         the 'allowed' variable, and lshell will react as if you had            \
-        added a do_uname in the shell_cmd class!
+        added a do_uname in the ShellCmd class!
         """
         if self.g_cmd in ['quit', 'exit', 'EOF']:
             self.log.error('Exited')
@@ -165,7 +169,7 @@ class shell_cmd(cmd.Cmd, object):
         lines = re.split('&|\||;', line)
         for sperate_line in lines:
             command = sperate_line.strip().split(' ')[0]
-            if command not in self.conf['allowed'] and command != "":
+            if command not in self.conf['allowed'] and command:
                 if len(lines) > 1:
                     self.counter_update('command', line)
                     return 1
@@ -210,7 +214,7 @@ class shell_cmd(cmd.Cmd, object):
             tomatch = os.path.realpath(item)
             if os.path.isdir(tomatch): tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)
-            if denied_path_re != '': 
+            if denied_path_re: 
                 match_denied = re.findall(denied_path_re, tomatch)
             else: match_denied = None
             if not match_allowed or match_denied:
@@ -472,7 +476,9 @@ class shell_cmd(cmd.Cmd, object):
     def _timererror(self, signum, frame):
         raise LshellTimeOut, "lshell timer timeout"
 
-class check_config:
+class CheckConfig:
+    """ Check the configuration file.
+    """
 
     def __init__(self, args, stdin=None, stdout=None, stderr=None):
         """ Force the calling of the methods below
@@ -511,8 +517,8 @@ class check_config:
         #if '-c' not in arguments and '--config' not in arguments:
         #    usage()
 
-        # set CONFIGFILE as default configuration file
-        conf['configfile'] = CONFIGFILE
+        # set config_file as default configuration file
+        conf['configfile'] = config_file
 
         try:
             optlist, args = getopt.getopt(arguments,                           \
@@ -545,7 +551,7 @@ class check_config:
 
     def usage(self):
         """ Prints the usage """
-        sys.stderr.write(help)
+        sys.stderr.write(usage)
         sys.exit(0)
 
     def version(self):
@@ -559,7 +565,7 @@ class check_config:
         """
         if not os.path.exists(config_file): 
             self.stderr.write("Error: Config file doesn't exist\n")
-            self.stderr.write(help)
+            self.stderr.write(usage)
             sys.exit(0)
         else: self.config = ConfigParser.ConfigParser()
 
@@ -694,13 +700,13 @@ class check_config:
                                                                     key,stuff))
                         elif stuff == "'all'":
                             self.conf_raw.update({key:self.expand_all()})
-                        elif stuff != '' and key == 'path':
+                        elif stuff and key == 'path':
                             liste = ['', '']
                             for path in eval(stuff):
                                 liste[0] += os.path.realpath(path) + '/.*|'
                             liste[0] = liste[0]
                             self.conf_raw.update({key:str(liste)})
-                        elif stuff != '' and type(eval(stuff)) is list:
+                        elif stuff and type(eval(stuff)) is list:
                             self.conf_raw.update({key:stuff})
                 # case allowed is set to 'all'
                 elif key == 'allowed' and split[0] == "'all'":
@@ -830,9 +836,6 @@ class check_config:
         if self.conf_raw.has_key('home_path'):
             self.conf['home_path'] = os.path.normpath(self.myeval(self.conf_raw\
                                                     ['home_path'],'home_path'))
-            if not os.path.isdir(self.conf['home_path']):
-                self.log.critical('CONF: home_path does not exist')
-                sys.exit(0)
         else:
             self.conf['home_path'] = os.environ['HOME']
 
@@ -864,7 +867,8 @@ class check_config:
         if os.path.isdir(self.conf['home_path']):
             os.chdir(self.conf['home_path'])
         else:
-            self.log.critical('ERR: home directory "%s" does not exist.' % self.conf['home_path'])
+            self.log.critical('ERR: home directory "%s" does not exist.'       \
+                                                    % self.conf['home_path'])
             sys.exit(0)
 
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
@@ -903,7 +907,7 @@ class check_config:
                 for item in self.conf['ssh'].strip().split(' '):
                     tomatch = os.path.realpath(item) + '/'
                     match_allowed = re.findall(allowed_path_re, tomatch)
-                    if denied_path_re != '':
+                    if denied_path_re:
                         match_denied = re.findall(denied_path_re, tomatch)
                     else: match_denied = None
                     if not match_allowed or match_denied:
@@ -1003,10 +1007,10 @@ def main():
         args = sys.argv[1:] + eval(os.environ['LSHELL_ARGS'])
     else: args = sys.argv[1:]
 
-    userconf = check_config(args).returnconf()
+    userconf = CheckConfig(args).returnconf()
 
     try:
-        cli = shell_cmd(userconf)
+        cli = ShellCmd(userconf)
         cli.cmdloop()
 
     except (KeyboardInterrupt, EOFError):

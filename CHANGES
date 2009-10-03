@@ -2,11 +2,14 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.37 2009-09-09 16:38:00 ghantoos Exp $
+# $Id: CHANGES,v 1.38 2009-10-03 23:09:37 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.6 9/09/2009 ===
+    * Cleaned up the Python code
 
 === v0.9.6 9/09/2009 ===
     * Major security fix. User had access to all files located in forbidden 

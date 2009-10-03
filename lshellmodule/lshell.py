@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.46 2009-10-03 23:09:37 ghantoos Exp $
+#    $Id: lshell.py,v 1.47 2009-10-03 23:18:15 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -559,11 +559,11 @@ class CheckConfig:
         sys.stderr.write('lshell-%s - Limited Shell\n' %__version__)
         sys.exit(0)
 
-    def check_file(self, config_file):
+    def check_file(self, file):
         """ This method checks the existence of the "argumently" given         \
         configuration file.
         """
-        if not os.path.exists(config_file): 
+        if not os.path.exists(file): 
             self.stderr.write("Error: Config file doesn't exist\n")
             self.stderr.write(usage)
             sys.exit(0)

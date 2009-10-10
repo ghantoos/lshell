@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.47 2009-10-03 23:18:15 ghantoos Exp $
+#    $Id: lshell.py,v 1.48 2009-10-10 18:38:45 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -131,11 +131,11 @@ class ShellCmd(cmd.Cmd, object):
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd in ['cd']:
                 if len(self.g_arg) >= 1:
-                    if os.path.isdir(os.path.realpath(self.g_arg)): 
+                    try:
                         os.chdir(os.path.realpath(self.g_arg))
                         self.updateprompt(os.getcwd())
-                    else: self.stderr.write('cd: %s: No such directory.\n'     \
-                                                % os.path.realpath(self.g_arg))
+                    except OSError, (ErrorNumber, ErrorMessage):
+                        print "lshell: %s:" %self.g_line, ErrorMessage
                 else: 
                     os.chdir(self.conf['home_path'])
                     self.updateprompt(os.getcwd())

@@ -1,5 +1,5 @@
 %define name lshell
-%define version 0.9.7
+%define version 0.9.6
 %define release 1
 %define python_sitelib %(python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")
 
@@ -39,14 +39,14 @@ rm -rf $RPM_BUILD_ROOT
 %post
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.4 2009-10-03 23:09:37 ghantoos Exp $
+# $Id: lshell.spec,v 1.5 2009-11-09 16:50:13 ghantoos Exp $
 #
 # RPM build postinstall script
 
 # case of installation
 if [ "$1" = "1" ] ; then
     if ! getent group lshell 2>&1 > /dev/null; then
-        addgroup --system lshell
+        groupadd -r lshell
     fi
     mkdir -p /var/log/lshell/
     chown root:lshell /var/log/lshell/
@@ -102,7 +102,7 @@ fi
 %postun
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.4 2009-10-03 23:09:37 ghantoos Exp $
+# $Id: lshell.spec,v 1.5 2009-11-09 16:50:13 ghantoos Exp $
 #
 # RPM build postuninstall script
 

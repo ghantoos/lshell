@@ -39,13 +39,15 @@ rm -rf $RPM_BUILD_ROOT
 %post
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.6 2009-11-24 23:41:32 ghantoos Exp $
+# $Id: lshell.spec,v 1.7 2009-11-24 23:44:15 ghantoos Exp $
 #
 # RPM build postinstall script
 
 # case of installation
 if [ "$1" = "1" ] ; then
     if ! getent group lshell 2>&1 > /dev/null; then
+        # thank you Michael Mansour for your suggestion to use groupadd
+        # instead of addgroup
         groupadd -r lshell
     fi
     mkdir -p /var/log/lshell/
@@ -102,7 +104,7 @@ fi
 %postun
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.6 2009-11-24 23:41:32 ghantoos Exp $
+# $Id: lshell.spec,v 1.7 2009-11-24 23:44:15 ghantoos Exp $
 #
 # RPM build postuninstall script
 

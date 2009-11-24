@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.48 2009-10-10 18:38:45 ghantoos Exp $
+#    $Id: lshell.py,v 1.49 2009-11-24 23:41:32 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -126,6 +126,9 @@ class ShellCmd(cmd.Cmd, object):
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
+            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'], self.g_arg)
+            self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],
+                                                                   self.g_arg)
             if type(self.conf['aliases']) == dict:
                 self.g_line = self.get_aliases(self.g_line)
             self.log.info('CMD: "%s"' %self.g_line)
@@ -135,7 +138,7 @@ class ShellCmd(cmd.Cmd, object):
                         os.chdir(os.path.realpath(self.g_arg))
                         self.updateprompt(os.getcwd())
                     except OSError, (ErrorNumber, ErrorMessage):
-                        print "lshell: %s:" %self.g_line, ErrorMessage
+                        print "lshell: %s:" %self.g_arg, ErrorMessage
                 else: 
                     os.chdir(self.conf['home_path'])
                     self.updateprompt(os.getcwd())
@@ -834,6 +837,7 @@ class CheckConfig:
         self.conf['username'] = self.user
 
         if self.conf_raw.has_key('home_path'):
+            self.conf_raw['home_path'] = self.conf_raw['home_path'].replace("%u", self.conf['username'])
             self.conf['home_path'] = os.path.normpath(self.myeval(self.conf_raw\
                                                     ['home_path'],'home_path'))
         else:

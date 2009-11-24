@@ -2,14 +2,18 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.38 2009-10-03 23:09:37 ghantoos Exp $
+# $Id: CHANGES,v 1.39 2009-11-24 23:41:32 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.6 9/09/2009 ===
+=== v0.9.7 25/11/2009 ===
     * Cleaned up the Python code
+    * Corrected crash when directory permission denied (Closes: https://sourceforge.net/tracker/?func=detail&aid=2875374&group_id=215792&atid=1035093)
+    * Added possibility to set the home_path option using the '%u' flag.
+      (e.g. '/var/chroot/%u' where '%u' will be replaced by the user's username)
+    * Now replaces "~" by user's home directory.
 
 === v0.9.6 9/09/2009 ===
     * Major security fix. User had access to all files located in forbidden 

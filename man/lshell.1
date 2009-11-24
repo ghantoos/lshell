@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.24 2009-10-03 23:09:37 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.25 2009-11-24 23:41:32 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "June 9, 2009" "v0.9.7" 
+.TH lshell 1 "November 25, 2009" "v0.9.7" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -129,7 +129,12 @@ list of path to restrict the user geographically
 .TP
 .I home_path
 set the home folder of your user. If not specified, the home directory is set \
-to the $HOME environment variable
+to the $HOME environment variable. A wildcard can be used:
+.RS
+.BR \ \ \ \ %u
+-> username (e.g. '/home/%u')
+.RE
+.RS
 .TP
 .I env_path
 update the environment variable $PATH of the user (optional)

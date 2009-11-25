@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.49 2009-11-24 23:41:32 ghantoos Exp $
+#    $Id: lshell.py,v 1.50 2009-11-25 00:00:20 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -102,7 +102,8 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
         self.log.error('Logged in')
-        self.history = os.path.normpath(self.conf['home_path']) + '/' + hisory_file
+        self.history = os.path.normpath(self.conf['home_path']) + '/' 
+                                                                + hisory_file
         cmd.Cmd.__init__(self)
         self.prompt = self.conf['username'] + ':~$ '
         self.intro = intro
@@ -126,7 +127,8 @@ class ShellCmd(cmd.Cmd, object):
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
-            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'], self.g_arg)
+            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],
+                                                                   self.g_arg)
             self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],
                                                                    self.g_arg)
             if type(self.conf['aliases']) == dict:

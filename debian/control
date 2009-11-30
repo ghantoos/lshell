@@ -2,7 +2,7 @@ Source: lshell
 Section: shells
 Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), python-support, python-all-dev
+Build-Depends: debhelper (>= 7.0.50~), python-support, python
 Standards-Version: 3.8.3
 
 Package: lshell

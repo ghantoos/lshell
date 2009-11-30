@@ -7,6 +7,7 @@ lshell (0.9.8-1) unstable; urgency=low
   * debian/control:
     - Updated debhelper dependency to (>= 7.0.50~) for dh7 features support.
     - Moved Build-Depends-Indep to Build-Depends.
+    - Replaced python-all-deb dependecy by python.
 
  -- Ignace Mouzannar <mouzannar@gmail.com>  Tue, 01 Dec 2009 00:50:36 +0100
 

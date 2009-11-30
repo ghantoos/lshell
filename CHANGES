@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.40 2009-11-30 22:40:05 ghantoos Exp $
+# $Id: CHANGES,v 1.41 2009-11-30 23:39:08 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -10,7 +10,7 @@ http://sourceforge.net/projects/lshell/
 
 === v0.9.8 30/11/2009 ===
     * Major bug fix. lshell did not launch on python 2.4 and 2.5 (https://sourceforge.net/projects/lshell/forums/forum/778301/topic/3474668)
-    * Added aliases for commands over SSH
+    * Added aliases for commands over SSH.
 
 === v0.9.7 25/11/2009 ===
     * Cleaned up the Python code

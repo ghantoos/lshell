@@ -1,3 +1,14 @@
+lshell (0.9.8-1) unstable; urgency=low
+
+  * New upstream version.
+  * Updated packaging format to "3.0 (quilt)".
+  * debian/rules:
+    - Updated to use dh7 features. (Closes: #557826)
+  * debian/control:
+    - Updated debhelper dependency to (>= 7.0.50~) for dh7 features support.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 25 Nov 2009 13:29:22 +0100
+
 lshell (0.9.6-1) unstable; urgency=low
 
   * Major security fix. User had access to all files located in forbidden 
@@ -6,6 +17,7 @@ lshell (0.9.6-1) unstable; urgency=low
   * Added makejail(8) configuration example to help create a chroot with all 
     the required files to run lshell.
   * Updated the debian/watch file.
+  * Standards-Version bumped to 3.8.3.
 
  -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 09 Sep 2009 20:17:45 +0200
 

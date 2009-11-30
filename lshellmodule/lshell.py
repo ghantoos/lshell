@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.50 2009-11-25 00:00:20 ghantoos Exp $
+#    $Id: lshell.py,v 1.51 2009-11-30 22:40:05 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -41,7 +41,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.7"
+__version__ = "0.9.8"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -102,7 +102,7 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
         self.log.error('Logged in')
-        self.history = os.path.normpath(self.conf['home_path']) + '/' 
+        self.history = os.path.normpath(self.conf['home_path']) + '/'          \
                                                                 + hisory_file
         cmd.Cmd.__init__(self)
         self.prompt = self.conf['username'] + ':~$ '
@@ -127,12 +127,12 @@ class ShellCmd(cmd.Cmd, object):
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
-            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],
+            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],      \
                                                                    self.g_arg)
-            self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],
+            self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],        \
                                                                    self.g_arg)
             if type(self.conf['aliases']) == dict:
-                self.g_line = self.get_aliases(self.g_line)
+                self.g_line = get_aliases(self.g_line, self.conf['aliases'])
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd in ['cd']:
                 if len(self.g_arg) >= 1:
@@ -234,27 +234,6 @@ class ShellCmd(cmd.Cmd, object):
                 return 1
         return 0
 
-    def get_aliases(self, line):
-        """ Replace all configured aliases in the line
-        """
-
-        line = re.sub('\s+', ' ', line.strip())
-        for char in [';', '&', '|']:
-            # remove spaces after char
-            line = line.replace('%s ' %char, '%s' %char)
-            # double char
-            line = line.replace('%s' %char, '%s%s' %(char, char))
-
-        for item in self.conf['aliases'].keys():
-            line = re.sub('(^|;|&|\|)%s' %item, self.conf['aliases'][item],    \
-                                                                        line)
-
-        for char in [';', '&', '|']:
-            # remove all remaining double char
-            line = line.replace('%s%s' %(char, char), '%s' %char)
-
-        return line
-
     def updateprompt(self, path):
         """ Update prompt when changing directory
         """
@@ -327,7 +306,7 @@ class ShellCmd(cmd.Cmd, object):
             try:
                 readline.write_history_file(self.history)
             except IOError:
-                self.log.error('WARN: couldn\'t write history '
+                self.log.error('WARN: couldn\'t write history '                \
                                                 'to file %s\n' %self.history)
 
     def complete(self, text, state):
@@ -603,7 +582,7 @@ class CheckConfig:
 
         # create logger for lshell application
         logger = logging.getLogger('lshell')
-        formatter = logging.Formatter('%(asctime)s (' + getuser() \
+        formatter = logging.Formatter('%(asctime)s (' + getuser()              \
                                                         + '): %(message)s')
 
         logger.setLevel(logging.DEBUG)
@@ -630,7 +609,7 @@ class CheckConfig:
             logfilename = logfilename.replace('%y','%s'   %currentime[0])
             logfilename = logfilename.replace('%m','%02d' %currentime[1])
             logfilename = logfilename.replace('%d','%02d' %currentime[2])
-            logfilename = logfilename.replace('%h','%02d%02d' % (currentime[3]\
+            logfilename = logfilename.replace('%h','%02d%02d' % (currentime[3] \
                                                               , currentime[4]))
             logfilename = logfilename.replace('%u', getuser())
         else: 
@@ -839,7 +818,8 @@ class CheckConfig:
         self.conf['username'] = self.user
 
         if self.conf_raw.has_key('home_path'):
-            self.conf_raw['home_path'] = self.conf_raw['home_path'].replace("%u", self.conf['username'])
+            self.conf_raw['home_path'] = self.conf_raw['home_path'].replace(   \
+                                                   "%u", self.conf['username'])
             self.conf['home_path'] = os.path.normpath(self.myeval(self.conf_raw\
                                                     ['home_path'],'home_path'))
         else:
@@ -859,7 +839,7 @@ class CheckConfig:
             self.conf['env_path'] = ''
 
         if self.conf_raw.has_key('scpforce'):
-            self.conf_raw['scpforce'] = self.myeval(                       \
+            self.conf_raw['scpforce'] = self.myeval(                           \
                                                 self.conf_raw['scpforce'])
             try:
                 if os.path.exists(self.conf_raw['scpforce']):
@@ -947,6 +927,8 @@ class CheckConfig:
                 elif self.conf['ssh'].strip().split()[0] in                    \
                                                        self.conf['overssh']:
                     self.log.error('Over SSH: "%s"' %self.conf['ssh'])
+                    self.conf['ssh'] = get_aliases(self.conf['ssh'],           \
+                                                         self.conf['aliases'])
                     os.system(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
@@ -1004,6 +986,24 @@ class LshellTimeOut(Exception):
         self.value = value
     def __str__(self):
         return repr(self.value)
+
+def get_aliases(line, aliases):
+    """ Replace all configured aliases in the line
+    """
+    line = re.sub('\s+', ' ', line.strip())
+    for char in [';', '&', '|']:
+        # remove spaces after char
+        line = line.replace('%s ' %char, '%s' %char)
+        # double char
+        line = line.replace('%s' %char, '%s%s' %(char, char))
+
+    for item in aliases.keys():
+        line = re.sub('(^|;|&|\|)%s' %item, aliases[item], line)
+    for char in [';', '&', '|']:
+        # remove all remaining double char
+        line = line.replace('%s%s' %(char, char), '%s' %char)
+
+    return line
 
 def main():
     """ main function """

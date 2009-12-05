@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.51 2009-11-30 22:40:05 ghantoos Exp $
+#    $Id: lshell.py,v 1.52 2009-12-05 11:57:19 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -167,7 +167,7 @@ class ShellCmd(cmd.Cmd, object):
         """
         for item in self.conf['forbidden']:
             if item in line:
-                self.counter_update('synthax')
+                self.counter_update('syntax')
                 return 1
 
         # in case ';', '|' or '&' are not forbidden, check if in line

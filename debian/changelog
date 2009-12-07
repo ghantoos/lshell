@@ -1,15 +1,17 @@
 lshell (0.9.8-1) unstable; urgency=low
 
-  * New upstream version.
+  * New upstream version: 
+    - Corrects crash when directory permission denied.
+    - Adds minor features.
   * Updated packaging format to "3.0 (quilt)".
   * debian/rules:
     - Updated to use dh7 features. (Closes: #557826)
   * debian/control:
-    - Updated debhelper dependency to (>= 7.0.50~) for dh7 features support.
-    - Moved Build-Depends-Indep to Build-Depends.
-    - Replaced python-all-deb dependecy by python.
+    - Bumped debhelper dependency to (>= 7.0.50~) for dh7 features support.
+    - Moved Build-Depends-Indep dependencies to Build-Depends.
+    - Replaced python-all-dev dependency by python.
 
- -- Ignace Mouzannar <mouzannar@gmail.com>  Tue, 01 Dec 2009 00:50:36 +0100
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Tue, 01 Dec 2009 19:07:01 +0100
 
 lshell (0.9.6-1) unstable; urgency=low
 

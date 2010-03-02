@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.52 2009-12-05 11:57:19 ghantoos Exp $
+#    $Id: lshell.py,v 1.53 2010-03-02 00:08:33 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -41,7 +41,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.8"
+__version__ = "0.9.9"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -60,7 +60,10 @@ else:
 config_file = conf_prefix + '/etc/lshell.conf'
 
 # history file
-hisory_file = ".lhistory"
+history_file = ".lhistory"
+
+# lock_file
+lock_file = ".lshell_lock"
 
 # help text
 usage = """Usage: lshell [OPTIONS]
@@ -102,11 +105,9 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
         self.log.error('Logged in')
-        self.history = os.path.normpath(self.conf['home_path']) + '/'          \
-                                                                + hisory_file
         cmd.Cmd.__init__(self)
         self.prompt = self.conf['username'] + ':~$ '
-        self.intro = intro
+        self.intro = self.conf['intro']
 
     def __getattr__(self, attr):
         """This method actually takes care of all the called method that are   \
@@ -122,7 +123,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.g_cmd == 'EOF':
                 self.stdout.write('\n')
             sys.exit(0)
-        if self.check_secure(self.g_line) == 1: 
+        if self.check_secure(self.g_line, self.conf['strict']) == 1: 
             return object.__getattribute__(self, attr)
         if self.check_path(self.g_line) == 1:
             return object.__getattribute__(self, attr)
@@ -134,28 +135,43 @@ class ShellCmd(cmd.Cmd, object):
             if type(self.conf['aliases']) == dict:
                 self.g_line = get_aliases(self.g_line, self.conf['aliases'])
             self.log.info('CMD: "%s"' %self.g_line)
-            if self.g_cmd in ['cd']:
-                if len(self.g_arg) >= 1:
-                    try:
-                        os.chdir(os.path.realpath(self.g_arg))
-                        self.updateprompt(os.getcwd())
-                    except OSError, (ErrorNumber, ErrorMessage):
-                        print "lshell: %s:" %self.g_arg, ErrorMessage
-                else: 
-                    os.chdir(self.conf['home_path'])
-                    self.updateprompt(os.getcwd())
+            if self.g_cmd == 'cd':
+                self.cd()
+            # list all allowed path
+            elif self.g_cmd == 'lpath':
+                self.lpath()
             else:
                 os.system(self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None] : 
-            if self.conf['strict'] == 1:
-                self.counter_update('command')
-            else:
-                self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
-                self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
+            self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
+            self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
-    def check_secure(self, line):
+    def lpath(self):
+        if self.conf['path'][0]:
+            sys.stdout.write("Allowed:\n")
+            for path in self.conf['path'][0].split('|'):
+                if path:
+                    sys.stdout.write(" %s\n" %path[:-2])
+        if self.conf['path'][1]:
+            sys.stdout.write("Denied:\n")
+            for path in self.conf['path'][1].split('|'):
+                if path:
+                    sys.stdout.write(" %s\n" %path[:-2])
+
+    def cd(self):
+        if len(self.g_arg) >= 1:
+            try:
+                os.chdir(os.path.realpath(self.g_arg))
+                self.updateprompt(os.getcwd())
+            except OSError, (ErrorNumber, ErrorMessage):
+                sys.stdout.write("lshell: %s: %s\n" %(self.g_arg, ErrorMessage))
+        else:
+            os.chdir(self.conf['home_path'])
+            self.updateprompt(os.getcwd())
+
+    def check_secure(self, line, strict=None):
         """This method is used to check the content on the typed command.      \
         Its purpose is to forbid the user to user to override the lshell       \
         command restrictions. 
@@ -166,19 +182,65 @@ class ShellCmd(cmd.Cmd, object):
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
         for item in self.conf['forbidden']:
-            if item in line:
-                self.counter_update('syntax')
-                return 1
+            # allow '&&' and '||' even if singles are forbidden
+            if item in ['&', '|']:
+                if re.findall("[^\%s]\%s[^\%s]" %(item, item, item), line):
+                    self.counter_update('syntax')
+                    return 1
+            else:
+                if item in line:
+                    self.counter_update('syntax')
+                    return 1
+
+        returncode = 0
+        # check if the line contains $(foo) executions, and check them
+        executions = re.findall('\$\([^)]+[)]', line)
+        for item in executions:
+            returncode += self.check_path(item[2:-1].strip())
+            returncode += self.check_secure(item[2:].strip(), strict=1)
+
+        # check fot executions using back quotes '`'
+        executions = re.findall('\`[^`]+[`]', line)
+        for item in executions:
+            returncode += self.check_secure(item[1:-1].strip(), strict=1)
+
+        # check if the line contains ${foo=bar}, and check them
+        curly = re.findall('\$\{[^}]+[}]', line)
+        for item in curly:
+            # split to get get variable only, and remove last character "}"
+            variable = re.split('=|\+|\?|\-', item, 1)
+            returncode += self.check_path(variable[1][:-1])
+            
+        # if unknown commands where found, return 1 and don't execute the line
+        if returncode > 0:
+            return 1
+        # in case the $(foo) or `foo` command passed the above tests
+        elif line.startswith('$(') or line.startswith('`'):
+            return 0
 
         # in case ';', '|' or '&' are not forbidden, check if in line
         lines = re.split('&|\||;', line)
+        # remove trailing parenthesis
+        line = re.sub('\)$', '', line)
         for sperate_line in lines:
+            # in case of a sudo command, check in sudo_commands list if allowed
+            if sperate_line.strip().split(' ')[0] == 'sudo':
+                command = sperate_line.strip().split(' ')[1]
+                if command not in self.conf['sudo_commands'] and command:
+                    if self.conf['strict'] == 1:
+                        self.counter_update('command')
+                    else:
+                        self.log.critical('*** forbidden sudo -> %s'   \
+                                                % line )
+                    return 1
+            # for all other commands check in allowed list
             command = sperate_line.strip().split(' ')[0]
             if command not in self.conf['allowed'] and command:
-                if len(lines) > 1:
+                if strict:
                     self.counter_update('command', line)
                     return 1
-                return 0
+                else: return 0
+        return 0
          
     def counter_update(self, messagetype, path=None):
         """ Update the warning_counter, log and display a warning to the user
@@ -191,12 +253,12 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['warning_counter'] <= 0: 
             self.log.critical('*** forbidden %s -> "%s"'                       \
                                                   % (messagetype ,line))
-            self.log.critical('- Kicked out -')
+            self.log.critical('*** Kicked out')
             sys.exit(1)
         else:
             self.log.critical('*** forbidden %s -> "%s"'                       \
                                                   % (messagetype ,line))
-            self.stderr.write('*** You have %s joker(s) left,'                 \
+            self.stderr.write('*** You have %s warning(s) left,'               \
                                 ' before getting kicked out.\n'                \
                                 %(self.conf['warning_counter']-1))
             self.stderr.write('This incident has been reported.\n')
@@ -210,14 +272,18 @@ class ShellCmd(cmd.Cmd, object):
         allowed_path_re = str(self.conf['path'][0])
         denied_path_re = str(self.conf['path'][1][:-1])
 
-        if completion == 1:
-            line = line.strip().split()
-        else:
-            line = line.strip().split()[1:]
+        line = line.strip().split()
 
         for item in line:
+            # remove potential quotes
+            try:
+                item = eval(item)
+            except:
+                pass
+            # replace "~" with home path
+            item = re.sub('^~', self.conf['home_path'], item)
             tomatch = os.path.realpath(item)
-            if os.path.isdir(tomatch): tomatch += '/'
+            if os.path.isdir(tomatch) and tomatch[-1] != '/': tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)
             if denied_path_re: 
                 match_denied = re.findall(denied_path_re, tomatch)
@@ -255,12 +321,13 @@ class ShellCmd(cmd.Cmd, object):
         self.preloop()
         if self.use_rawinput and self.completekey:
             try:
-                readline.read_history_file(self.history)
+                readline.read_history_file(self.conf['history_file'])
+                readline.set_history_length(self.conf['history_size'])
             except IOError:
                 # if history file does not exist
                 try:
-                    open(self.history, 'w').close()
-                    readline.read_history_file(self.history)
+                    open(self.conf['history_file'], 'w').close()
+                    readline.read_history_file(self.conf['history_file'])
                 except IOError:
                     pass
             self.old_completer = readline.get_completer()
@@ -304,10 +371,10 @@ class ShellCmd(cmd.Cmd, object):
                 except ImportError:
                     pass
             try:
-                readline.write_history_file(self.history)
+                readline.write_history_file(self.conf['history_file'])
             except IOError:
                 self.log.error('WARN: couldn\'t write history '                \
-                                                'to file %s\n' %self.history)
+                                   'to file %s\n' % self.conf['history_file'])
 
     def complete(self, text, state):
         """Return the next possible completion for 'text'.
@@ -322,7 +389,9 @@ class ShellCmd(cmd.Cmd, object):
             stripped = len(origline) - len(line)
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
-            if line.split(' ')[0] in self.conf['allowed']:
+            if line.split(' ')[0] == 'sudo' and len(line.split(' ')) <= 2:
+                compfunc = self.completesudo
+            elif line.split(' ')[0] in self.conf['allowed']:
                 compfunc = self.completechdir
             elif begidx > 0:
                 cmd, args, foo = self.parseline(line)
@@ -361,7 +430,12 @@ class ShellCmd(cmd.Cmd, object):
             names.append('do_' + command)
         return [a[3:] for a in names if a.startswith(dotext)]
 
+    def completesudo(self, text, line, begidx, endidx):
+        """ complete sudo command """
+        return [a for a in self.conf['sudo_commands'] if a.startswith(text)]
+
     def completechdir(self, text, line, begidx, endidx):
+        """ complete directories """
         toreturn = []
         try:
             directory = os.path.realpath(line.split()[-1])
@@ -495,7 +569,7 @@ class CheckConfig:
         """ This method checks the usage. lshell.py must be called with a      \
         configuration file.
         If no configuration file is specified, it will set the configuration   \
-        file path to /etc/lshell.conf.
+        file path to /etc/lshell.confelf.conf['allowed'].append('exit')
         """
         # uncomment the following to set the -c/--config as mandatory argument
         #if '-c' not in arguments and '--config' not in arguments:
@@ -664,8 +738,6 @@ class CheckConfig:
         # get user configuration if any
         self.get_config_sub(self.user)
 
-        #print self.conf_raw
-
     def get_config_sub(self, section):
         """ self.get_config sub function """
         if self.config.has_section(section):
@@ -688,7 +760,6 @@ class CheckConfig:
                             liste = ['', '']
                             for path in eval(stuff):
                                 liste[0] += os.path.realpath(path) + '/.*|'
-                            liste[0] = liste[0]
                             self.conf_raw.update({key:str(liste)})
                         elif stuff and type(eval(stuff)) is list:
                             self.conf_raw.update({key:stuff})
@@ -699,7 +770,6 @@ class CheckConfig:
                     liste = ['', '']
                     for path in self.myeval(value, 'path'):
                         liste[0] += os.path.realpath(path) + '/.*|'
-                    liste[0] = liste[0]
                     self.conf_raw.update({key:str(liste)})
                 else:
                     self.conf_raw.update(dict([item]))
@@ -726,7 +796,6 @@ class CheckConfig:
             if key == 'path':
                 for path in sublist:
                     liste[1] += os.path.realpath(path) + '/.*|'
-                liste[1] = liste[1]
             else:
                 for item in sublist:
                     if item in liste:
@@ -735,7 +804,6 @@ class CheckConfig:
                         self.log.error("CONF: -['%s'] ignored in '%s' list."   \
                                                                  %(item,key))
         return {key:str(liste)}
-            
 
     def expand_all(self):
         """ expand allowed, if set to 'all'
@@ -796,18 +864,22 @@ class CheckConfig:
 
         for item in ['allowed',
                     'forbidden',
+                    'sudo_commands',
                     'warning_counter',
                     'timer',
                     'scp',
                     'sftp',
                     'overssh',
                     'strict',
-                    'aliases']:
+                    'aliases',
+                    'history_size']:
             try:
                 self.conf[item] = self.myeval(self.conf_raw[item], item)
             except KeyError:
-                if item in ['allowed', 'overssh']:
+                if item in ['allowed', 'overssh', 'sudo_commands']:
                     self.conf[item] = []
+                elif item in ['history_size']:
+                    self.conf[item] = -1
                 else:
                     self.conf[item] = 0
             except TypeError:
@@ -850,6 +922,16 @@ class CheckConfig:
             except TypeError:
                 self.log.error('CONF: scpforce must be a string!')
 
+        if self.conf_raw.has_key('intro'):
+            self.conf['intro'] = self.myeval(self.conf_raw['intro'])
+        else:
+            self.conf['intro'] = intro
+
+        # check if user account if locked
+        if self.conf_raw.has_key('lock_counter'):
+            self.conf['lock_counter'] = self.conf_raw['lock_counter']
+            self.account_lock(self.user, self.conf['lock_counter'], 1)
+
         if os.path.isdir(self.conf['home_path']):
             os.chdir(self.conf['home_path'])
         else:
@@ -857,9 +939,40 @@ class CheckConfig:
                                                     % self.conf['home_path'])
             sys.exit(0)
 
+        if self.conf_raw.has_key('history_file'):
+            try:
+                self.conf['history_file'] =                                    \
+                               eval(self.conf_raw['history_file'].replace(     \
+                                                  "%u", self.conf['username']))
+            except:
+                self.log.error('CONF: history file error: %s'                  \
+                                                % self.conf['history_file'])
+        else:
+            self.conf['history_file'] = history_file
+
+        if not self.conf['history_file'].startswith('/'):
+            self.conf['history_file'] = "%s/%s" % ( self.conf['home_path'],    \
+                                                    self.conf['history_file'])
+
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
+        # append default commands to allowed list
         self.conf['allowed'].append('exit')
+        self.conf['allowed'].append('lpath')
+        self.conf['allowed'].append('clear')
+
+        if self.conf['sudo_commands']:
+            self.conf['allowed'].append('sudo')
+
+    def account_lock(self, user, lock_counter, check=None):
+        """ check if user account is locked, in which case, exit """
+        ### TODO ###
+        # check if account is locked
+        if check:
+            pass
+        # increment account lock
+        else:
+            pass
 
     def check_scp_sftp(self):
         """ This method checks if the user is trying to SCP a file onto the    \
@@ -882,10 +995,9 @@ class CheckConfig:
                         sys.exit(0)
 
                 # case no tty is given to the session (sftp, scp, cmd over ssh)
-                if self.conf['ssh'].find('&') > -1                             \
-                            or self.conf['ssh'].find(';') > -1                 \
-                            or self.conf['ssh'].find('|') > -1 :
-                    self.ssh_warn('char over SSH', self.conf['ssh'])
+                for item in self.conf['forbidden']:
+                    if self.conf['ssh'].find(item) > -1:
+                        self.ssh_warn('char over SSH', self.conf['ssh'])
 
                 # check path first
                 allowed_path_re = str(self.conf['path'][0])
@@ -998,7 +1110,7 @@ def get_aliases(line, aliases):
         line = line.replace('%s' %char, '%s%s' %(char, char))
 
     for item in aliases.keys():
-        line = re.sub('(^|;|&|\|)%s' %item, aliases[item], line)
+        line = re.sub('(^|;|&|\|)%s ' %item, aliases[item], line)
     for char in [';', '&', '|']:
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)

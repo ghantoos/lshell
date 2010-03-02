@@ -2,11 +2,41 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.41 2009-11-30 23:39:08 ghantoos Exp $
+# $Id: CHANGES,v 1.42 2010-03-02 00:08:33 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.9 20/01/2010 ===
+    * Added the possibility to configure introduction prompt.
+    * Replaced "joker" by "warnings" (more elegant)
+    * Possibility of limiting the history file size.
+    * Added lpath built-in command to list allowed and denied path. Thanks to
+      Adrien Urban.
+    * Corrected bug when using "~" was not parsed as "home directory" when
+      used in a command other than "cd". Thank you Adrien Urban finding this.
+    * Corrected minor typo when warning for a forbidden path.
+    * If $(foo) is present in the line, check if foo is allowed before
+      executing the line. Thank you Adrien Urban for pointing this out!
+    * Added the possibility to list commands allowed to be executed using sudo.
+      The new configuration field is sudo_commands.
+    * Added the clear(1) command as a built-in command.
+    * Added '$(' and '${' in the forbidden list by default in the configuration
+      file.
+    * Now check the content of curly braces with variables '${}'.
+    * Added possibility to set history file name using history_file in the
+      configuration file.
+    * Corrected the bug when using '|', '&' or ';' over ssh. Over ssh forbidden
+      characters refers now to the list provided in the "forbidden" field.
+      Thank you Jools Wills for reporting this!
+    * It now possible to use "&&" and "||" even if "&" and/or "|" are in the
+      forbidden list. In order to forbid them too, you must add them
+      explicitely in the forbidden list.
+    * Fixed aliases bug that replaced part of commands rendering them unusable.
+      e.g. aliase vi:vim replaced the view command by vimew.
+
+    Thank you Adrien Urban for you security audit and excellent ideas!
 
 === v0.9.8 30/11/2009 ===
     * Major bug fix. lshell did not launch on python 2.4 and 2.5 (https://sourceforge.net/projects/lshell/forums/forum/778301/topic/3474668)

@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.42 2010-03-02 00:08:33 ghantoos Exp $
+# $Id: CHANGES,v 1.43 2010-03-02 00:32:27 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -35,6 +35,7 @@ http://sourceforge.net/projects/lshell/
       explicitely in the forbidden list.
     * Fixed aliases bug that replaced part of commands rendering them unusable.
       e.g. aliase vi:vim replaced the view command by vimew.
+    * Added a logrotate file for lshell log files.
 
     Thank you Adrien Urban for you security audit and excellent ideas!
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.26 2010-03-02 00:08:33 ghantoos Exp $
+# $Id: setup.py,v 1.27 2010-03-02 00:32:27 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009  Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -41,8 +41,9 @@ choose a list of allowed commands for every limited account.""",
         package_dir = {'':'lshellmodule'},
         packages = [''],
         data_files = [('/etc', ['etc/lshell.conf']),
-            ('share/doc/lshell',['README', 'COPYING', 'CHANGES']),
-            ('share/man/man1/', ['man/lshell.1']) ],
+                      ('/etc/logrotate.d', ['etc/logrotate.d/lshell']),
+                      ('share/doc/lshell',['README', 'COPYING', 'CHANGES']),
+                      ('share/man/man1/', ['man/lshell.1']) ],
         classifiers=[
                 'Development Status :: 4 - Beta',
                 'Environment :: Console'

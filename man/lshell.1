@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.27 2010-03-02 00:08:33 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.28 2010-03-04 22:55:28 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "January 10, 2010" "v0.9.9" 
+.TH lshell 1 "March 04, 2010" "v0.9.9" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -107,25 +107,29 @@ set log file name, e.g. %u-%y%m%d (i.e foo-20091009.log)
 .RE
 .SS [default] and/or [username] and/or [grp:groupname]
 .TP
+.TP
+.I aliases
+command aliases list (similar to bash's alias directive)
+.TP
 .I allowed
 a list of the allowed commands or set to 'all' to allow all commands in user's \
 PATH
 .TP
+.I env_path
+update the environment variable $PATH of the user (optional)
+.TP
 .I forbidden
 a list of forbidden characters or commands
 .TP
-.I warning_counter
-number of warnings when user enters a forbidden value before getting exited \
-from lshell.
+.I history_file
+set the history filename. A wildcard can be used:
+.RS
+.BR \ \ \ \ %u
+-> username (e.g. '/home/%u/.lhistory')
+.RE
 .TP
-.I timer
-a value in seconds for the session timer
-.TP
-.I passwd
-password of specific user (default is empty)
-.TP
-.I path
-list of path to restrict the user geographically
+.I history_size
+set the maximum size (in lines) of the history file
 .TP
 .I home_path
 set the home folder of your user. If not specified, the home directory is set \
@@ -134,31 +138,55 @@ to the $HOME environment variable. A wildcard can be used:
 .BR \ \ \ \ %u
 -> username (e.g. '/home/%u')
 .RE
-.RS
 .TP
-.I env_path
-update the environment variable $PATH of the user (optional)
+.I intro
+set the introduction to print at login
 .TP
-.I scp
-allow or forbid the use of scp connection - set to 1 or 0
+.I passwd
+password of specific user (default is empty)
 .TP
-.I sftp
-allow or forbid the use of sftp connection - set to 1 or 0
+.I path
+list of path to restrict the user geographically
 .TP
 .I overssh
 list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, \
 etc.)
+.TP
+.I scp
+allow or forbid the use of scp connection - set to 1 or 0
+.TP
+.I scpforce
+force files sent through scp to a specific directory
+.TP
+.I sftp
+allow or forbid the use of sftp connection - set to 1 or 0
+.TP
+.I sudo_commands
+a list of the allowed commands that can be used with sudo(8)
+.TP
+.I timer
+a value in seconds for the session timer
 .TP
 .I strict
 logging strictness. If set to 1, any unknown command is considered as \
 forbidden, and user's warning counter is decreased. If set to 0, command is \
 considered as unknown, and user is only warned (i.e. *** unknown synthax)
 .TP
-.I scpforce
-force files sent through scp to a specific directory
+.I warning_counter
+number of warnings when user enters a forbidden value before getting exited \
+from lshell.
+
+.SH SHELL BUILTIN COMMANDS
+Here is the set of commands that are always available with lshell:
 .TP
-.I aliases
-command aliases list (similar to bash's alias directive)
+. I lpath
+lists all allowed and forbidden path
+.TP
+.I clear
+clears the terminal
+.TP
+.I help, ?
+print the list of allowed commands
 
 .SH EXAMPLES
 .TP

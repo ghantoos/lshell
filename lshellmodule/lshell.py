@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.53 2010-03-02 00:08:33 ghantoos Exp $
+#    $Id: lshell.py,v 1.54 2010-03-04 21:42:37 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -336,8 +336,8 @@ class ShellCmd(cmd.Cmd, object):
         try:
             if intro is not None:
                 self.intro = intro
-            if self.intro:
-                self.stdout.write(str(self.intro)+"\n")
+            if self.conf['intro']:
+                self.stdout.write(str(self.conf['intro'])+"\n")
             stop = None
             while not stop:
                 if self.cmdqueue:

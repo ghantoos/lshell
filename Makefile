@@ -1,6 +1,6 @@
 # Limited Shell (lshell) Makefile
 #
-# $Id: Makefile,v 1.15 2009-06-09 19:53:46 ghantoos Exp $
+# $Id: Makefile,v 1.16 2010-03-06 23:11:38 ghantoos Exp $
 #
 
 PYTHON=`which python`
@@ -39,7 +39,5 @@ builddeb:
 
 clean:
 		$(PYTHON) setup.py clean
-		$(MAKE) -f $(CURDIR)/debian/rules clean
-		rm -rf build/ MANIFEST
+		rm -rf build/ MANIFEST dist/
 		find . -name '*.pyc' -delete
-

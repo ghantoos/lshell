@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.54 2010-03-04 21:42:37 ghantoos Exp $
+#    $Id: lshell.py,v 1.55 2010-03-06 22:55:08 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -85,7 +85,8 @@ class ShellCmd(cmd.Cmd, object):
     """ Main lshell CLI class
     """
 
-    def __init__(self, userconf, stdin=None, stdout=None, stderr=None):
+    def __init__(self, userconf, stdin=None, stdout=None, stderr=None,         \
+                                    g_cmd=None, g_line=None):
         if stdin is None:
             self.stdin = sys.stdin
         else:
@@ -101,6 +102,7 @@ class ShellCmd(cmd.Cmd, object):
 
         self.conf = userconf
         self.log = self.conf['logpath']
+
         # Set timer
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
@@ -109,8 +111,12 @@ class ShellCmd(cmd.Cmd, object):
         self.prompt = self.conf['username'] + ':~$ '
         self.intro = self.conf['intro']
 
+        # initialize cli variables
+        self.g_cmd = g_cmd
+        self.g_line = g_line
+
     def __getattr__(self, attr):
-        """This method actually takes care of all the called method that are   \
+        """ This method actually takes care of all the called method that are  \
         not resolved (i.e not existing methods). It actually will simulate     \
         the existance of any method    entered in the 'allowed' variable list. \
 
@@ -142,7 +148,7 @@ class ShellCmd(cmd.Cmd, object):
                 self.lpath()
             else:
                 os.system(self.g_line)
-        elif self.g_cmd not in ['', '?', 'help', None] : 
+        elif self.g_cmd not in ['', '?', 'help', None]: 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
@@ -171,7 +177,7 @@ class ShellCmd(cmd.Cmd, object):
             os.chdir(self.conf['home_path'])
             self.updateprompt(os.getcwd())
 
-    def check_secure(self, line, strict=None):
+    def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.      \
         Its purpose is to forbid the user to user to override the lshell       \
         command restrictions. 
@@ -181,15 +187,18 @@ class ShellCmd(cmd.Cmd, object):
         A warining counter has been added, to kick out of lshell a user if he  \
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
+
         for item in self.conf['forbidden']:
             # allow '&&' and '||' even if singles are forbidden
             if item in ['&', '|']:
                 if re.findall("[^\%s]\%s[^\%s]" %(item, item, item), line):
-                    self.counter_update('syntax')
+                    if not ssh:
+                        self.counter_update('syntax')
                     return 1
             else:
                 if item in line:
-                    self.counter_update('syntax')
+                    if not ssh:
+                        self.counter_update('syntax')
                     return 1
 
         returncode = 0
@@ -228,16 +237,21 @@ class ShellCmd(cmd.Cmd, object):
                 command = sperate_line.strip().split(' ')[1]
                 if command not in self.conf['sudo_commands'] and command:
                     if self.conf['strict'] == 1:
-                        self.counter_update('command')
+                        if not ssh:
+                            self.counter_update('command')
                     else:
                         self.log.critical('*** forbidden sudo -> %s'   \
                                                 % line )
                     return 1
             # for all other commands check in allowed list
             command = sperate_line.strip().split(' ')[0]
+            # if over SSH, replaced allowed list with the one of opverssh
+            if ssh:
+                self.conf['allowed'] = self.conf['overssh']
             if command not in self.conf['allowed'] and command:
                 if strict:
-                    self.counter_update('command', line)
+                    if not ssh:
+                        self.counter_update('command', line)
                     return 1
                 else: return 0
         return 0
@@ -263,7 +277,7 @@ class ShellCmd(cmd.Cmd, object):
                                 %(self.conf['warning_counter']-1))
             self.stderr.write('This incident has been reported.\n')
 
-    def check_path(self, line, completion=0):
+    def check_path(self, line, completion=None, ssh=None):
         """ Check if a path is entered in the line. If so, it checks if user   \
         are allowed to see this path. If user is not allowed, it calls         \
         self.counter_update. I case of completion, it only returns 0 or 1.
@@ -273,7 +287,6 @@ class ShellCmd(cmd.Cmd, object):
         denied_path_re = str(self.conf['path'][1][:-1])
 
         line = line.strip().split()
-
         for item in line:
             # remove potential quotes
             try:
@@ -289,14 +302,16 @@ class ShellCmd(cmd.Cmd, object):
                 match_denied = re.findall(denied_path_re, tomatch)
             else: match_denied = None
             if not match_allowed or match_denied:
-                if completion == 0:
-                    self.counter_update('path', tomatch)
+                if not completion:
+                    if not ssh:
+                        self.counter_update('path', tomatch)
                 return 1
-        if completion == 0:
-            if not re.findall(allowed_path_re, os.getcwd()+'/'): 
-                self.counter_update('path', os.getcwd())
-                os.chdir(self.conf['home_path'])
-                self.updateprompt(os.getcwd())
+        if not completion:
+            if not re.findall(allowed_path_re, os.getcwd()+'/'):
+                if not ssh:
+                    self.counter_update('path', os.getcwd())
+                    os.chdir(self.conf['home_path'])
+                    self.updateprompt(os.getcwd())
                 return 1
         return 0
 
@@ -994,11 +1009,12 @@ class CheckConfig:
                         self.log.error('*** forbidden SFTP connection')
                         sys.exit(0)
 
-                # case no tty is given to the session (sftp, scp, cmd over ssh)
-                for item in self.conf['forbidden']:
-                    if self.conf['ssh'].find(item) > -1:
-                        self.ssh_warn('char over SSH', self.conf['ssh'])
-
+                # initialise cli session
+                cli = ShellCmd(self.conf, None, None, None, None,              \
+                                                            self.conf['ssh'])
+                if cli.check_path(self.conf['ssh'], None, ssh=1):
+                    self.ssh_warn('path over SSH', self.conf['ssh'])
+                        
                 # check path first
                 allowed_path_re = str(self.conf['path'][0])
                 denied_path_re = str(self.conf['path'][1][:-1])
@@ -1036,11 +1052,15 @@ class CheckConfig:
                         self.ssh_warn('SCP connection', self.conf['ssh'], 'scp')
 
                 # check if command is in allowed overssh commands
-                elif self.conf['ssh'].strip().split()[0] in                    \
-                                                       self.conf['overssh']:
-                    self.log.error('Over SSH: "%s"' %self.conf['ssh'])
+                elif self.conf['ssh']:
+                    # replace aliases
                     self.conf['ssh'] = get_aliases(self.conf['ssh'],           \
                                                          self.conf['aliases'])
+                    # if command is not "secure", exit
+                    if cli.check_secure(self.conf['ssh'], strict=1, ssh=1):
+                        self.ssh_warn('char/command over SSH', self.conf['ssh'])
+                    # else
+                    self.log.error('Over SSH: "%s"' %self.conf['ssh'])
                     os.system(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
@@ -1061,6 +1081,7 @@ class CheckConfig:
         else:
             self.log.critical('*** forbidden %s: "%s"' %(message, command))
         self.stderr.write('This incident has been reported.\n')
+        self.log.error('Exited')
         sys.exit(0)
 
     def check_passwd(self):

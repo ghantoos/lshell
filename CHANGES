@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.44 2010-03-04 21:42:36 ghantoos Exp $
+# $Id: CHANGES,v 1.45 2010-03-06 22:55:08 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -38,6 +38,8 @@ http://sourceforge.net/projects/lshell/
     * Fixed aliases bug that replaced part of commands rendering them unusable.
       e.g. aliase vi:vim replaced the view command by vimew.
     * Added a logrotate file for lshell log files.
+    * Corrected parsing of commands overssh to be checked by the same function
+      used by the lshell CLI.
 
     Thank you Adrien Urban for you security audit and excellent ideas!
 

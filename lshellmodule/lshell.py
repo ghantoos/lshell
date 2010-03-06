@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.55 2010-03-06 22:55:08 ghantoos Exp $
+#    $Id: lshell.py,v 1.56 2010-03-06 23:06:37 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -155,6 +155,8 @@ class ShellCmd(cmd.Cmd, object):
         return object.__getattribute__(self, attr)
 
     def lpath(self):
+        """ lists allowed and forbidden path
+        """
         if self.conf['path'][0]:
             sys.stdout.write("Allowed:\n")
             for path in self.conf['path'][0].split('|'):
@@ -167,6 +169,8 @@ class ShellCmd(cmd.Cmd, object):
                     sys.stdout.write(" %s\n" %path[:-2])
 
     def cd(self):
+        """ implementation of the "cd" command
+        """
         if len(self.g_arg) >= 1:
             try:
                 os.chdir(os.path.realpath(self.g_arg))

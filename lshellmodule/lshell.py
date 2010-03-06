@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.56 2010-03-06 23:06:37 ghantoos Exp $
+#    $Id: lshell.py,v 1.57 2010-03-06 23:37:43 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -249,7 +249,7 @@ class ShellCmd(cmd.Cmd, object):
                     return 1
             # for all other commands check in allowed list
             command = sperate_line.strip().split(' ')[0]
-            # if over SSH, replaced allowed list with the one of opverssh
+            # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']
             if command not in self.conf['allowed'] and command:
@@ -294,7 +294,9 @@ class ShellCmd(cmd.Cmd, object):
         for item in line:
             # remove potential quotes
             try:
-                item = eval(item)
+                # preventq from converting the "help" string to a _Helper object
+                if item != "help":
+                    item = eval(item)
             except:
                 pass
             # replace "~" with home path
@@ -1018,7 +1020,7 @@ class CheckConfig:
                                                             self.conf['ssh'])
                 if cli.check_path(self.conf['ssh'], None, ssh=1):
                     self.ssh_warn('path over SSH', self.conf['ssh'])
-                        
+
                 # check path first
                 allowed_path_re = str(self.conf['path'][0])
                 denied_path_re = str(self.conf['path'][1][:-1])
@@ -1065,7 +1067,11 @@ class CheckConfig:
                         self.ssh_warn('char/command over SSH', self.conf['ssh'])
                     # else
                     self.log.error('Over SSH: "%s"' %self.conf['ssh'])
-                    os.system(self.conf['ssh'])
+                    # if command is "help"
+                    if self.conf['ssh'] == "help":
+                        cli.do_help(None)
+                    else:
+                        os.system(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
 

@@ -2,13 +2,13 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.45 2010-03-06 22:55:08 ghantoos Exp $
+# $Id: CHANGES,v 1.46 2010-03-07 00:07:10 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.9 20/01/2010 ===
+=== v0.9.9 07/03/2010 ===
     * Added the possibility to configure introduction prompt.
     * Replaced "joker" by "warnings" (more elegant)
     * Possibility of limiting the history file size.

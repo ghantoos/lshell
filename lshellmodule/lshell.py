@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.58 2010-03-07 03:04:12 ghantoos Exp $
+#    $Id: lshell.py,v 1.59 2010-03-07 22:52:01 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -1141,13 +1141,12 @@ def get_aliases(line, aliases):
         line = line.replace('%s' %char, '%s%s' %(char, char))
 
     # add a space at the en of the line...
-    line = line + " " 
+    line = "%s " % line
     for item in aliases.keys():
-        line = re.sub('(^|;|&|\|)%s ' %item, aliases[item], line)
+        line = re.sub('(^|;|&|\|)%s ' %item, "%s " % aliases[item], line)
     for char in [';', '&', '|']:
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)
-
     return line
 
 def main():

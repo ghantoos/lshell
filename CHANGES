@@ -2,11 +2,15 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.46 2010-03-07 00:07:10 ghantoos Exp $
+# $Id: CHANGES,v 1.47 2010-03-08 00:24:16 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.10 08/03/2010 ===
+    * Corrected minor bug that appeared in the previous version. Thank you 
+      Piotr Minkina for reporting this.
 
 === v0.9.9 07/03/2010 ===
     * Added the possibility to configure introduction prompt.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 1.27 2010-03-02 00:32:27 ghantoos Exp $
+# $Id: setup.py,v 1.28 2010-03-08 00:24:16 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009  Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -24,7 +24,7 @@ from distutils.core import setup
 if __name__ == '__main__':
 
     setup(name='lshell',
-        version='0.9.9',
+        version='0.9.10',
         description='Limited Shell',
         long_description="""Limited Shell (lshell) is lets you restrict the \
 environment of any user. It provides an easily configurable shell: just \

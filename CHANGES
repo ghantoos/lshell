@@ -2,11 +2,26 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.48 2010-03-08 00:36:33 ghantoos Exp $
+# $Id: CHANGES,v 1.49 2010-03-14 22:31:08 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.11 13/03/2010 ===
+    * Corrects traceback when executing a command that had a python homonym
+      (e.g. "print foo" or "set"). (Closes: SF#2969631)
+    * Corrected completion error when using "~/". Thanks to Piotr Minkina for
+      reporting this.
+    * Corrected the get_aliases function.
+    * Corrected interpretation of ~user. Thank you Adrien Urban for reporting
+      this.
+    * The 'home_path' variable is being deprecated from this version and on. 
+      Please use your system's tools to set a user's home directory.
+      It will be completely removed in the next version of lshell.
+    * Corrected shell variable and wildcards expansions when checking a command.
+      Thank you Adrien Urban for reporting
+      this.
 
 === v0.9.10 08/03/2010 ===
     * Corrected minor bug in the aliases function that appeared in the previous

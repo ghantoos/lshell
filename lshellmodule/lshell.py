@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.60 2010-03-08 00:24:16 ghantoos Exp $
+#    $Id: lshell.py,v 1.61 2010-03-14 22:31:08 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -41,7 +41,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.10"
+__version__ = "0.9.11"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -236,10 +236,15 @@ class ShellCmd(cmd.Cmd, object):
         # remove trailing parenthesis
         line = re.sub('\)$', '', line)
         for sperate_line in lines:
+            splitcmd = sperate_line.strip().split(' ')
+            command = splitcmd[0]
+            if len(splitcmd) > 1:
+                cmdargs = splitcmd
+            else: cmdargs = None
+
             # in case of a sudo command, check in sudo_commands list if allowed
-            if sperate_line.strip().split(' ')[0] == 'sudo':
-                command = sperate_line.strip().split(' ')[1]
-                if command not in self.conf['sudo_commands'] and command:
+            if command == 'sudo':
+                if cmdargs not in self.conf['sudo_commands'] and cmdargs:
                     if self.conf['strict'] == 1:
                         if not ssh:
                             self.counter_update('command')
@@ -247,17 +252,18 @@ class ShellCmd(cmd.Cmd, object):
                         self.log.critical('*** forbidden sudo -> %s'   \
                                                 % line )
                     return 1
-            # for all other commands check in allowed list
-            command = sperate_line.strip().split(' ')[0]
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']
+            
+            # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
                 if strict:
                     if not ssh:
                         self.counter_update('command', line)
-                    return 1
-                else: return 0
+                else:
+                    self.log.critical('*** unknown command: %s' %command)
+                return 1
         return 0
          
     def counter_update(self, messagetype, path=None):
@@ -294,13 +300,32 @@ class ShellCmd(cmd.Cmd, object):
         for item in line:
             # remove potential quotes
             try:
-                # preventq from converting the "help" string to a _Helper object
-                if item != "help":
-                    item = eval(item)
+                item = eval(item)
             except:
                 pass
+            # if item has been converted to somthing other than a string
+            # or an int, reconvert it to a string
+            if type(item) not in ['str', 'int']:
+                item = str(item)
             # replace "~" with home path
-            item = re.sub('^~', self.conf['home_path'], item)
+            item = os.path.expanduser(item)
+            # if contains a shell variable
+            if re.findall('\$|\*|\?',item):
+                # remove quotes if available
+                item = re.sub("\"|\'","",item)
+                # expand shell variables (method 1)
+                #for var in re.findall(r'\$(\w+|\{[^}]*\})', item):
+                #    # get variable value (if defined)
+                #    if os.environ.has_key(var):
+                #        value = os.environ[var]
+                #    else: value = ''
+                #    # replace the variable
+                #    item = re.sub('\$%s|\${%s}' %(var, var), value, item)
+                # expand shell variables and wildcards using "echo"
+                # i know, this a bit nasty...
+                cin, cout = os.popen2('`which echo` %s' % item)
+                item = cout.readlines()[0].split(' ')[0].strip()
+                item = os.path.expandvars(item)
             tomatch = os.path.realpath(item)
             if os.path.isdir(tomatch) and tomatch[-1] != '/': tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)
@@ -458,8 +483,11 @@ class ShellCmd(cmd.Cmd, object):
     def completechdir(self, text, line, begidx, endidx):
         """ complete directories """
         toreturn = []
+        tocomplete = line.split()[-1]
+        # replace "~" with home path
+        tocomplete = re.sub('^~', self.conf['home_path'], tocomplete)
         try:
-            directory = os.path.realpath(line.split()[-1])
+            directory = os.path.realpath(tocomplete)
         except: 
             directory = os.getcwd()
 
@@ -1133,17 +1161,13 @@ class LshellTimeOut(Exception):
 def get_aliases(line, aliases):
     """ Replace all configured aliases in the line
     """
-    line = re.sub('\s+', ' ', line.strip())
-    for char in [';', '&', '|']:
-        # remove spaces after char
-        line = line.replace('%s ' %char, '%s' %char)
-        # double char
-        line = line.replace('%s' %char, '%s%s' %(char, char))
-
-    # add a space at the en of the line...
-    line = "%s " % line
     for item in aliases.keys():
-        line = re.sub('(^|;|&|\|)%s ' %item, "%s " % aliases[item], line)
+        reg = '(^| |;)%s([ ;&\|]+|$)' % item
+        while re.findall(reg, line):
+            beforecommand = re.findall(reg, line)[0][0]
+            aftercommand = re.findall(reg, line)[0][1]
+            line = re.sub(reg, "%s%s%s" % (beforecommand, aliases[item],       \
+                                                     aftercommand), line, 1)
     for char in [';', '&', '|']:
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)

@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.30 2010-03-08 00:36:33 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.31 2010-03-14 22:31:08 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "March 08, 2010" "v0.9.10" 
+.TH lshell 1 "March 08, 2010" "v0.9.11" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -131,9 +131,11 @@ set the history filename. A wildcard can be used:
 .I history_size
 set the maximum size (in lines) of the history file
 .TP
-.I home_path
+.I home_path (deprecated)
 set the home folder of your user. If not specified, the home directory is set \
-to the $HOME environment variable. A wildcard can be used:
+to the $HOME environment variable. This variable will be removed in the next \
+version of lshell, please use your system's tools to set a user's home \
+directory. A wildcard can be used:
 .RS
 .BR \ \ \ \ %u
 -> username (e.g. '/home/%u')

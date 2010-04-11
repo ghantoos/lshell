@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.31 2010-03-14 22:31:08 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.32 2010-04-11 00:50:08 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -159,6 +159,12 @@ allow or forbid the use of scp connection - set to 1 or 0
 .TP
 .I scpforce
 force files sent through scp to a specific directory
+.TP
+.I scp_download
+set to 0 to forbid scp downloads (default is 1)
+.TP
+.I scp_upload
+set to 0 to forbid scp uploads (default is 1)
 .TP
 .I sftp
 allow or forbid the use of sftp connection - set to 1 or 0

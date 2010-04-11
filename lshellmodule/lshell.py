@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.61 2010-03-14 22:31:08 ghantoos Exp $
+#    $Id: lshell.py,v 1.62 2010-04-11 00:50:08 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -917,6 +917,8 @@ class CheckConfig:
                     'warning_counter',
                     'timer',
                     'scp',
+                    'scp_upload',
+                    'scp_download',
                     'sftp',
                     'overssh',
                     'strict',
@@ -929,6 +931,9 @@ class CheckConfig:
                     self.conf[item] = []
                 elif item in ['history_size']:
                     self.conf[item] = -1
+                # default scp is allowed
+                elif item in ['scp_upload', 'scp_download']:
+                    self.conf[item] = 1
                 else:
                     self.conf[item] = 0
             except TypeError:
@@ -1065,20 +1070,37 @@ class CheckConfig:
                 if self.conf['ssh'].startswith('scp '):
                     if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']: 
                         if ' -f ' in self.conf['ssh']:
-                            self.log.error('SCP: GET "%s"' %self.conf['ssh'])
+                            # case scp download is allowed
+                            if self.conf['scp_download']:
+                                self.log.error('SCP: GET "%s"' \
+                                                            % self.conf['ssh'])
+                            # case scp download is forbidden
+                            else:
+                                self.log.error('SCP: download forbidden: "%s"' \
+                                                            % self.conf['ssh'])
+                                sys.exit(0)
                         elif ' -t ' in self.conf['ssh']:
-                            if self.conf.has_key('scpforce'):
-                                cmdsplit = self.conf['ssh'].split(' ')
-                                scppath = os.path.realpath(cmdsplit[-1])
-                                forcedpath = os.path.realpath(self.conf
-                                                                ['scpforce'])
-                                if scppath != forcedpath:
-                                    self.log.error('SCP: forced SCP directory:'
-                                                          + ' %s' %scppath)
-                                    cmdsplit.pop(-1)
-                                    cmdsplit.append(forcedpath)
-                                    self.conf['ssh'] = string.join(cmdsplit)
-                            self.log.error('SCP: PUT "%s"' %self.conf['ssh'])
+                            # case scp upload is allowed
+                            if self.conf['scp_upload']:
+                                if self.conf.has_key('scpforce'):
+                                    cmdsplit = self.conf['ssh'].split(' ')
+                                    scppath = os.path.realpath(cmdsplit[-1])
+                                    forcedpath = os.path.realpath(self.conf
+                                                                   ['scpforce'])
+                                    if scppath != forcedpath:
+                                        self.log.error('SCP: forced SCP '      \
+                                                       + 'directory: %s'       \
+                                                                    %scppath)
+                                        cmdsplit.pop(-1)
+                                        cmdsplit.append(forcedpath)
+                                        self.conf['ssh'] = string.join(cmdsplit)
+                                self.log.error('SCP: PUT "%s"'                 \
+                                                        %self.conf['ssh'])
+                            # case scp upload is forbidden
+                            else:
+                                self.log.error('SCP: upload forbidden: "%s"'   \
+                                                            % self.conf['ssh']) 
+                                sys.exit(0)
                         os.system(self.conf['ssh'])
                         self.log.error('SCP disconnect')
                         sys.exit(0)
@@ -1196,5 +1218,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

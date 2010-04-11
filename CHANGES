@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.49 2010-03-14 22:31:08 ghantoos Exp $
+# $Id: CHANGES,v 1.50 2010-04-11 00:50:08 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -22,6 +22,8 @@ http://sourceforge.net/projects/lshell/
     * Corrected shell variable and wildcards expansions when checking a command.
       Thank you Adrien Urban for reporting
       this.
+    * Added possibility to allow/forbid scp upload/download using scp_upload
+      and scp_download variables.
 
 === v0.9.10 08/03/2010 ===
     * Corrected minor bug in the aliases function that appeared in the previous

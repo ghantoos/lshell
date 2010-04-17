@@ -8,11 +8,11 @@ from getpass import getuser
 class TestFunctions(unittest.TestCase):
 
     user = getuser()
-    child = pexpect.spawn('./lshell.py --config ../etc/lshell.conf ')
+    child = pexpect.spawn('../lshellmodule/lshell.py --config ../etc/lshell.conf ')
 
     def spawnlshell(self, oldchild=None):
         """ spawn lshell with pexpext and return the child """
-        child = pexpect.spawn('./lshell.py --config ../etc/lshell.conf ')
+        child = pexpect.spawn('../lshellmodule/lshell.py --config ../etc/lshell.conf ')
         if oldchild:
             oldchild.close()
             child.expect('%s:~\$' % getuser())

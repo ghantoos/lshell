@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.62 2010-04-11 00:50:08 ghantoos Exp $
+#    $Id: lshell.py,v 1.63 2010-04-17 22:55:04 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -653,6 +653,11 @@ class CheckConfig:
         args = ['--config', conf['configfile']]
         if conf.has_key('logpath'): args += ['--log', conf['logpath']]
         os.environ['LSHELL_ARGS'] = str(args)
+
+        # if lshell is invoked using shh autorized_keys file e.g.
+        # command="/usr/bin/lshell", ssh-dss ....
+        if os.environ.has_key('SSH_ORIGINAL_COMMAND'):
+            conf['ssh'] = os.environ['SSH_ORIGINAL_COMMAND']
 
         return conf, args
 

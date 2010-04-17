@@ -2,13 +2,13 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.50 2010-04-11 00:50:08 ghantoos Exp $
+# $Id: CHANGES,v 1.51 2010-04-17 22:54:58 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.11 13/03/2010 ===
+=== v0.9.11 18/04/2010 ===
     * Corrects traceback when executing a command that had a python homonym
       (e.g. "print foo" or "set"). (Closes: SF#2969631)
     * Corrected completion error when using "~/". Thanks to Piotr Minkina for
@@ -24,6 +24,9 @@ http://sourceforge.net/projects/lshell/
       this.
     * Added possibility to allow/forbid scp upload/download using scp_upload
       and scp_download variables.
+    * Corrected bug when using the "command=" in openSSH's authorized_keys.
+      lshell now takes into account the SSH_ORIGINAL_COMMAND environment
+      variable. Thank you Jason Heiss for reporting this.
 
 === v0.9.10 08/03/2010 ===
     * Corrected minor bug in the aliases function that appeared in the previous

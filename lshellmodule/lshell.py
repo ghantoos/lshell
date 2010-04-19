@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.63 2010-04-17 22:55:04 ghantoos Exp $
+#    $Id: lshell.py,v 1.64 2010-04-19 22:53:29 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -793,7 +793,9 @@ class CheckConfig:
         self.get_config_sub(self.user)
 
     def get_config_sub(self, section):
-        """ self.get_config sub function """
+        """ this function is used to interpret the configuration +/-, 
+            'all' etc.
+        """
         if self.config.has_section(section):
             for item in self.config.items(section):
                 key = item[0]
@@ -939,6 +941,8 @@ class CheckConfig:
                 # default scp is allowed
                 elif item in ['scp_upload', 'scp_download']:
                     self.conf[item] = 1
+                elif item in ['aliases']:
+                    self.conf[item] = {}
                 else:
                     self.conf[item] = 0
             except TypeError:

@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.51 2010-04-17 22:54:58 ghantoos Exp $
+# $Id: CHANGES,v 1.52 2010-04-19 22:53:28 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -27,6 +27,8 @@ http://sourceforge.net/projects/lshell/
     * Corrected bug when using the "command=" in openSSH's authorized_keys.
       lshell now takes into account the SSH_ORIGINAL_COMMAND environment
       variable. Thank you Jason Heiss for reporting this.
+    * Corrected traceback when aliases is not defined in configuration, and
+      command is sent over SSH. Thank you Jason Heiss for reporting this.
 
 === v0.9.10 08/03/2010 ===
     * Corrected minor bug in the aliases function that appeared in the previous

@@ -2,13 +2,13 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.52 2010-04-19 22:53:28 ghantoos Exp $
+# $Id: CHANGES,v 1.53 2010-04-27 21:03:04 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.11 18/04/2010 ===
+=== v0.9.11 27/04/2010 ===
     * Corrects traceback when executing a command that had a python homonym
       (e.g. "print foo" or "set"). (Closes: SF#2969631)
     * Corrected completion error when using "~/". Thanks to Piotr Minkina for

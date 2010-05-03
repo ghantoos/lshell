@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.53 2010-04-27 21:03:04 ghantoos Exp $
+# $Id: CHANGES,v 1.54 2010-05-03 23:02:09 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -20,8 +20,7 @@ http://sourceforge.net/projects/lshell/
       Please use your system's tools to set a user's home directory.
       It will be completely removed in the next version of lshell.
     * Corrected shell variable and wildcards expansions when checking a command.
-      Thank you Adrien Urban for reporting
-      this.
+      Thank you Adrien Urban for reporting this.
     * Added possibility to allow/forbid scp upload/download using scp_upload
       and scp_download variables.
     * Corrected bug when using the "command=" in openSSH's authorized_keys.

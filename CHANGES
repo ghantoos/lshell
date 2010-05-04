@@ -2,11 +2,15 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.54 2010-05-03 23:02:09 ghantoos Exp $
+# $Id: CHANGES,v 1.55 2010-05-04 19:50:29 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.12 04/05/2010 ===
+    * A minor bug was inserted in version 0.9.11 with the sudo command.
+      It has been corrected in this version.
 
 === v0.9.11 27/04/2010 ===
     * Corrects traceback when executing a command that had a python homonym

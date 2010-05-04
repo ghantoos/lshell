@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.64 2010-04-19 22:53:29 ghantoos Exp $
+#    $Id: lshell.py,v 1.65 2010-05-04 19:50:29 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -41,7 +41,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.11"
+__version__ = "0.9.12"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -244,7 +244,7 @@ class ShellCmd(cmd.Cmd, object):
 
             # in case of a sudo command, check in sudo_commands list if allowed
             if command == 'sudo':
-                if cmdargs not in self.conf['sudo_commands'] and cmdargs:
+                if cmdargs[1] not in self.conf['sudo_commands'] and cmdargs:
                     if self.conf['strict'] == 1:
                         if not ssh:
                             self.counter_update('command')

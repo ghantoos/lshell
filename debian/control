@@ -3,7 +3,7 @@ Section: shells
 Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~), python-support, python
-Standards-Version: 3.8.3
+Standards-Version: 3.8.4
 
 Package: lshell
 Architecture: all

@@ -1,3 +1,23 @@
+lshell (0.9.12-1) unstable; urgency=low
+
+  * New upstream release:
+    - Corrects a major security bug (overriding path restrictions using
+      variable expansion).
+    - Adds the ability to allow/forbid upload and/or downloads via SCP.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 05 May 2010 23:12:05 +0200
+
+lshell (0.9.10-1) unstable; urgency=low
+
+  * New upstream release: 
+    - Corrects major security bugs. (Closes: #572144)
+    - Adds a logrotate file.
+    - Adds new features.
+  * debian/control:
+    - Bumped Standards-Version to 3.8.4.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Sun, 07 Mar 2010 01:52:57 +0000
+
 lshell (0.9.8-1) unstable; urgency=low
 
   * New upstream version: 

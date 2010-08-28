@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.66 2010-08-28 15:06:28 ghantoos Exp $
+#    $Id: lshell.py,v 1.67 2010-08-28 15:10:06 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -36,6 +36,7 @@ import re
 import getopt
 import logging
 import signal
+import subprocess
 import readline
 import grp
 import time
@@ -323,7 +324,8 @@ class ShellCmd(cmd.Cmd, object):
                 #    item = re.sub('\$%s|\${%s}' %(var, var), value, item)
                 # expand shell variables and wildcards using "echo"
                 # i know, this a bit nasty...
-                cin, cout = os.popen2('`which echo` %s' % item)
+		p = subprocess.Popen("`which echo` %s" % item, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		(cin, cout) = (p.stdin, p.stdout)
                 item = cout.readlines()[0].split(' ')[0].strip()
                 item = os.path.expandvars(item)
             tomatch = os.path.realpath(item)

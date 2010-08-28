@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.65 2010-05-04 19:50:29 ghantoos Exp $
+#    $Id: lshell.py,v 1.66 2010-08-28 15:06:28 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -310,9 +310,9 @@ class ShellCmd(cmd.Cmd, object):
             # replace "~" with home path
             item = os.path.expanduser(item)
             # if contains a shell variable
-            if re.findall('\$|\*|\?',item):
+            if re.findall('\$|\*|\?', item):
                 # remove quotes if available
-                item = re.sub("\"|\'","",item)
+                item = re.sub("\"|\'", "", item)
                 # expand shell variables (method 1)
                 #for var in re.findall(r'\$(\w+|\{[^}]*\})', item):
                 #    # get variable value (if defined)

@@ -2,11 +2,17 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.55 2010-05-04 19:50:29 ghantoos Exp $
+# $Id: CHANGES,v 1.56 2010-09-02 21:18:50 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
+
+=== v0.9.13 02/09/2010 ===
+    * Added missing builin commands when 'allowed' list was set to 'all'. For
+      example, the "cd" command was then missing.
+    * Added the "export" builtin function to export shell variables. Thank you
+      Chris for reporting this issue.
 
 === v0.9.12 04/05/2010 ===
     * A minor bug was inserted in version 0.9.11 with the sudo command.

@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.67 2010-08-28 15:10:06 ghantoos Exp $
+#    $Id: lshell.py,v 1.68 2010-09-02 21:18:50 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -144,9 +144,12 @@ class ShellCmd(cmd.Cmd, object):
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd == 'cd':
                 self.cd()
-            # list all allowed path
+            # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
                 self.lpath()
+            # builtin export function
+            elif self.g_cmd == 'export':
+                self.export()
             else:
                 os.system(self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 
@@ -168,6 +171,16 @@ class ShellCmd(cmd.Cmd, object):
             for path in self.conf['path'][1].split('|'):
                 if path:
                     sys.stdout.write(" %s\n" %path[:-2])
+
+    def export(self):
+        """ export environment variables """
+        # if command contains at least 1 space
+        if self.g_line.count(' '):
+            env = self.g_line.split(" ", 1)[1]
+            # if it conatins the equal sign, consider only the first one
+            if env.count('='):
+                var, value = env.split(' ')[0].split('=')[0:2]
+                os.environ.update({var:value})
 
     def cd(self):
         """ implementation of the "cd" command
@@ -866,7 +879,11 @@ class CheckConfig:
     def expand_all(self):
         """ expand allowed, if set to 'all'
         """
-        expanded_all = []
+        # initialize list to common shell builtins
+        expanded_all = ['bg', 'break', 'case', 'cd', 'continue', 'eval', \
+                        'exec', 'exit', 'fg', 'if', 'jobs', 'kill', 'login', \
+                        'logout', 'set', 'shift', 'stop', 'suspend', 'umask', \
+                        'unset', 'wait', 'while' ]
         for directory in os.environ['PATH'].split(':'):
             if os.path.exists(directory):
                 for item in os.listdir(directory):
@@ -874,6 +891,7 @@ class CheckConfig:
                         expanded_all.append(item)
             else: self.log.error('CONF: PATH entry "%s" does not exist'        \
                                                                     % directory)
+
         return str(expanded_all)
  
     def myeval(self, value, info=''):

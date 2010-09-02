@@ -3,6 +3,7 @@
 import unittest
 import pexpect
 import os
+import subprocess
 from getpass import getuser
 
 class TestFunctions(unittest.TestCase):
@@ -28,7 +29,11 @@ class TestFunctions(unittest.TestCase):
 
     def test_02(self):
         """ 02 - get the output of ls """
-        cin, cout = os.popen2('ls ~')
+        p = subprocess.Popen( "ls ~",
+                              shell=True,
+                              stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE )
+        (cin, cout) = (p.stdin, p.stdout)
         expected = map(lambda x: x.strip(), cout)
         self.child.sendline('ls')
         self.child.expect('%s:~\$' % self.user)
@@ -154,7 +159,11 @@ class TestFunctions(unittest.TestCase):
     def test_13(self):
         """ 13 - completion with ~/ """
         self.child = self.spawnlshell(self.child)
-        cin, cout = os.popen2('ls -F ~/tmp')
+        p = subprocess.Popen( "ls -F ~/tmp", 
+                              shell=True, 
+                              stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE )
+        (cin, cout) = (p.stdin, p.stdout)
         expected = map(lambda x: x.strip(), cout)
         self.child.sendline('cd ~/tmp/\t\t')
         self.child.expect('%s:~\$' % self.user)
@@ -178,7 +187,11 @@ class TestFunctions(unittest.TestCase):
     def test_99(self):
         """ 99 - completion test 1 """
         self.child = self.spawnlshell(self.child)
-        cin, cout = os.popen2('\nls -F ~')
+        p = subprocess.Popen( "\nls -F ~",
+                              shell=True,
+                              stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE )
+        (cin, cout) = (p.stdin, p.stdout)
         expected = map(lambda x: x.strip(), cout)
         self.child.sendline('ls ~\t\t')
         self.child.expect('%s:~\$' % self.user)

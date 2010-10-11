@@ -2,13 +2,15 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.56 2010-09-02 21:18:50 ghantoos Exp $
+# $Id: CHANGES,v 1.57 2010-10-11 23:10:23 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
 === v0.9.13 02/09/2010 ===
+    * Switched from deprecated popen2 to subprocess to be python2.6 compatible.
+      Thank you Greg Orlowski for the patch.
     * Added missing builin commands when 'allowed' list was set to 'all'. For
       example, the "cd" command was then missing.
     * Added the "export" builtin function to export shell variables. Thank you

@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.71 2010-10-13 18:50:30 ghantoos Exp $
+#    $Id: lshell.py,v 1.72 2010-10-13 18:55:57 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -1222,8 +1222,8 @@ def get_aliases(line, aliases):
             aftercommand = re.findall(reg, line)[0][1]
             line = re.sub(reg, "%s%s%s" % (beforecommand, aliases[item],       \
                                                      aftercommand), line, 1)
-            linesave = line
             # if line does not change after sub, exit loop
+            linesave = line
             if linesave == line:
                 break
     for char in [';', '&', '|']:

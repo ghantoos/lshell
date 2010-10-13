@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.70 2010-10-11 23:10:23 ghantoos Exp $
+#    $Id: lshell.py,v 1.71 2010-10-13 18:50:30 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -1216,12 +1216,16 @@ def get_aliases(line, aliases):
     """ Replace all configured aliases in the line
     """
     for item in aliases.keys():
-        reg = '(^| |;)%s([ ;&\|]+|$)' % item
+        reg = '(^|; |;)%s([ ;&\|]+|$)' % item
         while re.findall(reg, line):
             beforecommand = re.findall(reg, line)[0][0]
             aftercommand = re.findall(reg, line)[0][1]
             line = re.sub(reg, "%s%s%s" % (beforecommand, aliases[item],       \
                                                      aftercommand), line, 1)
+            linesave = line
+            # if line does not change after sub, exit loop
+            if linesave == line:
+                break
     for char in [';', '&', '|']:
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)

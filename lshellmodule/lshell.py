@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.72 2010-10-13 18:55:57 ghantoos Exp $
+#    $Id: lshell.py,v 1.73 2010-10-13 19:52:07 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -147,6 +147,9 @@ class ShellCmd(cmd.Cmd, object):
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
                 self.lpath()
+            # builtin lsudo function: list all allowed sudo commands
+            elif self.g_cmd == 'lsudo':
+                self.lsudo()
             # builtin export function
             elif self.g_cmd == 'export':
                 self.export()
@@ -171,6 +174,14 @@ class ShellCmd(cmd.Cmd, object):
             for path in self.conf['path'][1].split('|'):
                 if path:
                     sys.stdout.write(" %s\n" %path[:-2])
+
+    def lsudo(self):
+        """ lists allowed sudo commands
+        """
+        if self.conf.has_key('sudo_commands'):
+            sys.stdout.write("Allowed sudo commands:\n")
+            for command in self.conf['sudo_commands']:
+                sys.stdout.write(" - %s\n" % command)
 
     def export(self):
         """ export environment variables """
@@ -455,7 +466,8 @@ class ShellCmd(cmd.Cmd, object):
             endidx = readline.get_endidx() - stripped
             if line.split(' ')[0] == 'sudo' and len(line.split(' ')) <= 2:
                 compfunc = self.completesudo
-            elif line.split(' ')[0] in self.conf['allowed']:
+            elif len (line.split(' ')) > 1 \
+                 and line.split(' ')[0] in self.conf['allowed']:
                 compfunc = self.completechdir
             elif begidx > 0:
                 cmd, args, foo = self.parseline(line)
@@ -1045,6 +1057,7 @@ class CheckConfig:
         # append default commands to allowed list
         self.conf['allowed'].append('exit')
         self.conf['allowed'].append('lpath')
+        self.conf['allowed'].append('lsudo')
         self.conf['allowed'].append('clear')
 
         if self.conf['sudo_commands']:

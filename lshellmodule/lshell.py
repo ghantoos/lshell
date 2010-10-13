@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.73 2010-10-13 19:52:07 ghantoos Exp $
+#    $Id: lshell.py,v 1.74 2010-10-13 22:40:46 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -42,7 +42,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.13"
+__version__ = "0.9.14"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 

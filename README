@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - README  #
 #####################################
 #
-# $Id: README,v 1.25 2009-06-09 19:53:46 ghantoos Exp $
+# $Id: README,v 1.26 2010-10-13 22:40:46 ghantoos Exp $
 
 Contact: Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 http://ghantoos.org/limited-shell-lshell/
@@ -22,7 +22,7 @@ All this information is in the man (man lshell)
             - Extract the files:
         # tar xvfz lshell.tar.gz
             - On Linux:
-        # python setup.py install --no-compile
+        # python setup.py install --no-compile --prefix=/usr
             - On *BSD:
         # python setup.py install --no-compile --install-data=/usr/{pkg,local}/
 

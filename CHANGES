@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.59 2010-10-13 19:52:05 ghantoos Exp $
+# $Id: CHANGES,v 1.60 2010-10-13 22:40:46 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -13,6 +13,7 @@ http://sourceforge.net/projects/lshell/
       "recursive" (e.g. 'ls':'ls --color=auto')
     * Added lsudo built-in command to list allowed sudo commands.
     * Corrected completion function when 2 strings collided (e.g. ls and lsudo)
+    * Corrected the README's installation part (adding --prefix).
 
 === v0.9.13 02/09/2010 ===
     * Switched from deprecated popen2 to subprocess to be python2.6 compatible.

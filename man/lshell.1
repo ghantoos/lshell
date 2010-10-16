@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.35 2010-10-11 23:10:23 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.36 2010-10-16 10:57:39 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -84,8 +84,9 @@ config path (default is /var/log/lshell/)
 0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
 .TP
 .I logfilename
-set log file name, e.g. %u-%y%m%d (i.e foo-20091009.log)
+\- set to 'syslog' in order to log to syslog
 .RS
+\- set log file name, e.g. %u-%y%m%d (i.e foo-20091009.log):
 .BR \ \ \ \ %u
 -> username
 .RE

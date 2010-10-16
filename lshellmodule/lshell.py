@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.74 2010-10-13 22:40:46 ghantoos Exp $
+#    $Id: lshell.py,v 1.75 2010-10-16 10:57:39 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -740,8 +740,10 @@ class CheckConfig:
 
         # create logger for lshell application
         logger = logging.getLogger('lshell')
-        formatter = logging.Formatter('%(asctime)s (' + getuser()              \
-                                                        + '): %(message)s')
+        formatter = logging.Formatter('%%(asctime)s (%s): %%(message)s' \
+                                                % getuser() )
+        syslogformatter = logging.Formatter('lshell[%s]: %s: %%(message)s' \
+                                                % ( os.getpid(), getuser() ))
 
         logger.setLevel(logging.DEBUG)
 
@@ -762,7 +764,10 @@ class CheckConfig:
 
         # read logfilename is exists, and set logfilename
         if self.conf.has_key('logfilename'):
-            logfilename = self.conf['logfilename']
+            try:
+                logfilename = eval(self.conf['logfilename'])
+            except:
+                logfilename = self.conf['logfilename']
             currentime = time.localtime()
             logfilename = logfilename.replace('%y','%s'   %currentime[0])
             logfilename = logfilename.replace('%m','%02d' %currentime[1])
@@ -775,13 +780,21 @@ class CheckConfig:
 
         if self.conf['loglevel'] > 0:
             try:
-                # if log file is writable add new log file handler
-                logfile = os.path.join(self.conf['logpath'], logfilename+'.log')
-                fp = open(logfile,'a').close()
-                self.logfile = logging.FileHandler(logfile)
-                logger.addHandler(self.logfile)
-                self.logfile.setFormatter(formatter)
-                self.logfile.setLevel(self.levels[self.conf['loglevel']])
+                if logfilename == "syslog":
+                    from logging.handlers import SysLogHandler
+                    syslog = SysLogHandler(address='/dev/log')
+                    syslog.setFormatter(syslogformatter)
+                    syslog.setLevel(self.levels[self.conf['loglevel']])
+                    logger.addHandler(syslog)
+                else:
+                    # if log file is writable add new log file handler
+                    logfile = os.path.join(self.conf['logpath'], \
+                                                            logfilename+'.log')
+                    fp = open(logfile,'a').close()
+                    self.logfile = logging.FileHandler(logfile)
+                    self.logfile.setFormatter(formatter)
+                    self.logfile.setLevel(self.levels[self.conf['loglevel']])
+                    logger.addHandler(self.logfile)
 
             except IOError:
                 # uncomment the 2 following lines to warn if log file is not   \

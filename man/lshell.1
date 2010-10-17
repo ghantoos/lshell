@@ -1,9 +1,9 @@
 .\"
-.\"   $Id: lshell.1,v 1.36 2010-10-16 10:57:39 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.37 2010-10-17 15:47:21 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "October 11, 2010" "v0.9.13" 
+.TH lshell 1 "October 17, 2010" "v0.9.14" 
 
 .SH NAME
 lshell \- Limited Shell
@@ -84,7 +84,7 @@ config path (default is /var/log/lshell/)
 0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
 .TP
 .I logfilename
-\- set to 'syslog' in order to log to syslog
+\- set to \fBsyslog\fR in order to log to syslog
 .RS
 \- set log file name, e.g. %u-%y%m%d (i.e foo-20091009.log):
 .BR \ \ \ \ %u
@@ -183,19 +183,22 @@ considered as unknown, and user is only warned (i.e. *** unknown synthax)
 .TP
 .I warning_counter
 number of warnings when user enters a forbidden value before getting exited \
-from lshell.
+from lshell. Set to \fB\-1\fR  to disable the counter, and just warn the user.
 
 .SH SHELL BUILTIN COMMANDS
 Here is the set of commands that are always available with lshell:
-.TP
-. I lpath
-lists all allowed and forbidden path
 .TP
 .I clear
 clears the terminal
 .TP
 .I help, ?
 print the list of allowed commands
+.TP
+. I lpath
+lists all allowed and forbidden path
+.TP
+. I lsudo
+lists all sudo allowed commands
 
 .SH EXAMPLES
 .TP

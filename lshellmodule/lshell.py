@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.75 2010-10-16 10:57:39 ghantoos Exp $
+#    $Id: lshell.py,v 1.76 2010-10-17 15:47:21 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -294,23 +294,29 @@ class ShellCmd(cmd.Cmd, object):
     def counter_update(self, messagetype, path=None):
         """ Update the warning_counter, log and display a warning to the user
         """
-        self.conf['warning_counter'] -= 1
         if path:
             line = path
         else:
             line = self.g_line
-        if self.conf['warning_counter'] <= 0: 
+
+        # if warning_counter is set to -1, just warn, don't kick
+        if self.conf['warning_counter'] == -1:
             self.log.critical('*** forbidden %s -> "%s"'                       \
-                                                  % (messagetype ,line))
-            self.log.critical('*** Kicked out')
-            sys.exit(1)
+                                                      % (messagetype ,line))
         else:
-            self.log.critical('*** forbidden %s -> "%s"'                       \
-                                                  % (messagetype ,line))
-            self.stderr.write('*** You have %s warning(s) left,'               \
-                                ' before getting kicked out.\n'                \
-                                %(self.conf['warning_counter']-1))
-            self.stderr.write('This incident has been reported.\n')
+            self.conf['warning_counter'] -= 1
+            if self.conf['warning_counter'] < 0: 
+                self.log.critical('*** forbidden %s -> "%s"'                   \
+                                                      % (messagetype ,line))
+                self.log.critical('*** Kicked out')
+                sys.exit(1)
+            else:
+                self.log.critical('*** forbidden %s -> "%s"'                   \
+                                                      % (messagetype ,line))
+                self.stderr.write('*** You have %s warning(s) left,'           \
+                                    ' before getting kicked out.\n'            \
+                                    %(self.conf['warning_counter']))
+                self.stderr.write('This incident has been reported.\n')
 
     def check_path(self, line, completion=None, ssh=None):
         """ Check if a path is entered in the line. If so, it checks if user   \

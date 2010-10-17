@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.61 2010-10-16 10:57:39 ghantoos Exp $
+# $Id: CHANGES,v 1.62 2010-10-17 15:47:21 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -15,6 +15,9 @@ http://sourceforge.net/projects/lshell/
     * Corrected completion function when 2 strings collided (e.g. ls and lsudo)
     * Corrected the README's installation part (adding --prefix).
     * Added possibility to log via syslog.
+    * Corrected warning counter (was counting minus 1).
+    * Added the possibility to disable the counter, and just warn the user
+      (withouht kicking him).
 
 === v0.9.13 02/09/2010 ===
     * Switched from deprecated popen2 to subprocess to be python2.6 compatible.

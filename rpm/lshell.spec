@@ -1,5 +1,5 @@
 %define name lshell
-%define version 0.9.13
+%define version 0.9.14
 %define release 1
 %define python_sitelib %(python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")
 
@@ -39,7 +39,7 @@ rm -rf $RPM_BUILD_ROOT
 %post
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.13 2010-10-11 23:10:23 ghantoos Exp $
+# $Id: lshell.spec,v 1.14 2010-10-17 15:47:21 ghantoos Exp $
 #
 # RPM build postinstall script
 
@@ -104,7 +104,7 @@ fi
 %postun
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.13 2010-10-11 23:10:23 ghantoos Exp $
+# $Id: lshell.spec,v 1.14 2010-10-17 15:47:21 ghantoos Exp $
 #
 # RPM build postuninstall script
 

@@ -1,5 +1,5 @@
 .\"
-.\"   $Id: lshell.1,v 1.37 2010-10-17 15:47:21 ghantoos Exp $
+.\"   $Id: lshell.1,v 1.38 2010-10-18 19:05:17 ghantoos Exp $
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
@@ -106,6 +106,10 @@ config path (default is /var/log/lshell/)
 .BR \ \ \ \ %h
 -> time  [00:00..23:59]
 .RE
+.TP
+.I syslogname
+in case you are using syslog, set your logname (default: lshell)
+.RS
 .SS [default] and/or [username] and/or [grp:groupname]
 .TP
 .TP
@@ -118,6 +122,9 @@ PATH
 .TP
 .I env_path
 update the environment variable $PATH of the user (optional)
+.TP
+.I env_vars
+set environment variables (optional)
 .TP
 .I forbidden
 a list of forbidden characters or commands
@@ -150,6 +157,17 @@ password of specific user (default is empty)
 .TP
 .I path
 list of path to restrict the user geographically
+.TP
+.I prompt
+set the user's prompt format (default: username)
+.RS
+.BR \ \ \ \ %u
+-> username
+.RE
+.RS
+.BR \ \ \ \ %h
+-> hostname
+.RE
 .TP
 .I overssh
 list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, \

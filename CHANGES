@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.62 2010-10-17 15:47:21 ghantoos Exp $
+# $Id: CHANGES,v 1.63 2010-10-18 19:05:17 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -18,6 +18,9 @@ http://sourceforge.net/projects/lshell/
     * Corrected warning counter (was counting minus 1).
     * Added the possibility to disable the counter, and just warn the user
       (withouht kicking him).
+    * Added possibility to configure prompt. Thank you bapt for the patch.
+    * Added possibility to set environment variables to users. Thank you bapt
+      for the patch.
 
 === v0.9.13 02/09/2010 ===
     * Switched from deprecated popen2 to subprocess to be python2.6 compatible.

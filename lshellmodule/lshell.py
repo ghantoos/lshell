@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.76 2010-10-17 15:47:21 ghantoos Exp $
+#    $Id: lshell.py,v 1.77 2010-10-18 19:05:17 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -109,7 +109,15 @@ class ShellCmd(cmd.Cmd, object):
         self.identchars = self.identchars + '+./-'
         self.log.error('Logged in')
         cmd.Cmd.__init__(self)
-        self.prompt = self.conf['username'] + ':~$ '
+        if self.conf.has_key('prompt'):
+            self.promptbase = self.conf['prompt']
+            self.promptbase = self.promptbase.replace('%u', getuser())
+            self.promptbase = self.promptbase.replace('%h', os.uname()[1])
+        else:
+            self.promptbase = getuser()
+
+        self.prompt = '%s:~$ ' % self.promptbase
+
         self.intro = self.conf['intro']
 
         # initialize cli variables
@@ -386,12 +394,12 @@ class ShellCmd(cmd.Cmd, object):
         """
 
         if path is self.conf['home_path']:
-            self.prompt = self.conf['username'] + ':~$ '
+            self.prompt = '%s:~$ ' % self.promptbase
         elif re.findall(self.conf['home_path'], path) :
-            self.prompt = self.conf['username'] + ':~'                         \
-                                + path.split(self.conf['home_path'])[1] + '$ '
+            self.prompt = '%s:~%s$ ' % ( self.promptbase, \
+                                         path.split(self.conf['home_path'])[1])
         else:
-            self.prompt = self.conf['username'] + ':' + path + '$ '
+            self.prompt = '%s:%s$ ' % (self.promptbase, path)
 
     def cmdloop(self, intro=None):
         """Repeatedly issue a prompt, accept input, parse an initial prefix    \
@@ -647,6 +655,7 @@ class CheckConfig:
         self.get_config()
         self.check_user_integrity()
         self.get_config_user()
+        self.check_env()
         self.check_scp_sftp()
         self.check_passwd()
 
@@ -707,6 +716,13 @@ class CheckConfig:
         sys.stderr.write('lshell-%s - Limited Shell\n' %__version__)
         sys.exit(0)
 
+    def check_env(self):
+        """ Load environment variable set in configuration file """
+        if self.conf.has_key('env_vars'):
+            env_vars = self.conf['env_vars']
+            for key in env_vars.keys():
+                os.environ[key] = str(env_vars[key])
+
     def check_file(self, file):
         """ This method checks the existence of the "argumently" given         \
         configuration file.
@@ -745,11 +761,19 @@ class CheckConfig:
                         4 : logging.DEBUG }
 
         # create logger for lshell application
-        logger = logging.getLogger('lshell')
+        if self.conf.has_key('syslogname'):
+            try:
+                logname = eval(self.conf['syslogname'])
+            except:
+                logfilename = self.conf['syslogname']
+        else:
+            logname = 'lshell'
+
+        logger = logging.getLogger(logname)
         formatter = logging.Formatter('%%(asctime)s (%s): %%(message)s' \
                                                 % getuser() )
-        syslogformatter = logging.Formatter('lshell[%s]: %s: %%(message)s' \
-                                                % ( os.getpid(), getuser() ))
+        syslogformatter = logging.Formatter('%s[%s]: %s: %%(message)s' \
+                                                % (logname, os.getpid(), getuser() ))
 
         logger.setLevel(logging.DEBUG)
 
@@ -976,6 +1000,7 @@ class CheckConfig:
                     'forbidden',
                     'sudo_commands',
                     'warning_counter',
+                    'env_vars',
                     'timer',
                     'scp',
                     'scp_upload',
@@ -984,6 +1009,7 @@ class CheckConfig:
                     'overssh',
                     'strict',
                     'aliases',
+                    'prompt',
                     'history_size']:
             try:
                 self.conf[item] = self.myeval(self.conf_raw[item], item)
@@ -995,7 +1021,7 @@ class CheckConfig:
                 # default scp is allowed
                 elif item in ['scp_upload', 'scp_download']:
                     self.conf[item] = 1
-                elif item in ['aliases']:
+                elif item in ['aliases','env_vars']:
                     self.conf[item] = {}
                 else:
                     self.conf[item] = 0

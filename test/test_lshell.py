@@ -59,7 +59,7 @@ class TestFunctions(unittest.TestCase):
     def test_05(self):
         """ 05 - echo $(uptime) """
         expected = "*** forbidden syntax -> \"echo $(uptime)\"\r\n*** You have"\
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('echo $(uptime)')
         self.child.expect('%s:~\$' % self.user)
@@ -81,7 +81,7 @@ class TestFunctions(unittest.TestCase):
         """ 06.1 - tilda bug """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/etc/passwd\"\r\n*** You have"     \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('cd tmp')
         self.child.expect('%s:~/tmp\$' % self.user)
@@ -94,7 +94,7 @@ class TestFunctions(unittest.TestCase):
         """ 07 - quotes in cd "/" """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/\"\r\n*** You have"               \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('ls -ld "/"')
         self.child.expect('%s:~\$' % self.user)
@@ -105,7 +105,7 @@ class TestFunctions(unittest.TestCase):
         """ 08 - ls ~root """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/root/\"\r\n*** You have"          \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('ls ~root')
         self.child.expect('%s:~\$' % self.user)
@@ -116,7 +116,7 @@ class TestFunctions(unittest.TestCase):
         """ 09 - cd ~root """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/root/\"\r\n*** You have"          \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('cd ~root')
         self.child.expect('%s:~\$' % self.user)
@@ -127,7 +127,7 @@ class TestFunctions(unittest.TestCase):
         """ 10 - empty variable 'ls "$a"/etc/passwd' """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/etc/passwd\"\r\n*** You have"    \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('ls "$a"/etc/passwd')
         self.child.expect('%s:~\$' % self.user)
@@ -138,7 +138,7 @@ class TestFunctions(unittest.TestCase):
         """ 11 - empty variable 'ls -l .*./.*./etc/passwd' """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/etc/passwd\"\r\n*** You have"    \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('ls -l .*./.*./etc/passwd')
         self.child.expect('%s:~\$' % self.user)  
@@ -149,7 +149,7 @@ class TestFunctions(unittest.TestCase):
         """ 12 - empty variable 'ls -l .?/.?/etc/passwd' """
         self.child = self.spawnlshell(self.child)
         expected = "*** forbidden path -> \"/etc/passwd\"\r\n*** You have"    \
-                 + " 0 warning(s) left, before getting kicked out.\r\nThis "   \
+                 + " 1 warning(s) left, before getting kicked out.\r\nThis "   \
                  + "incident has been reported.\r\n"
         self.child.sendline('ls -l .?/.?/etc/passwd')
         self.child.expect('%s:~\$' % self.user)

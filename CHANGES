@@ -2,13 +2,13 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.64 2010-10-26 22:10:47 ghantoos Exp $
+# $Id: CHANGES,v 1.65 2010-10-26 22:39:36 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.14 13/40/2010 ===
+=== v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 
       "recursive" (e.g. 'ls':'ls --color=auto')
     * Added lsudo built-in command to list allowed sudo commands.

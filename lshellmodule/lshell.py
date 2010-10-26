@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.79 2010-10-26 22:10:49 ghantoos Exp $
+#    $Id: lshell.py,v 1.80 2010-10-26 22:35:28 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -198,13 +198,18 @@ class ShellCmd(cmd.Cmd, object):
         """ print the commands history
         """
         try:
+            try:
+                readline.write_history_file(self.conf['history_file'])
+            except IOError:
+                self.log.error('WARN: couldn\'t write history '                \
+                                   'to file %s\n' % self.conf['history_file'])
             f = open(self.conf['history_file'], 'r')
             i = 1
             for item in f.readlines():
                 sys.stdout.write("%d:  %s" % (i, item) )
                 i += 1
         except:
-            sys.stdout.write('** Unable to read the history file.')
+            self.log.critical('** Unable to read the history file.')
 
     def export(self):
         """ export environment variables """

@@ -2,7 +2,7 @@
 #  LSHELL - Limited Shell - CHANGES #
 #####################################
 #
-# $Id: CHANGES,v 1.63 2010-10-18 19:05:17 ghantoos Exp $
+# $Id: CHANGES,v 1.64 2010-10-26 22:10:47 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
@@ -21,6 +21,7 @@ http://sourceforge.net/projects/lshell/
     * Added possibility to configure prompt. Thank you bapt for the patch.
     * Added possibility to set environment variables to users. Thank you bapt
       for the patch.
+    * Added the 'history' built-in function.
 
 === v0.9.13 02/09/2010 ===
     * Switched from deprecated popen2 to subprocess to be python2.6 compatible.

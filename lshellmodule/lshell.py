@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.78 2010-10-26 21:46:06 ghantoos Exp $
+#    $Id: lshell.py,v 1.79 2010-10-26 22:10:49 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -158,6 +158,9 @@ class ShellCmd(cmd.Cmd, object):
             # builtin lsudo function: list all allowed sudo commands
             elif self.g_cmd == 'lsudo':
                 self.lsudo()
+            # builtin history function: print command history
+            elif self.g_cmd == 'history':
+                self.history()
             # builtin export function
             elif self.g_cmd == 'export':
                 self.export()
@@ -190,6 +193,18 @@ class ShellCmd(cmd.Cmd, object):
             sys.stdout.write("Allowed sudo commands:\n")
             for command in self.conf['sudo_commands']:
                 sys.stdout.write(" - %s\n" % command)
+
+    def history(self):
+        """ print the commands history
+        """
+        try:
+            f = open(self.conf['history_file'], 'r')
+            i = 1
+            for item in f.readlines():
+                sys.stdout.write("%d:  %s" % (i, item) )
+                i += 1
+        except:
+            sys.stdout.write('** Unable to read the history file.')
 
     def export(self):
         """ export environment variables """
@@ -1106,6 +1121,7 @@ class CheckConfig:
         self.conf['allowed'].append('exit')
         self.conf['allowed'].append('lpath')
         self.conf['allowed'].append('lsudo')
+        self.conf['allowed'].append('history')
         self.conf['allowed'].append('clear')
 
         if self.conf['sudo_commands']:

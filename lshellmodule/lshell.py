@@ -2,7 +2,7 @@
 #
 #    Limited command Shell (lshell)
 #  
-#    $Id: lshell.py,v 1.77 2010-10-18 19:05:17 ghantoos Exp $
+#    $Id: lshell.py,v 1.78 2010-10-26 21:46:06 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
@@ -1023,6 +1023,9 @@ class CheckConfig:
                     self.conf[item] = 1
                 elif item in ['aliases','env_vars']:
                     self.conf[item] = {}
+                # do not set the variable
+                elif item in ['prompt']:
+                    continue
                 else:
                     self.conf[item] = 0
             except TypeError:

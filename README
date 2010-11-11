@@ -4,8 +4,9 @@
 #
 # $Id: README,v 1.27 2010-10-16 09:41:38 ghantoos Exp $
 
-Contact: Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
-http://ghantoos.org/limited-shell-lshell/
+Contact : Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
+Homepage: http://lshell.ghantoos.org
+Sources : https://github.com/ghantoos/lshell
 #####################################
 
 I've commented the source file (lshell.py) and the template configuration      \

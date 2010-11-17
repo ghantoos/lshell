@@ -112,7 +112,8 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf.has_key('prompt'):
             self.promptbase = self.conf['prompt']
             self.promptbase = self.promptbase.replace('%u', getuser())
-            self.promptbase = self.promptbase.replace('%h', os.uname()[1])
+            self.promptbase = self.promptbase.replace('%h', \
+                                                    os.uname()[1].split('.')[0])
         else:
             self.promptbase = getuser()
 

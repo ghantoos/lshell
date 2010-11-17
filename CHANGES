@@ -8,6 +8,9 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.9.15 17/11/2010 ===
+    * Set the hostname to the "short hostname" in the prompt.
+
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 
       "recursive" (e.g. 'ls':'ls --color=auto')

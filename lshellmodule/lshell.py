@@ -298,14 +298,15 @@ class ShellCmd(cmd.Cmd, object):
 
             # in case of a sudo command, check in sudo_commands list if allowed
             if command == 'sudo':
-                if cmdargs[1] not in self.conf['sudo_commands'] and cmdargs:
-                    if self.conf['strict'] == 1:
-                        if not ssh:
-                            self.counter_update('command')
-                    else:
-                        self.log.critical('*** forbidden sudo -> %s'   \
-                                                % line )
-                    return 1
+                if type(cmdargs) == list:
+                    if cmdargs[1] not in self.conf['sudo_commands'] and cmdargs:
+                        if self.conf['strict'] == 1:
+                            if not ssh:
+                                self.counter_update('command')
+                        else:
+                            self.log.critical('*** forbidden sudo -> %s'       \
+                                                    % line )
+                        return 1
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']

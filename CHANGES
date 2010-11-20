@@ -10,6 +10,8 @@ http://sourceforge.net/projects/lshell/
 
 === v0.9.15 17/11/2010 ===
     * Set the hostname to the "short hostname" in the prompt.
+    * Corrected traceback when "sudo" command was entered alone. Thank you
+      Kiran Reddy for reporting this.
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

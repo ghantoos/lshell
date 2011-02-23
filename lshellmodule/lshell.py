@@ -36,7 +36,6 @@ import re
 import getopt
 import logging
 import signal
-import subprocess
 import readline
 import grp
 import time
@@ -384,11 +383,15 @@ class ShellCmd(cmd.Cmd, object):
                 #    item = re.sub('\$%s|\${%s}' %(var, var), value, item)
                 # expand shell variables and wildcards using "echo"
                 # i know, this a bit nasty...
-                p = subprocess.Popen( "`which echo` %s" % item,
-                                      shell=True,
-                                      stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE )
-                (cin, cout) = (p.stdin, p.stdout)
+                try:
+                    import subprocess
+                    p = subprocess.Popen( "`which echo` %s" % item,
+                                          shell=True,
+                                          stdin=subprocess.PIPE,
+                                          stdout=subprocess.PIPE )
+                    (cin, cout) = (p.stdin, p.stdout)
+                except ImportError:
+                    cin, cout = os.popen2('`which echo` %s' % item)
                 item = cout.readlines()[0].split(' ')[0].strip()
                 item = os.path.expandvars(item)
             tomatch = os.path.realpath(item)

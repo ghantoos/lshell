@@ -12,6 +12,7 @@ http://sourceforge.net/projects/lshell/
     * Set the hostname to the "short hostname" in the prompt.
     * Corrected traceback when "sudo" command was entered alone. Thank you
       Kiran Reddy for reporting this.
+    * Added support for python2.3 as subprocess is not included by default.
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

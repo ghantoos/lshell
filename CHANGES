@@ -13,6 +13,7 @@ http://sourceforge.net/projects/lshell/
     * Corrected traceback when "sudo" command was entered alone. Thank you
       Kiran Reddy for reporting this.
     * Added support for python2.3 as subprocess is not included by default.
+    * Corrected the 'strict' behavior when entering a forbidden path.
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

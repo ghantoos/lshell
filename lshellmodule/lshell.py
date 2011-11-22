@@ -41,7 +41,7 @@ import grp
 import time
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
-__version__ = "0.9.14"
+__version__ = "0.9.15"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -140,7 +140,7 @@ class ShellCmd(cmd.Cmd, object):
             sys.exit(0)
         if self.check_secure(self.g_line, self.conf['strict']) == 1: 
             return object.__getattribute__(self, attr)
-        if self.check_path(self.g_line) == 1:
+        if self.check_path(self.g_line, strict = self.conf['strict']) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
             self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],      \
@@ -262,7 +262,7 @@ class ShellCmd(cmd.Cmd, object):
         # check if the line contains $(foo) executions, and check them
         executions = re.findall('\$\([^)]+[)]', line)
         for item in executions:
-            returncode += self.check_path(item[2:-1].strip())
+            returncode += self.check_path(item[2:-1].strip(), strict = strict)
             returncode += self.check_secure(item[2:].strip(), strict=1)
 
         # check fot executions using back quotes '`'
@@ -275,7 +275,7 @@ class ShellCmd(cmd.Cmd, object):
         for item in curly:
             # split to get get variable only, and remove last character "}"
             variable = re.split('=|\+|\?|\-', item, 1)
-            returncode += self.check_path(variable[1][:-1])
+            returncode += self.check_path(variable[1][:-1], strict = strict)
             
         # if unknown commands where found, return 1 and don't execute the line
         if returncode > 0:
@@ -347,7 +347,7 @@ class ShellCmd(cmd.Cmd, object):
                                     %(self.conf['warning_counter']))
                 self.stderr.write('This incident has been reported.\n')
 
-    def check_path(self, line, completion=None, ssh=None):
+    def check_path(self, line, completion=None, ssh=None, strict=None):
         """ Check if a path is entered in the line. If so, it checks if user   \
         are allowed to see this path. If user is not allowed, it calls         \
         self.counter_update. I case of completion, it only returns 0 or 1.
@@ -403,14 +403,22 @@ class ShellCmd(cmd.Cmd, object):
             if not match_allowed or match_denied:
                 if not completion:
                     if not ssh:
-                        self.counter_update('path', tomatch)
-                return 1
+                        if strict: 
+                            self.counter_update('path', tomatch)
+                        else: 
+                            self.log.critical('*** Forbidden path: %s'        \
+                                                        % tomatch)
+                return 1    
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:
-                    self.counter_update('path', os.getcwd())
-                    os.chdir(self.conf['home_path'])
-                    self.updateprompt(os.getcwd())
+                    if strict:
+                        self.counter_update('path', os.getcwd())
+                        os.chdir(self.conf['home_path'])
+                        self.updateprompt(os.getcwd())
+                    else:
+                        self.log.critical('*** Forbidden path: %s'            \
+                                                        %os.getcwd())
                 return 1
         return 0
 

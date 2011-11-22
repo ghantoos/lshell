@@ -250,12 +250,20 @@ class ShellCmd(cmd.Cmd, object):
             if item in ['&', '|']:
                 if re.findall("[^\%s]\%s[^\%s]" %(item, item, item), line):
                     if not ssh:
-                        self.counter_update('syntax')
+                        if strict:
+                            self.counter_update('syntax')
+                        else:
+                            self.log.critical('*** forbidden syntax -> %s'    \
+                                                    % line)
                     return 1
             else:
                 if item in line:
                     if not ssh:
-                        self.counter_update('syntax')
+                        if strict:
+                            self.counter_update('syntax')
+                        else:
+                            self.log.critical('*** forbidden syntax -> %s'    \
+                                                    % line)
                     return 1
 
         returncode = 0

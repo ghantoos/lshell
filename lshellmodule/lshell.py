@@ -923,9 +923,12 @@ class CheckConfig:
         grplist = os.getgroups()
         grplist.reverse()
         for gid in grplist:
-            grpname = grp.getgrgid(gid)[0]
-            section = 'grp:' + grpname
-            self.get_config_sub(section)
+            try:
+                grpname = grp.getgrgid(gid)[0]
+                section = 'grp:' + grpname
+                self.get_config_sub(section)
+            except KeyError:
+                pass
 
         # get user configuration if any
         self.get_config_sub(self.user)

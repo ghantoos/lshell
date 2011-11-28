@@ -1061,7 +1061,10 @@ class CheckConfig:
                     'prompt',
                     'history_size']:
             try:
-                self.conf[item] = self.myeval(self.conf_raw[item], item)
+                if len(self.conf_raw[item]) == 0:
+                    self.conf[item] = ""
+                else:
+                    self.conf[item] = self.myeval(self.conf_raw[item], item)
             except KeyError:
                 if item in ['allowed', 'overssh', 'sudo_commands']:
                     self.conf[item] = []

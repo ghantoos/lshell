@@ -19,6 +19,8 @@ http://sourceforge.net/projects/lshell/
     * Add support for empty prompt.
     * Fixed bugs when using $() and ``.
     * Corrected strict behavior to apply to forbidden path.
+    * Added support for wilcard '*' when using 'cd'.
+    * Added support for "cd -" to return to previous directory.
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

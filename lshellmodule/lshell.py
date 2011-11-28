@@ -120,6 +120,9 @@ class ShellCmd(cmd.Cmd, object):
 
         self.intro = self.conf['intro']
 
+        # initialize oldpwd variable to home directory
+        self.oldpwd = self.conf['home_path']
+
         # initialize cli variables
         self.g_cmd = g_cmd
         self.g_line = g_line
@@ -240,7 +243,14 @@ class ShellCmd(cmd.Cmd, object):
                 # if any results are returned, pick first one
                 if len(wilddir) >= 1:
                     self.g_arg = wilddir[0]
-                
+            # go previous directory
+            if self.g_arg == '-':
+                self.g_arg = self.oldpwd
+
+            # store current directory in oldpwd variable
+            self.oldpwd = os.getcwd()
+
+            # change directory
             try:
                 os.chdir(os.path.realpath(self.g_arg))
                 self.updateprompt(os.getcwd())

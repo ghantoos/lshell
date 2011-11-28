@@ -271,18 +271,21 @@ class ShellCmd(cmd.Cmd, object):
         executions = re.findall('\$\([^)]+[)]', line)
         for item in executions:
             returncode += self.check_path(item[2:-1].strip(), strict = strict)
-            returncode += self.check_secure(item[2:].strip(), strict=1)
+            returncode += self.check_secure(item[2:-1].strip(), strict = strict)
 
         # check fot executions using back quotes '`'
         executions = re.findall('\`[^`]+[`]', line)
         for item in executions:
-            returncode += self.check_secure(item[1:-1].strip(), strict=1)
+            returncode += self.check_secure(item[1:-1].strip(), strict = strict)
 
         # check if the line contains ${foo=bar}, and check them
         curly = re.findall('\$\{[^}]+[}]', line)
         for item in curly:
             # split to get get variable only, and remove last character "}"
-            variable = re.split('=|\+|\?|\-', item, 1)
+            if re.findall(r'=|\+|\?|\-', item):
+                variable = re.split('=|\+|\?|\-', item, 1)
+            else:
+                variable = item
             returncode += self.check_path(variable[1][:-1], strict = strict)
             
         # if unknown commands where found, return 1 and don't execute the line
@@ -320,11 +323,11 @@ class ShellCmd(cmd.Cmd, object):
             
             # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
-                if strict:
-                    if not ssh:
+                if not ssh:
+                    if strict:
                         self.counter_update('command', line)
-                else:
-                    self.log.critical('*** unknown command: %s' %command)
+                    else:
+                        self.log.critical('*** unknown command: %s' %command)
                 return 1
         return 0
          
@@ -364,7 +367,12 @@ class ShellCmd(cmd.Cmd, object):
         allowed_path_re = str(self.conf['path'][0])
         denied_path_re = str(self.conf['path'][1][:-1])
 
-        line = line.strip().split()
+        # split arguments containing $() and `` and analyze them seperatly
+        line1 = re.split('\$\([^)]+[)]', line)
+        line2 = re.split('\`[^`]+[`]', line)
+        line3 = re.findall('\$\([^)]+[)]', line)
+        line4 = re.findall('\`[^`]+[`]', line)
+        line = line1 + line2 + line3 + line4
         for item in line:
             # remove potential quotes
             try:

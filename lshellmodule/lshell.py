@@ -225,6 +225,22 @@ class ShellCmd(cmd.Cmd, object):
         """ implementation of the "cd" command
         """
         if len(self.g_arg) >= 1:
+            # add wildcard completion support to cd
+            if self.g_arg.find('*'):
+                import glob
+                # get all files and directories matching wildcard
+                wildall = glob.glob(self.g_arg)
+                wilddir = []
+                # filter to only directories
+                for item in wildall:
+                    if os.path.isdir(item):
+                        wilddir.append(item)
+                # sort results
+                wilddir.sort()
+                # if any results are returned, pick first one
+                if len(wilddir) >= 1:
+                    self.g_arg = wilddir[0]
+                
             try:
                 os.chdir(os.path.realpath(self.g_arg))
                 self.updateprompt(os.getcwd())

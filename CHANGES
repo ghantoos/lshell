@@ -14,6 +14,11 @@ http://sourceforge.net/projects/lshell/
       Kiran Reddy for reporting this.
     * Added support for python2.3 as subprocess is not included by default.
     * Corrected the 'strict' behavior when entering a forbidden path.
+    * Added short path promp support using the 'prompt_short' variable.
+    * Corrected stacktrace when group did not exist.
+    * Add support for empty prompt.
+    * Fixed bugs when using $() and ``.
+    * Corrected strict behavior to apply to forbidden path.
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

@@ -460,7 +460,9 @@ class ShellCmd(cmd.Cmd, object):
 
         if path is self.conf['home_path']:
             self.prompt = '%s:~$ ' % self.promptbase
-        elif re.findall(self.conf['home_path'], path) :
+        elif self.conf['prompt_short'] == 1:
+            self.prompt = '%s: %s$ ' % (self.promptbase, path.split('/')[-1])
+        elif re.findall(self.conf['home_path'], path):
             self.prompt = '%s:~%s$ ' % ( self.promptbase, \
                                          path.split(self.conf['home_path'])[1])
         else:
@@ -1078,6 +1080,7 @@ class CheckConfig:
                     'strict',
                     'aliases',
                     'prompt',
+                    'prompt_short',
                     'history_size']:
             try:
                 if len(self.conf_raw[item]) == 0:

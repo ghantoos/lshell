@@ -1091,6 +1091,7 @@ class CheckConfig:
                     'aliases',
                     'prompt',
                     'prompt_short',
+                    'allowed_cmd_path',
                     'history_size']:
             try:
                 if len(self.conf_raw[item]) == 0:
@@ -1195,6 +1196,17 @@ class CheckConfig:
 
         if self.conf['sudo_commands']:
             self.conf['allowed'].append('sudo')
+
+        # add all commands present in allowed_cmd_path if specified
+        if self.conf['allowed_cmd_path']:
+            for path in self.conf['allowed_cmd_path']:
+                # add path to PATH env variable
+                os.environ['PATH'] += ":%s" % path
+                # find executable file, and add them to allowed commands
+                for item in os.listdir(path):
+                    cmd = os.path.join(path, item)
+                    if os.access(cmd, os.X_OK):
+                        self.conf['allowed'].append(item)
 
     def account_lock(self, user, lock_counter, check=None):
         """ check if user account is locked, in which case, exit """

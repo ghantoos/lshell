@@ -271,6 +271,14 @@ class ShellCmd(cmd.Cmd, object):
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
 
+        if re.findall('[:cntrl:]', line):
+            if not ssh:
+                if strict:
+                    self.counter_update('syntax')
+                else:
+                    self.log.critical('*** forbidden syntax -> %s' % line)
+            return 1
+
         for item in self.conf['forbidden']:
             # allow '&&' and '||' even if singles are forbidden
             if item in ['&', '|']:

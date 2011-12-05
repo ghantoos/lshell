@@ -271,7 +271,7 @@ class ShellCmd(cmd.Cmd, object):
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
 
-        if re.findall('[:cntrl:]', line):
+        if re.findall('[:cntrl:].*\n', line):
             if not ssh:
                 if strict:
                     self.counter_update('syntax')

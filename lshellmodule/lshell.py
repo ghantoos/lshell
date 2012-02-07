@@ -850,7 +850,7 @@ class CheckConfig:
             try:
                 logname = eval(self.conf['syslogname'])
             except:
-                logfilename = self.conf['syslogname']
+                logname = self.conf['syslogname']
         else:
             logname = 'lshell'
 

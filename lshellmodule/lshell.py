@@ -39,6 +39,7 @@ import signal
 import readline
 import grp
 import time
+import glob
 
 __author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
 __version__ = "0.9.15"
@@ -230,7 +231,6 @@ class ShellCmd(cmd.Cmd, object):
         if len(self.g_arg) >= 1:
             # add wildcard completion support to cd
             if self.g_arg.find('*'):
-                import glob
                 # get all files and directories matching wildcard
                 wildall = glob.glob(self.g_arg)
                 wilddir = []
@@ -972,7 +972,8 @@ class CheckConfig:
                         elif stuff and key == 'path':
                             liste = ['', '']
                             for path in eval(stuff):
-                                liste[0] += os.path.realpath(path) + '/.*|'
+                                for item in glob.glob(path):
+                                    liste[0] += os.path.realpath(item) + '/.*|'
                             self.conf_raw.update({key:str(liste)})
                         elif stuff and type(eval(stuff)) is list:
                             self.conf_raw.update({key:stuff})
@@ -982,7 +983,8 @@ class CheckConfig:
                 elif key == 'path':
                     liste = ['', '']
                     for path in self.myeval(value, 'path'):
-                        liste[0] += os.path.realpath(path) + '/.*|'
+                        for item in glob.glob(path):
+                            liste[0] += os.path.realpath(item) + '/.*|'
                     self.conf_raw.update({key:str(liste)})
                 else:
                     self.conf_raw.update(dict([item]))

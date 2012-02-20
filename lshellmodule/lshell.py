@@ -315,7 +315,7 @@ class ShellCmd(cmd.Cmd, object):
         # check if the line contains ${foo=bar}, and check them
         curly = re.findall('\$\{[^}]+[}]', line)
         for item in curly:
-            # split to get get variable only, and remove last character "}"
+            # split to get variable only, and remove last character "}"
             if re.findall(r'=|\+|\?|\-', item):
                 variable = re.split('=|\+|\?|\-', item, 1)
             else:
@@ -401,12 +401,8 @@ class ShellCmd(cmd.Cmd, object):
         allowed_path_re = str(self.conf['path'][0])
         denied_path_re = str(self.conf['path'][1][:-1])
 
-        # split arguments containing $() and `` and analyze them seperatly
-        line1 = re.split('\$\([^)]+[)]', line)
-        line2 = re.split('\`[^`]+[`]', line)
-        line3 = re.findall('\$\([^)]+[)]', line)
-        line4 = re.findall('\`[^`]+[`]', line)
-        line = line1 + line2 + line3 + line4
+        line = line.strip().split()
+
         for item in line:
             # remove potential quotes
             try:

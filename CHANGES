@@ -23,6 +23,8 @@ http://sourceforge.net/projects/lshell/
     * Added support for "cd -" to return to previous directory.
     * Updated security issue with non printable characters permitting user 
       to get out of the limited shell. 
+    * Now lshell automatically reload its configuration if the configuration
+      file is modified.
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

@@ -41,7 +41,7 @@ import grp
 import time
 import glob
 
-__author__ = "Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>"
+__author__ = "Ignace Mouzannar <ghantoos@ghantoos.org>"
 __version__ = "0.9.15"
 
 # Required config variable list per user
@@ -58,7 +58,7 @@ if sys.exec_prefix != '/usr':
 else:
     # for *Linux
     conf_prefix = ''
-config_file = conf_prefix + '/etc/lshell.conf'
+configfile = conf_prefix + '/etc/lshell.conf'
 
 # history file
 history_file = ".lhistory"
@@ -72,7 +72,7 @@ usage = """Usage: lshell [OPTIONS]
   --log    <dir>  : Log files directory
   -h, --help      : Show this help message
   --version       : Show version
-""" % config_file
+""" % configfile
 
 help_help = """Limited Shell (lshell) limited help.
 Cheers.
@@ -86,7 +86,7 @@ class ShellCmd(cmd.Cmd, object):
     """ Main lshell CLI class
     """
 
-    def __init__(self, userconf, stdin=None, stdout=None, stderr=None,         \
+    def __init__(self, userconf, args, stdin=None, stdout=None, stderr=None,         \
                                     g_cmd=None, g_line=None):
         if stdin is None:
             self.stdin = sys.stdin
@@ -101,6 +101,7 @@ class ShellCmd(cmd.Cmd, object):
         else:
             self.stderr = stderr
 
+        self.args = args
         self.conf = userconf
         self.log = self.conf['logpath']
 
@@ -137,6 +138,13 @@ class ShellCmd(cmd.Cmd, object):
         the 'allowed' variable, and lshell will react as if you had            \
         added a do_uname in the ShellCmd class!
         """
+
+        # in case the configuration file has been modified, reload it
+        if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
+            self.conf = CheckConfig(self.args).returnconf()
+            self.prompt = '%s:~$ ' % self.setprompt(self.conf)
+            self.log = self.conf['logpath']
+
         if self.g_cmd in ['quit', 'exit', 'EOF']:
             self.log.error('Exited')
             if self.g_cmd == 'EOF':
@@ -175,6 +183,18 @@ class ShellCmd(cmd.Cmd, object):
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
+
+    def setprompt(self, conf):
+        """ set prompt used by the shell
+        """
+        if conf.has_key('prompt'):
+            promptbase = conf['prompt']
+            promptbase = promptbase.replace('%u', getuser())
+            promptbase = promptbase.replace('%h', os.uname()[1].split('.')[0])
+        else:
+            promptbase = getuser()
+
+        return promptbase
 
     def lpath(self):
         """ lists allowed and forbidden path
@@ -397,7 +417,6 @@ class ShellCmd(cmd.Cmd, object):
         are allowed to see this path. If user is not allowed, it calls         \
         self.counter_update. I case of completion, it only returns 0 or 1.
         """
-
         allowed_path_re = str(self.conf['path'][0])
         denied_path_re = str(self.conf['path'][1][:-1])
 
@@ -730,7 +749,9 @@ class CheckConfig:
 
         self.conf = {}
         self.conf, self.arguments = self.getoptions(args, self.conf)
-        self.check_file(self.conf['configfile'])
+        configfile = self.conf['configfile']
+        self.conf['config_mtime'] = self.get_config_mtime(configfile)
+        self.check_file(configfile)
         self.get_global()
         self.check_log()
         self.get_config()
@@ -750,8 +771,8 @@ class CheckConfig:
         #if '-c' not in arguments and '--config' not in arguments:
         #    usage()
 
-        # set config_file as default configuration file
-        conf['configfile'] = config_file
+        # set configfile as default configuration file
+        conf['configfile'] = configfile
 
         try:
             optlist, args = getopt.getopt(arguments,                           \
@@ -850,7 +871,16 @@ class CheckConfig:
         else:
             logname = 'lshell'
 
-        logger = logging.getLogger(logname)
+        logger = logging.getLogger("%s.%s" % (logname, \
+                                                self.conf['config_mtime']))
+
+        # close any logger handler/filters if exists
+        # this is useful if configuration is reloaded
+        for loghandler in logger.handlers:
+            logging.shutdown(logger.handlers)
+        for logfilter in logger.filters:
+            logger.removeFilter(logfilter)
+
         formatter = logging.Formatter('%%(asctime)s (%s): %%(message)s' \
                                                 % getuser() )
         syslogformatter = logging.Formatter('%s[%s]: %s: %%(message)s' \
@@ -1363,6 +1393,13 @@ class CheckConfig:
                 sys.exit(0)
         else: return 0
 
+    def get_config_mtime(self, configfile):
+        """ get configuration file modification time, and store in the        \
+            configuration dict. This should then be used to reload the 
+            configuration dynamically upon file changes
+        """
+        return os.path.getmtime(configfile)
+
     def returnconf(self):
         """ returns the configuration dict """
         return self.conf
@@ -1406,7 +1443,7 @@ def main():
     userconf = CheckConfig(args).returnconf()
 
     try:
-        cli = ShellCmd(userconf)
+        cli = ShellCmd(userconf, args)
         cli.cmdloop()
 
     except (KeyboardInterrupt, EOFError):

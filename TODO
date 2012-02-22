@@ -4,3 +4,4 @@
 * add bash_completion like to lshell
 * check out syslog in python 2.7 (hint: 15 characters)
 * multiple commands over ssh
+* add possibility of empty intro

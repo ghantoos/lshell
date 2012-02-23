@@ -420,7 +420,10 @@ class ShellCmd(cmd.Cmd, object):
         allowed_path_re = str(self.conf['path'][0])
         denied_path_re = str(self.conf['path'][1][:-1])
 
-        line = line.strip().split()
+        # split line depending on the operators
+        sep=re.compile(r'\ |;|\||&')
+        line = line.strip()
+        line = sep.split(line)
 
         for item in line:
             # remove potential quotes
@@ -428,6 +431,7 @@ class ShellCmd(cmd.Cmd, object):
                 item = eval(item)
             except:
                 pass
+
             # if item has been converted to somthing other than a string
             # or an int, reconvert it to a string
             if type(item) not in ['str', 'int']:
@@ -473,7 +477,9 @@ class ShellCmd(cmd.Cmd, object):
                         else: 
                             self.log.critical('*** Forbidden path: %s'        \
                                                         % tomatch)
-                return 1    
+                            return 1
+                    else:
+                        return 1    
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:
@@ -484,7 +490,9 @@ class ShellCmd(cmd.Cmd, object):
                     else:
                         self.log.critical('*** Forbidden path: %s'            \
                                                         %os.getcwd())
-                return 1
+                        return 1
+                else:
+                    return 1
         return 0
 
     def updateprompt(self, path):
@@ -1275,20 +1283,8 @@ class CheckConfig:
                 # initialise cli session
                 cli = ShellCmd(self.conf, None, None, None, None,              \
                                                             self.conf['ssh'])
-                if cli.check_path(self.conf['ssh'], None, ssh=1):
+                if cli.check_path(self.conf['ssh'], None, ssh=1) == 1:
                     self.ssh_warn('path over SSH', self.conf['ssh'])
-
-                # check path first
-                allowed_path_re = str(self.conf['path'][0])
-                denied_path_re = str(self.conf['path'][1][:-1])
-                for item in self.conf['ssh'].strip().split(' '):
-                    tomatch = os.path.realpath(item) + '/'
-                    match_allowed = re.findall(allowed_path_re, tomatch)
-                    if denied_path_re:
-                        match_denied = re.findall(denied_path_re, tomatch)
-                    else: match_denied = None
-                    if not match_allowed or match_denied:
-                        self.ssh_warn('path over SSH', self.conf['ssh'])
 
                 # check if scp is requested and allowed
                 if self.conf['ssh'].startswith('scp '):
@@ -1417,12 +1413,12 @@ def get_aliases(line, aliases):
     for item in aliases.keys():
         reg = '(^|; |;)%s([ ;&\|]+|$)' % item
         while re.findall(reg, line):
+            linesave = line
             beforecommand = re.findall(reg, line)[0][0]
             aftercommand = re.findall(reg, line)[0][1]
             line = re.sub(reg, "%s%s%s" % (beforecommand, aliases[item],       \
                                                      aftercommand), line, 1)
             # if line does not change after sub, exit loop
-            linesave = line
             if linesave == line:
                 break
     for char in [';', '&', '|']:

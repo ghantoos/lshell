@@ -25,6 +25,8 @@ http://sourceforge.net/projects/lshell/
       to get out of the limited shell. 
     * Now lshell automatically reload its configuration if the configuration
       file is modified.
+    * Added possibility to have no "intro" when user logs in. (by setting
+      the intro configuration field to "")
 
 === v0.9.14 27/10/2010 ===
     * Corrected get_aliases function, as it was looping when aliases were 

@@ -523,8 +523,6 @@ class ShellCmd(cmd.Cmd, object):
             readline.set_completer(self.complete)
             readline.parse_and_bind(self.completekey+": complete")
         try:
-            if intro is not None:
-                self.intro = intro
             if self.conf['intro']:
                 self.stdout.write(str(self.conf['intro'])+"\n")
             stop = None
@@ -1190,7 +1188,7 @@ class CheckConfig:
                 self.log.error('CONF: scpforce must be a string!')
 
         if self.conf_raw.has_key('intro'):
-            self.conf['intro'] = self.myeval(self.conf_raw['intro'])
+            self.conf['intro'] = self.conf_raw['intro']
         else:
             self.conf['intro'] = intro
 

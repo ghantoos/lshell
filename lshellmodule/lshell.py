@@ -479,7 +479,7 @@ class ShellCmd(cmd.Cmd, object):
                                                         % tomatch)
                             return 1
                     else:
-                        return 1    
+                        return 1
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:
@@ -1410,17 +1410,29 @@ class LshellTimeOut(Exception):
 def get_aliases(line, aliases):
     """ Replace all configured aliases in the line
     """
+
     for item in aliases.keys():
-        reg = '(^|; |;)%s([ ;&\|]+|$)' % item
-        while re.findall(reg, line):
+        reg1 = '(^|; |;)%s([ ;&\|]+|$)(.*)' % item
+        reg2 = '(^|; |;)%s([ ;&\|]+|$)' % item
+
+        # in case aliase bigin with the same command
+        # (this is until i find a proper regex solution..)
+        if aliases[item].startswith(item):
+            aliaskey = os.urandom(10)
+
+        while re.findall(reg1, line):
+            (before, after, rest) = re.findall(reg1, line)[0]
             linesave = line
-            beforecommand = re.findall(reg, line)[0][0]
-            aftercommand = re.findall(reg, line)[0][1]
-            line = re.sub(reg, "%s%s%s" % (beforecommand, aliases[item],       \
-                                                     aftercommand), line, 1)
+            cmd = "%s %s" % (item, rest)
+
+            line = re.sub(reg2, "%s%s%s" % (before, aliaskey,       \
+                                                     after), line, 1)
             # if line does not change after sub, exit loop
             if linesave == line:
                 break
+        # replace the key by the actual alias
+        line = line.replace(aliaskey, aliases[item])
+
     for char in [';', '&', '|']:
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)

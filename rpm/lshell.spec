@@ -1,5 +1,5 @@
 %define name lshell
-%define version 0.9.15
+%define version 0.9.15.1
 %define release 1
 %define python_sitelib %(python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")
 

@@ -42,7 +42,7 @@ import time
 import glob
 
 __author__ = "Ignace Mouzannar <ghantoos@ghantoos.org>"
-__version__ = "0.9.15"
+__version__ = "0.9.15.1"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -427,10 +427,7 @@ class ShellCmd(cmd.Cmd, object):
 
         for item in line:
             # remove potential quotes
-            try:
-                item = eval(item)
-            except:
-                pass
+            item = re.sub(r'^["\']|["\']$', '', item)
 
             # if item has been converted to somthing other than a string
             # or an int, reconvert it to a string

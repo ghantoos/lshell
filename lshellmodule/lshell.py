@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 #    Limited command Shell (lshell)
-#  
+#
 #    $Id: lshell.py,v 1.80 2010-10-26 22:35:28 ghantoos Exp $
 #
 #    Copyright (C) 2008-2009 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
@@ -23,7 +23,7 @@
 """lshell restricts a user's shell environment to limited sets of commands
 lshell is a shell coded in Python that lets you restrict a user's environment
 to limited sets of commands, choose to enable/disable any command over SSH
-(e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing 
+(e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing
 """
 
 import cmd
@@ -45,12 +45,12 @@ __author__ = "Ignace Mouzannar <ghantoos@ghantoos.org>"
 __version__ = "0.9.15.1"
 
 # Required config variable list per user
-required_config = ['allowed', 'forbidden', 'warning_counter'] 
+required_config = ['allowed', 'forbidden', 'warning_counter']
 #                                                    'timer', 'scp', 'sftp']
 
 # set configuration file path depending on sys.exec_prefix
 # on *Linux sys.exec_prefix = '/usr' and default path must be in '/etc'
-# on *BSD sys.exec_prefix = '/usr/{pkg,local}/' and default path 
+# on *BSD sys.exec_prefix = '/usr/{pkg,local}/' and default path
 # is '/usr/{pkg,local}/etc'
 if sys.exec_prefix != '/usr':
     # for *BSD
@@ -82,7 +82,7 @@ Cheers.
 intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
 
-class ShellCmd(cmd.Cmd, object): 
+class ShellCmd(cmd.Cmd, object):
     """ Main lshell CLI class
     """
 
@@ -150,7 +150,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.g_cmd == 'EOF':
                 self.stdout.write('\n')
             sys.exit(0)
-        if self.check_secure(self.g_line, self.conf['strict']) == 1: 
+        if self.check_secure(self.g_line, self.conf['strict']) == 1:
             return object.__getattribute__(self, attr)
         if self.check_path(self.g_line, strict = self.conf['strict']) == 1:
             return object.__getattribute__(self, attr)
@@ -178,10 +178,10 @@ class ShellCmd(cmd.Cmd, object):
                 self.export()
             else:
                 os.system(self.g_line)
-        elif self.g_cmd not in ['', '?', 'help', None]: 
+        elif self.g_cmd not in ['', '?', 'help', None]:
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
-        self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
+        self.g_cmd, self.g_arg, self.g_line = ['', '', '']
         return object.__getattribute__(self, attr)
 
     def setprompt(self, conf):
@@ -283,7 +283,7 @@ class ShellCmd(cmd.Cmd, object):
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.      \
         Its purpose is to forbid the user to user to override the lshell       \
-        command restrictions. 
+        command restrictions.
         The forbidden characters are placed in the 'forbidden' variable.
         Feel free to update the list. Emptying it would be quite useless..: )
 
@@ -341,7 +341,7 @@ class ShellCmd(cmd.Cmd, object):
             else:
                 variable = item
             returncode += self.check_path(variable[1][:-1], strict = strict)
-            
+
         # if unknown commands where found, return 1 and don't execute the line
         if returncode > 0:
             return 1
@@ -374,7 +374,7 @@ class ShellCmd(cmd.Cmd, object):
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']
-            
+
             # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
                 if not ssh:
@@ -384,7 +384,7 @@ class ShellCmd(cmd.Cmd, object):
                         self.log.critical('*** unknown command: %s' %command)
                 return 1
         return 0
-         
+
     def counter_update(self, messagetype, path=None):
         """ Update the warning_counter, log and display a warning to the user
         """
@@ -399,7 +399,7 @@ class ShellCmd(cmd.Cmd, object):
                                                       % (messagetype ,line))
         else:
             self.conf['warning_counter'] -= 1
-            if self.conf['warning_counter'] < 0: 
+            if self.conf['warning_counter'] < 0:
                 self.log.critical('*** forbidden %s -> "%s"'                   \
                                                       % (messagetype ,line))
                 self.log.critical('*** Kicked out')
@@ -463,15 +463,15 @@ class ShellCmd(cmd.Cmd, object):
             tomatch = os.path.realpath(item)
             if os.path.isdir(tomatch) and tomatch[-1] != '/': tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)
-            if denied_path_re: 
+            if denied_path_re:
                 match_denied = re.findall(denied_path_re, tomatch)
             else: match_denied = None
             if not match_allowed or match_denied:
                 if not completion:
                     if not ssh:
-                        if strict: 
+                        if strict:
                             self.counter_update('path', tomatch)
-                        else: 
+                        else:
                             self.log.critical('*** Forbidden path: %s'        \
                                                         % tomatch)
                             return 1
@@ -573,7 +573,7 @@ class ShellCmd(cmd.Cmd, object):
 
     def complete(self, text, state):
         """Return the next possible completion for 'text'.
-        If a command has not been entered, then complete against command list. 
+        If a command has not been entered, then complete against command list.
         Otherwise try to call complete_<command> to get list of completions.
         """
         if state == 0:
@@ -607,9 +607,9 @@ class ShellCmd(cmd.Cmd, object):
             return None
 
     def default(self, line):
-        """ This method overrides the original default method. 
+        """ This method overrides the original default method.
         It was originally used to warn when an unknown command was entered     \
-        (e.g. *** Unknown syntax: blabla). 
+        (e.g. *** Unknown syntax: blabla).
         It has been implemented in the __getattr__ method.
         So it has no use here. Its output is now empty.
         """
@@ -622,7 +622,7 @@ class ShellCmd(cmd.Cmd, object):
         """
         dotext = 'do_'+text
         names = self.get_names()
-        for command in self.conf['allowed']: 
+        for command in self.conf['allowed']:
             names.append('do_' + command)
         return [a[3:] for a in names if a.startswith(dotext)]
 
@@ -638,7 +638,7 @@ class ShellCmd(cmd.Cmd, object):
         tocomplete = re.sub('^~', self.conf['home_path'], tocomplete)
         try:
             directory = os.path.realpath(tocomplete)
-        except: 
+        except:
             directory = os.getcwd()
 
         if not os.path.isdir(directory):
@@ -668,7 +668,7 @@ class ShellCmd(cmd.Cmd, object):
         Thos variables are then used by the __getattr__ method
         """
         cmd, arg, line = self.parseline(line)
-        self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line] 
+        self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line]
         if not line:
             return self.emptyline()
         if cmd is None:
@@ -692,12 +692,12 @@ class ShellCmd(cmd.Cmd, object):
             return 0
 
     def do_help(self, arg):
-        """ This method overrides the original do_help method. 
+        """ This method overrides the original do_help method.
         Instead of printing out the that are documented or not, it returns the \
-        list of allowed commands when '?' or 'help' is entered. 
+        list of allowed commands when '?' or 'help' is entered.
         Of course, it doesn't override the help function: any help_* method    \
         will be called (e.g. help_help(self) )
-        """ 
+        """
         if arg:
             try:
                 func = getattr(self, 'help_' + arg)
@@ -725,7 +725,7 @@ class ShellCmd(cmd.Cmd, object):
     def mytimer(self, timeout):
         """ This function is kicks you out the the lshell after      \
         the 'timer' variable exprires. 'timer' is set in seconds.
-        """ 
+        """
         # set timer
         signal.signal(signal.SIGALRM, self._timererror)
         signal.alarm(self.conf['timer'])
@@ -739,7 +739,7 @@ class CheckConfig:
 
     def __init__(self, args, stdin=None, stdout=None, stderr=None):
         """ Force the calling of the methods below
-        """ 
+        """
         if stdin is None:
             self.stdin = sys.stdin
         else:
@@ -801,7 +801,7 @@ class CheckConfig:
             if option in ['--version']:
                 self.version()
 
-        # put the expanded path of configfile and logpath (if exists) in 
+        # put the expanded path of configfile and logpath (if exists) in
         # LSHELL_ARGS environment variable
         args = ['--config', conf['configfile']]
         if conf.has_key('logpath'): args += ['--log', conf['logpath']]
@@ -835,14 +835,14 @@ class CheckConfig:
         """ This method checks the existence of the "argumently" given         \
         configuration file.
         """
-        if not os.path.exists(file): 
+        if not os.path.exists(file):
             self.stderr.write("Error: Config file doesn't exist\n")
             self.stderr.write(usage)
             sys.exit(0)
         else: self.config = ConfigParser.ConfigParser()
 
     def get_global(self):
-        """ Loads the [global] parameters from the configuration file 
+        """ Loads the [global] parameters from the configuration file
         """
         try:
             self.config.read(self.conf['configfile'])
@@ -860,11 +860,11 @@ class CheckConfig:
                 self.conf[item[0]] = item[1]
 
     def check_log(self):
-        """ Sets the log level and log file 
+        """ Sets the log level and log file
         """
         # define log levels dict
-        self.levels = { 1 : logging.CRITICAL, 
-                        2 : logging.ERROR, 
+        self.levels = { 1 : logging.CRITICAL,
+                        2 : logging.ERROR,
                         3 : logging.WARNING,
                         4 : logging.DEBUG }
 
@@ -922,7 +922,7 @@ class CheckConfig:
             logfilename = logfilename.replace('%h','%02d%02d' % (currentime[3] \
                                                               , currentime[4]))
             logfilename = logfilename.replace('%u', getuser())
-        else: 
+        else:
             logfilename = getuser()
 
         if self.conf['loglevel'] > 0:
@@ -945,7 +945,7 @@ class CheckConfig:
 
             except IOError:
                 # uncomment the 2 following lines to warn if log file is not   \
-                # writable 
+                # writable
                 #sys.stderr.write('Warning: Cannot write in log file: '
                 #                                        'Permission denied.\n')
                 #sys.stderr.write('Warning: Actions will not be logged.\n')
@@ -955,7 +955,7 @@ class CheckConfig:
         self.log = logger
 
     def get_config(self):
-        """ Load default, group and user configuation. Then merge them all. 
+        """ Load default, group and user configuation. Then merge them all.
         The loadpriority is done in the following order:
             1- User section
             2- Group section
@@ -971,7 +971,7 @@ class CheckConfig:
 
         # get groups configuration if any.
         # for each group the user belongs to, check if specific configuration  \
-        # exists.  The primary group has the highest priority. 
+        # exists.  The primary group has the highest priority.
         grplist = os.getgroups()
         grplist.reverse()
         for gid in grplist:
@@ -986,7 +986,7 @@ class CheckConfig:
         self.get_config_sub(self.user)
 
     def get_config_sub(self, section):
-        """ this function is used to interpret the configuration +/-, 
+        """ this function is used to interpret the configuration +/-,
             'all' etc.
         """
         if self.config.has_section(section):
@@ -1039,7 +1039,7 @@ class CheckConfig:
         if extra.startswith('+'):
             if key == 'path':
                 for path in sublist:
-                    liste[0] += os.path.realpath(path) + '/.*|' 
+                    liste[0] += os.path.realpath(path) + '/.*|'
             else:
                 for item in sublist:
                     liste.append(item)
@@ -1073,7 +1073,7 @@ class CheckConfig:
                                                                     % directory)
 
         return str(expanded_all)
- 
+
     def myeval(self, value, info=''):
         """ if eval returns SyntaxError, log it as critical iconf missing """
         try:
@@ -1288,7 +1288,7 @@ class CheckConfig:
 
                 # check if scp is requested and allowed
                 if self.conf['ssh'].startswith('scp '):
-                    if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']: 
+                    if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']:
                         if ' -f ' in self.conf['ssh']:
                             # case scp download is allowed
                             if self.conf['scp_download']:
@@ -1319,7 +1319,7 @@ class CheckConfig:
                             # case scp upload is forbidden
                             else:
                                 self.log.error('SCP: upload forbidden: "%s"'   \
-                                                            % self.conf['ssh']) 
+                                                            % self.conf['ssh'])
                                 sys.exit(0)
                         os.system(self.conf['ssh'])
                         self.log.error('SCP disconnect')
@@ -1368,15 +1368,15 @@ class CheckConfig:
         """ As a passwd field is required by user. This method checks in the   \
         configuration file if the password is empty, in wich case, no password \
         check is required. In the other case, the password is asked to be      \
-        entered. 
+        entered.
         If the entered password is wrong, the user is exited from lshell.
         """
         if self.config.has_section(self.user):
             if self.config.has_option(self.user, 'passwd'):
                 passwd = self.config.get(self.user, 'passwd')
-            else: 
+            else:
                 passwd = None
-        else: 
+        else:
             passwd = None
 
         if passwd:
@@ -1389,7 +1389,7 @@ class CheckConfig:
 
     def get_config_mtime(self, configfile):
         """ get configuration file modification time, and store in the        \
-            configuration dict. This should then be used to reload the 
+            configuration dict. This should then be used to reload the
             configuration dynamically upon file changes
         """
         return os.path.getmtime(configfile)

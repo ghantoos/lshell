@@ -500,11 +500,11 @@ class ShellCmd(cmd.Cmd, object):
             self.prompt = '%s:~$ ' % self.promptbase
         elif self.conf['prompt_short'] == 1:
             if path.split('/')[-2] == 'home':
-                self.prompt = '%s:~[home]$ ' % self.promptbase
+                self.prompt = '%s:~$ ' % self.promptbase
             elif path.split('/')[-2] == 'clients':
-                self.prompt = '%s:~[sites@%s]$ ' % (self.promptbase, path.split('/')[-1])
+                self.prompt = '%s:[sites@%s]$ ' % (self.promptbase, path.split('/')[-1])
             else:
-                self.prompt = '%s:~[%s]$ ' % (self.promptbase, path.split('/')[-1])
+                self.prompt = '%s:[%s]$ ' % (self.promptbase, path.split('/')[-1])
         elif re.findall(self.conf['home_path'], path):
             self.prompt = '%s:~%s$ ' % ( self.promptbase, \
                                          path.split(self.conf['home_path'])[1])

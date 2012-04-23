@@ -3,7 +3,7 @@
 #
 # see: dh_installdeb(1)
 #
-# $Id: lshell.postrm,v 1.4 2009-07-28 18:14:54 ghantoos Exp $
+# $Id: lshell.postrm,v 1.4 2009/07/28 18:14:54 ghantoos Exp $
 
 set -e
 

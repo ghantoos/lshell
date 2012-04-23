@@ -2,8 +2,11 @@ Source: lshell
 Section: shells
 Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), python-support, python
-Standards-Version: 3.8.4
+DM-Upload-Allowed: yes
+Build-Depends: debhelper (>= 9), python (>= 2.6.6-3~)
+X-Python-Version: >=2.5, <=2.7
+Standards-Version: 3.9.3
+Homepage: https://github.com/ghantoos/lshell
 
 Package: lshell
 Architecture: all

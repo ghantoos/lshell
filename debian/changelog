@@ -1,3 +1,34 @@
+lshell (0.9.15.1-1) unstable; urgency=low
+
+  * New upstream release. 
+  * debian/control:
+    - Bumped Standards-Version to 3.9.3.
+    - Updated debhelper version dependency to (>= 9).
+    - Removed dependency on python-support.
+    - Updated python version dependency to (>= 2.6.6-3~).
+    - Added X-Python-Version field.
+    - Added DM-Upload-Allowed.
+    - Added Homepage field.
+  * debian/rules:
+    - Added python2 to dh's --with argument.
+  * debian/copyright:
+    - Updated to follow dep5.
+  * debian/compat:
+    - Set to 9.
+  * Deleted debian/pyversions and debian/pycompat.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Tue, 10 Apr 2012 04:28:05 +0400
+
+lshell (0.9.14-1) unstable; urgency=low
+
+  * New upstream release:
+    - Corrects multiple minor bugs.
+    - Add new features as lsudo, history and logging via syslog.
+  * debian/control:
+    - Bumped Standards-Version to 3.9.1.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Sun, 27 Feb 2011 19:49:11 +0100
+
 lshell (0.9.12-1) unstable; urgency=low
 
   * New upstream release:

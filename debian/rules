@@ -4,7 +4,7 @@
 export DH_ALWAYS_EXCLUDE=COPYING:CHANGES
 
 %:
-	dh $@
+	dh $@ --with python2
 
 override_dh_installchangelogs:
 	dh_installchangelogs CHANGES

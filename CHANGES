@@ -8,6 +8,9 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.9.15.2 08/05/2012 ===
+    * Corrected mismatch in aliaskey variable.
+
 === v0.9.15.1 15/03/2012 ===
     * Corrected security bug allowing user to get out of the restricted 
     shell. Thank you bui from NBS System for reporting this grave issue!

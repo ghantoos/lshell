@@ -1414,8 +1414,7 @@ def get_aliases(line, aliases):
 
         # in case aliase bigin with the same command
         # (this is until i find a proper regex solution..)
-        if aliases[item].startswith(item):
-            aliaskey = os.urandom(10)
+        aliaskey = os.urandom(10)
 
         while re.findall(reg1, line):
             (before, after, rest) = re.findall(reg1, line)[0]

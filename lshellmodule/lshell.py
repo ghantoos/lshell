@@ -534,7 +534,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.conf['login_script']:
                 login_script = True
             else:
-                login_script = Fale
+                login_script = False
             while not stop:
                 if self.cmdqueue:
                     line = self.cmdqueue.pop(0)

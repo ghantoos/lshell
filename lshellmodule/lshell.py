@@ -531,18 +531,26 @@ class ShellCmd(cmd.Cmd, object):
             if self.conf['intro']:
                 self.stdout.write(str(self.conf['intro'])+"\n")
             stop = None
+            if self.conf['login_script']:
+                login_script = True
+            else:
+                login_script = False
             while not stop:
                 if self.cmdqueue:
                     line = self.cmdqueue.pop(0)
                 else:
                     if self.use_rawinput:
-                        try:
-                            line = raw_input(self.prompt)
-                        except EOFError:
-                            line = 'EOF'
-                        except KeyboardInterrupt:
-                            self.stdout.write('\n')
-                            line = ''
+                        if not login_script:
+                            try:
+                                line = raw_input(self.prompt)
+                            except EOFError:
+                                line = 'EOF'
+                            except KeyboardInterrupt:
+                                self.stdout.write('\n')
+                                line = ''
+                        else:
+                            line = self.conf['login_script']
+                            login_script = False
 
                     else:
                         self.stdout.write(self.prompt)
@@ -1131,7 +1139,8 @@ class CheckConfig:
                     'prompt',
                     'prompt_short',
                     'allowed_cmd_path',
-                    'history_size']:
+                    'history_size',
+                    'login_script']:
             try:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""

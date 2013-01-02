@@ -42,7 +42,7 @@ import time
 import glob
 
 __author__ = "Ignace Mouzannar <ghantoos@ghantoos.org>"
-__version__ = "0.9.15.1"
+__version__ = "0.9.16"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -530,28 +530,21 @@ class ShellCmd(cmd.Cmd, object):
         try:
             if self.conf['intro']:
                 self.stdout.write(str(self.conf['intro'])+"\n")
-            stop = None
             if self.conf['login_script']:
-                login_script = True
-            else:
-                login_script = False
+                os.system(self.conf['login_script'])
+            stop = None
             while not stop:
                 if self.cmdqueue:
                     line = self.cmdqueue.pop(0)
                 else:
                     if self.use_rawinput:
-                        if not login_script:
-                            try:
-                                line = raw_input(self.prompt)
-                            except EOFError:
-                                line = 'EOF'
-                            except KeyboardInterrupt:
-                                self.stdout.write('\n')
-                                line = ''
-                        else:
-                            line = self.conf['login_script']
-                            login_script = False
-
+                        try:
+                            line = raw_input(self.prompt)
+                        except EOFError:
+                            line = 'EOF'
+                        except KeyboardInterrupt:
+                            self.stdout.write('\n')
+                            line = ''
                     else:
                         self.stdout.write(self.prompt)
                         self.stdout.flush()

@@ -8,6 +8,9 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.9.16   xx/xx/2013 ===
+    * Added support to login script. Thank you Laurent Debacker for the patch.
+
 === v0.9.15.2 08/05/2012 ===
     * Corrected mismatch in aliaskey variable.
 

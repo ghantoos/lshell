@@ -35,6 +35,7 @@ import string
 import re
 import getopt
 import logging
+import logging.config
 import signal
 import readline
 import grp
@@ -108,7 +109,7 @@ class ShellCmd(cmd.Cmd, object):
         # Set timer
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
         self.identchars = self.identchars + '+./-'
-        self.log.error('Logged in')
+        self.log.info('Logged in')
         cmd.Cmd.__init__(self)
         if self.conf.has_key('prompt'):
             self.promptbase = self.conf['prompt']
@@ -146,7 +147,7 @@ class ShellCmd(cmd.Cmd, object):
             self.log = self.conf['logpath']
 
         if self.g_cmd in ['quit', 'exit', 'EOF']:
-            self.log.error('Exited')
+            self.log.info('Exited')
             if self.g_cmd == 'EOF':
                 self.stdout.write('\n')
             sys.exit(0)
@@ -381,7 +382,7 @@ class ShellCmd(cmd.Cmd, object):
                     if strict:
                         self.counter_update('command', line)
                     else:
-                        self.log.critical('*** unknown command: %s' %command)
+                        self.log.warn('*** unknown command: %s' %command)
                 return 1
         return 0
          
@@ -395,17 +396,17 @@ class ShellCmd(cmd.Cmd, object):
 
         # if warning_counter is set to -1, just warn, don't kick
         if self.conf['warning_counter'] == -1:
-            self.log.critical('*** forbidden %s -> "%s"'                       \
+            self.log.error('*** forbidden %s -> "%s"'                       \
                                                       % (messagetype ,line))
         else:
             self.conf['warning_counter'] -= 1
             if self.conf['warning_counter'] < 0: 
-                self.log.critical('*** forbidden %s -> "%s"'                   \
+                self.log.error('*** forbidden %s -> "%s"'                   \
                                                       % (messagetype ,line))
                 self.log.critical('*** Kicked out')
                 sys.exit(1)
             else:
-                self.log.critical('*** forbidden %s -> "%s"'                   \
+                self.log.error('*** forbidden %s -> "%s"'                   \
                                                       % (messagetype ,line))
                 self.stderr.write('*** You have %s warning(s) left,'           \
                                     ' before getting kicked out.\n'            \
@@ -472,7 +473,7 @@ class ShellCmd(cmd.Cmd, object):
                         if strict: 
                             self.counter_update('path', tomatch)
                         else: 
-                            self.log.critical('*** Forbidden path: %s'        \
+                            self.log.error('*** Forbidden path: %s'        \
                                                         % tomatch)
                             return 1
                     else:
@@ -485,7 +486,7 @@ class ShellCmd(cmd.Cmd, object):
                         os.chdir(self.conf['home_path'])
                         self.updateprompt(os.getcwd())
                     else:
-                        self.log.critical('*** Forbidden path: %s'            \
+                        self.log.error('*** Forbidden path: %s'            \
                                                         %os.getcwd())
                         return 1
                 else:
@@ -861,7 +862,19 @@ class CheckConfig:
         """ Sets the log level and log file 
         """
         # define log levels dict
-        self.levels = { 1 : logging.CRITICAL, 
+        if self.conf.has_key('loggingconf'):
+            try:
+                loggingconf = eval(self.conf['loggingconf'])
+            except:
+                loggingconf = self.conf['loggingconf']
+        else:
+            loggingconf = '/etc/lshell/logging.conf'
+
+        logging.config.fileConfig(loggingconf)
+        self.log = logging.getLogger('lshell')
+	self.conf['logpath'] = logging.getLogger('lshell')
+        
+        """self.levels = { 1 : logging.CRITICAL, 
                         2 : logging.ERROR, 
                         3 : logging.WARNING,
                         4 : logging.DEBUG }
@@ -951,7 +964,7 @@ class CheckConfig:
 
         self.conf['logpath'] = logger
         self.log = logger
-
+        """
     def get_config(self):
         """ Load default, group and user configuation. Then merge them all. 
         The loadpriority is done in the following order:
@@ -1271,9 +1284,9 @@ class CheckConfig:
                 # check if sftp is requested and allowed
                 if 'sftp-server' in self.conf['ssh']:
                     if self.conf['sftp'] is 1:
-                        self.log.error('SFTP connect')
+                        self.log.info('SFTP connect')
                         os.system(self.conf['ssh'])
-                        self.log.error('SFTP disconnect')
+                        self.log.info('SFTP disconnect')
                         sys.exit(0)
                     else:
                         self.log.error('*** forbidden SFTP connection')
@@ -1291,7 +1304,7 @@ class CheckConfig:
                         if ' -f ' in self.conf['ssh']:
                             # case scp download is allowed
                             if self.conf['scp_download']:
-                                self.log.error('SCP: GET "%s"' \
+                                self.log.info('SCP: GET "%s"' \
                                                             % self.conf['ssh'])
                             # case scp download is forbidden
                             else:
@@ -1307,13 +1320,13 @@ class CheckConfig:
                                     forcedpath = os.path.realpath(self.conf
                                                                    ['scpforce'])
                                     if scppath != forcedpath:
-                                        self.log.error('SCP: forced SCP '      \
+                                        self.log.info('SCP: forced SCP '      \
                                                        + 'directory: %s'       \
                                                                     %scppath)
                                         cmdsplit.pop(-1)
                                         cmdsplit.append(forcedpath)
                                         self.conf['ssh'] = string.join(cmdsplit)
-                                self.log.error('SCP: PUT "%s"'                 \
+                                self.log.info('SCP: PUT "%s"'                 \
                                                         %self.conf['ssh'])
                             # case scp upload is forbidden
                             else:
@@ -1321,7 +1334,7 @@ class CheckConfig:
                                                             % self.conf['ssh']) 
                                 sys.exit(0)
                         os.system(self.conf['ssh'])
-                        self.log.error('SCP disconnect')
+                        self.log.info('SCP disconnect')
                         sys.exit(0)
                     else:
                         self.ssh_warn('SCP connection', self.conf['ssh'], 'scp')
@@ -1341,7 +1354,7 @@ class CheckConfig:
                         cli.do_help(None)
                     else:
                         os.system(self.conf['ssh'])
-                    self.log.error('Exited')
+                    self.log.info('Exited')
                     sys.exit(0)
 
                 # else warn and log
@@ -1355,12 +1368,12 @@ class CheckConfig:
     def ssh_warn(self, message, command='', key=''):
         """ log and warn if forbidden action over SSH """
         if key == 'scp':
-            self.log.critical('*** forbidden %s' %message)
+            self.log.error('*** forbidden %s' %message)
             self.log.error('*** SCP command: %s' %command)
         else:
             self.log.critical('*** forbidden %s: "%s"' %(message, command))
-        self.stderr.write('This incident has been reported.\n')
-        self.log.error('Exited')
+        self.log.critical('This incident has been reported.')
+        self.log.info('Exited')
         sys.exit(0)
 
     def check_passwd(self):
@@ -1381,8 +1394,7 @@ class CheckConfig:
         if passwd:
             password = getpass("Enter "+self.user+"'s password: ")
             if password != passwd:
-                self.stderr.write('Error: Wrong password \nExiting..\n')
-                self.log.critical('WARN: Wrong password')
+                self.log.critical('Error: Wrong password \nExiting..\n')
                 sys.exit(0)
         else: return 0
 

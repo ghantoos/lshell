@@ -95,7 +95,7 @@ class CustomFormatter(logging.Formatter):
 	else:
 	    if getuser()+":" not in record.msg:
                 record.msg = '%s: %s' % (getuser(),record.msg)
-	print getuser()
+        print getuser()
         return self.default.format(record)
  
 def DefaultFormatter(fmt, datefmt):

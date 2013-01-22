@@ -83,6 +83,29 @@ Cheers.
 intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
 
+
+class CustomFormatter(logging.Formatter):
+    def __init__(self, default, logname):
+        self.default = default
+	self.logname = logname
+ 
+    def format(self, record):
+        if self.logname == "syslog":
+            record.msg = '[%s]: %s: %s' % (os.getpid(), getuser(), record.msg )
+	else:
+	    if getuser()+":" not in record.msg:
+                record.msg = '%s: %s' % (getuser(),record.msg)
+	print getuser()
+        return self.default.format(record)
+ 
+def DefaultFormatter(fmt, datefmt):
+    default = logging.Formatter(fmt, datefmt)
+    return CustomFormatter(default,"default")
+
+def SyslogFormatter(fmt, datefmt):
+    default = logging.Formatter(fmt, datefmt)
+    return CustomFormatter(default,"syslog")
+
 class ShellCmd(cmd.Cmd, object): 
     """ Main lshell CLI class
     """

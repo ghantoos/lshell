@@ -144,7 +144,6 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
             self.conf = CheckConfig(self.args).returnconf()
             self.prompt = '%s:~$ ' % self.setprompt(self.conf)
-            self.log = self.conf['logpath']
 
         if self.g_cmd in ['quit', 'exit', 'EOF']:
             self.log.info('Exited')
@@ -861,16 +860,7 @@ class CheckConfig:
     def check_log(self):
         """ Sets the log level and log file 
         """
-        # define log levels dict
-        if self.conf.has_key('loggingconf'):
-            try:
-                loggingconf = eval(self.conf['loggingconf'])
-            except:
-                loggingconf = self.conf['loggingconf']
-        else:
-            loggingconf = '/etc/lshell/logging.conf'
-
-        logging.config.fileConfig(loggingconf)
+        logging.config.fileConfig(self.conf['configfile'])
         self.log = logging.getLogger('lshell')
 	self.conf['logpath'] = logging.getLogger('lshell')
         

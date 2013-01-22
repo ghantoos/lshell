@@ -104,7 +104,11 @@ class ShellCmd(cmd.Cmd, object):
 
         self.args = args
         self.conf = userconf
-        self.log = self.conf['logpath']
+        
+        # Configuring the logging function
+        logging.config.fileConfig(self.conf['configfile'])
+        self.log = logging.getLogger('lshell')
+        self.conf['logpath'] = logging.getLogger('lshell')
 
         # Set timer
         if self.conf['timer'] > 0: self.mytimer(self.conf['timer'])
@@ -161,7 +165,7 @@ class ShellCmd(cmd.Cmd, object):
                                                                    self.g_arg)
             if type(self.conf['aliases']) == dict:
                 self.g_line = get_aliases(self.g_line, self.conf['aliases'])
-            self.log.info('CMD: "%s"' %self.g_line)
+            self.log.debug('CMD: "%s"' %self.g_line)
             if self.g_cmd == 'cd':
                 self.cd()
             # builtin lpath function: list all allowed path
@@ -179,8 +183,7 @@ class ShellCmd(cmd.Cmd, object):
             else:
                 os.system(self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 
-            self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
-            self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
+            self.log.warn('WARN: unknown syntax -> "%s"' %self.g_line)
         self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
         return object.__getattribute__(self, attr)
 
@@ -757,7 +760,6 @@ class CheckConfig:
         self.conf['config_mtime'] = self.get_config_mtime(configfile)
         self.check_file(configfile)
         self.get_global()
-        self.check_log()
         self.get_config()
         self.check_user_integrity()
         self.get_config_user()
@@ -790,8 +792,6 @@ class CheckConfig:
         for option, value in optlist:
             if  option in ['--config']:
                 conf['configfile'] = os.path.realpath(value)
-            if  option in ['--log']:
-                conf['logpath'] = os.path.realpath(value)
             if  option in ['-c']:
                 conf['ssh'] = value
             if option in ['-h', '--help']:
@@ -802,7 +802,6 @@ class CheckConfig:
         # put the expanded path of configfile and logpath (if exists) in 
         # LSHELL_ARGS environment variable
         args = ['--config', conf['configfile']]
-        if conf.has_key('logpath'): args += ['--log', conf['logpath']]
         os.environ['LSHELL_ARGS'] = str(args)
 
         # if lshell is invoked using shh autorized_keys file e.g.
@@ -857,104 +856,6 @@ class CheckConfig:
             if not self.conf.has_key(item[0]):
                 self.conf[item[0]] = item[1]
 
-    def check_log(self):
-        """ Sets the log level and log file 
-        """
-        logging.config.fileConfig(self.conf['configfile'])
-        self.log = logging.getLogger('lshell')
-	self.conf['logpath'] = logging.getLogger('lshell')
-        
-        """self.levels = { 1 : logging.CRITICAL, 
-                        2 : logging.ERROR, 
-                        3 : logging.WARNING,
-                        4 : logging.DEBUG }
-
-        # create logger for lshell application
-        if self.conf.has_key('syslogname'):
-            try:
-                logname = eval(self.conf['syslogname'])
-            except:
-                logname = self.conf['syslogname']
-        else:
-            logname = 'lshell'
-
-        logger = logging.getLogger("%s.%s" % (logname, \
-                                                self.conf['config_mtime']))
-
-        # close any logger handler/filters if exists
-        # this is useful if configuration is reloaded
-        for loghandler in logger.handlers:
-            logging.shutdown(logger.handlers)
-        for logfilter in logger.filters:
-            logger.removeFilter(logfilter)
-
-        formatter = logging.Formatter('%%(asctime)s (%s): %%(message)s' \
-                                                % getuser() )
-        syslogformatter = logging.Formatter('%s[%s]: %s: %%(message)s' \
-                                                % (logname, os.getpid(), getuser() ))
-
-        logger.setLevel(logging.DEBUG)
-
-        # set log to output error on stderr
-        logsterr = logging.StreamHandler()
-        logger.addHandler(logsterr)
-        logsterr.setFormatter(logging.Formatter('%(message)s'))
-        logsterr.setLevel(logging.CRITICAL)
-
-        # log level must be 1, 2, 3 , 4 or 0
-        if not self.conf.has_key('loglevel'): self.conf['loglevel'] = 0
-        try:
-            self.conf['loglevel'] = int(self.conf['loglevel'])
-        except ValueError:
-            self.conf['loglevel'] = 0
-        if self.conf['loglevel'] > 4: self.conf['loglevel'] = 4
-        elif self.conf['loglevel'] < 0: self.conf['loglevel'] = 0
-
-        # read logfilename is exists, and set logfilename
-        if self.conf.has_key('logfilename'):
-            try:
-                logfilename = eval(self.conf['logfilename'])
-            except:
-                logfilename = self.conf['logfilename']
-            currentime = time.localtime()
-            logfilename = logfilename.replace('%y','%s'   %currentime[0])
-            logfilename = logfilename.replace('%m','%02d' %currentime[1])
-            logfilename = logfilename.replace('%d','%02d' %currentime[2])
-            logfilename = logfilename.replace('%h','%02d%02d' % (currentime[3] \
-                                                              , currentime[4]))
-            logfilename = logfilename.replace('%u', getuser())
-        else: 
-            logfilename = getuser()
-
-        if self.conf['loglevel'] > 0:
-            try:
-                if logfilename == "syslog":
-                    from logging.handlers import SysLogHandler
-                    syslog = SysLogHandler(address='/dev/log')
-                    syslog.setFormatter(syslogformatter)
-                    syslog.setLevel(self.levels[self.conf['loglevel']])
-                    logger.addHandler(syslog)
-                else:
-                    # if log file is writable add new log file handler
-                    logfile = os.path.join(self.conf['logpath'], \
-                                                            logfilename+'.log')
-                    fp = open(logfile,'a').close()
-                    self.logfile = logging.FileHandler(logfile)
-                    self.logfile.setFormatter(formatter)
-                    self.logfile.setLevel(self.levels[self.conf['loglevel']])
-                    logger.addHandler(self.logfile)
-
-            except IOError:
-                # uncomment the 2 following lines to warn if log file is not   \
-                # writable 
-                #sys.stderr.write('Warning: Cannot write in log file: '
-                #                                        'Permission denied.\n')
-                #sys.stderr.write('Warning: Actions will not be logged.\n')
-                pass
-
-        self.conf['logpath'] = logger
-        self.log = logger
-        """
     def get_config(self):
         """ Load default, group and user configuation. Then merge them all. 
         The loadpriority is done in the following order:

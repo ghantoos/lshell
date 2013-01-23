@@ -36,6 +36,8 @@ import re
 import getopt
 import logging
 import logging.config
+from logging import handlers
+from logging.handlers import TimedRotatingFileHandler
 import signal
 import readline
 import grp
@@ -99,7 +101,7 @@ class CustomFormatter(logging.Formatter):
 	else:
             myrecord.msg = '%s: %s' % (getuser(),myrecord.msg)
         return self.default.format(myrecord)
- 
+
 def DefaultFormatter(fmt, datefmt):
     default = logging.Formatter(fmt, datefmt)
     return CustomFormatter(default,"default")
@@ -319,7 +321,7 @@ class ShellCmd(cmd.Cmd, object):
         The forbidden characters are placed in the 'forbidden' variable.
         Feel free to update the list. Emptying it would be quite useless..: )
 
-        A warining counter has been added, to kick out of lshell a user if he  \
+        A warning counter has been added, to kick out of lshell a user if he  \
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
 
@@ -330,7 +332,7 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     self.log.critical('*** forbidden syntax -> %s' % line)
             return 1
-
+        
         for item in self.conf['forbidden']:
             # allow '&&' and '||' even if singles are forbidden
             if item in ['&', '|']:
@@ -420,6 +422,7 @@ class ShellCmd(cmd.Cmd, object):
     def counter_update(self, messagetype, path=None):
         """ Update the warning_counter, log and display a warning to the user
         """
+	print "YAHOOOOO"
         if path:
             line = path
         else:

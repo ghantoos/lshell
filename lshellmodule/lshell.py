@@ -41,9 +41,10 @@ import readline
 import grp
 import time
 import glob
+import copy
 
 __author__ = "Ignace Mouzannar <ghantoos@ghantoos.org>"
-__version__ = "0.9.16"
+__version__ = "0.9.17"
 
 # Required config variable list per user
 required_config = ['allowed', 'forbidden', 'warning_counter'] 
@@ -90,13 +91,14 @@ class CustomFormatter(logging.Formatter):
 	self.logname = logname
  
     def format(self, record):
+	myrecord = copy.copy(record)
         if self.logname == "syslog":
-            record.msg = '[%s]: %s: %s' % (os.getpid(), getuser(), record.msg )
+            myrecord.msg = '[%s]: %s: %s' % (os.getpid(), getuser(), myrecord.msg )
+        elif self.logname == "screen":
+            myrecord.msg = '%s' % (myrecord.msg )
 	else:
-	    if getuser()+":" not in record.msg:
-                record.msg = '%s: %s' % (getuser(),record.msg)
-        print getuser()
-        return self.default.format(record)
+            myrecord.msg = '%s: %s' % (getuser(),myrecord.msg)
+        return self.default.format(myrecord)
  
 def DefaultFormatter(fmt, datefmt):
     default = logging.Formatter(fmt, datefmt)
@@ -105,6 +107,10 @@ def DefaultFormatter(fmt, datefmt):
 def SyslogFormatter(fmt, datefmt):
     default = logging.Formatter(fmt, datefmt)
     return CustomFormatter(default,"syslog")
+
+def ScreenFormatter(fmt, datefmt):
+    default = logging.Formatter(fmt, datefmt)
+    return CustomFormatter(default,"screen")
 
 class ShellCmd(cmd.Cmd, object): 
     """ Main lshell CLI class

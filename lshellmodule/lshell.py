@@ -433,7 +433,6 @@ class ShellCmd(cmd.Cmd, object):
     def counter_update(self, messagetype, path=None):
         """ Update the warning_counter, log and display a warning to the user
         """
-	print "YAHOOOOO"
         if path:
             line = path
         else:

@@ -26,9 +26,6 @@ and
 .B \--config \fI<FILE>\fR
 Specify config file
 .TP
-.B \--log \fI<DIR>\fR
-Specify the log directory
-.TP
 .B \-h, --help
 Show help message
 .TP
@@ -53,10 +50,13 @@ On *BSD  \-> /usr/{pkg,local}/etc/lshell.conf
 .ft 3
 .nf
 .sp
-[global]   -> lshell system configuration (only 1)
-[default]  -> lshell default user configuration (only 1)
-[foo]      -> UNIX username "foo" specific configuration
-[grp:bar]  -> UNIX groupname "bar" specific configuration
+[global]     -> lshell system configuration (only 1)
+[default]    -> lshell default user configuration (only 1)
+[foo]        -> UNIX username "foo" specific configuration
+[grp:bar]    -> UNIX groupname "bar" specific configuration
+[loggers]    -> Define the loggers available
+[handlers]   -> Define the places to log
+[formatters] -> Define how to output log
 .ft
 .LP
 .RE
@@ -75,38 +75,6 @@ Order of priority when loading preferences is the following:
 .fi
 .SS [global]
 .TP
-.I logpath
-config path (default is /var/log/lshell/)
-.TP
-.I loglevel
-0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
-.TP
-.I logfilename
-\- set to \fBsyslog\fR in order to log to syslog
-.RS
-\- set log file name, e.g. %u-%y%m%d (i.e foo-20091009.log):
-.BR \ \ \ \ %u
--> username
-.RE
-.RS
-.BR \ \ \ \ %d
--> day   [1..31]
-.RE
-.RS
-.BR \ \ \ \ %m
--> month [1..12]
-.RE
-.RS
-.BR \ \ \ \ %y
--> year  [00..99]
-.RE
-.RS
-.BR \ \ \ \ %h
--> time  [00:00..23:59]
-.RE
-.TP
-.I syslogname
-in case you are using syslog, set your logname (default: lshell)
 .RS
 .SS [default] and/or [username] and/or [grp:groupname]
 .TP
@@ -272,9 +240,6 @@ In this case, my configuration file will look something like this:
 .sp
 # CONFIURATION START
 [global]
-logpath         : /var/log/lshell/
-loglevel        : 2
-
 [default]
 allowed         : ['ls','pwd']
 forbidden       : [';', '&', '|'] 
@@ -301,6 +266,47 @@ allowed         : + ['ping'] - ['ls']
 path            : - ['/usr/local']
 strict          : 1
 scpforce        : '/home/bar/uploads/'
+
+[loggers]
+keys            : ['root','lshell']
+
+[logger_root]
+handlers        : file
+level           : NOTSET
+
+[logger_lshell]
+handlers        : screen,file
+level           : NOTSET
+qualname        : lshell
+propagate       : 0
+
+[formatters]
+keys            : screen,default
+
+[formatter_default]
+format          : %(asctime)s - %(levelname)s - %(message)s
+class           : lshell.DefaultFormatter
+datefmt         : %X
+
+[formatter_screen]
+format          : %(message)s
+class           : lshell.ScreenFormatter
+datefmt         : %X
+
+[handlers]
+keys            : file,screen
+
+[handler_screen]
+class           : StreamHandler
+formatter       : screen
+level           : WARN
+args            : (sys.stderr,)
+
+[handler_file]
+class           : lshell.CustomFileHandler
+formatter       : default
+level           : INFO
+args            : ('/var/log/lshell/','%y%m%d-%u.log','a',0600)
 # CONFIURATION END
 .ft
 .LP

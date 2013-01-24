@@ -47,15 +47,6 @@ All this information is in the man (man lshell)
 ###
     lshell.conf presents a template configuration file. Fields to fill are:
     [global]
-        * logpath         : log directory (default /var/log/lshell/ )
-        * loglevel        : 0, 1, 2, 3 or 4  (0: no logs -> 4: logs everything)
-        * logfilename     : set log file name, e.g. %u-%y%m%d
-                            (i.e foo-20091009.log)
-                                %u -> username
-                                %d -> day   [1..31]
-                                %m -> month [1..12]
-                                %y -> year  [00..99]
-                                %h -> time  [00:00..23:59]
 
     [default] 
     or [username] (UNIX username)
@@ -105,12 +96,29 @@ All this information is in the man (man lshell)
         - strictness is set to 1 (meaning he is not allowed to type an unknown \
           command)
 
+
+    By default lshell use the logging module to write warning and error on the \
+    console. The configuration file allow to export output by different        \
+    handlers like mail, syslog, file etc. For example you can configure lshell \
+    to send all log with a level higher than warning to syslog and critical    \
+    by mail. Some handlers are already implemented in the configuration file   \
+    but disabled. Handlers need to be set on the lshell logger configuration
+
+    For the FileHandler which log in a file, you can define custom variables   \
+    like the example below :
+         (i.e foo-20091009.log)
+                                %u -> username
+                                %d -> day   [1..31]
+                                %m -> month [1..12]
+                                %y -> year  [00..99]
+                                %h -> time  [00:00..23:59]
+    You can also define the directory where it will be logged and the permission\
+
+
     In this case, my configuration file will look something like this:
 
     # CONFIGURATION START
     [global]
-    logpath         : /var/log/lshell/
-    loglevel        : 2
 
     [default]
     allowed         : ['ls','pwd']
@@ -138,6 +146,48 @@ All this information is in the man (man lshell)
     path            : - ['/usr/local']
     strict          : 1
     scpforce        : '/home/bar/uploads/'
+
+    [loggers]
+    keys=root,lshell
+    
+    [logger_root]
+    handlers=file
+    level=NOTSET
+    
+    [logger_lshell]
+    handlers=screen,file
+    level=NOTSET
+    qualname=lshell
+    propagate=0
+    
+    [formatters]
+    keys=screen,default
+    
+    [formatter_default]
+    format=%(asctime)s - %(levelname)s - %(message)s
+    class=lshell.DefaultFormatter
+    datefmt=%X
+    
+    [formatter_screen]
+    format=%(message)s
+    class=lshell.ScreenFormatter
+    datefmt=%X
+    
+    [handlers]
+    keys=file,screen
+    
+    [handler_screen]
+    class=StreamHandler
+    formatter=screen
+    level=WARN
+    args=(sys.stderr,)
+    
+    [handler_file]
+    class=lshell.CustomFileHandler
+    formatter=default
+    level=INFO
+    args=('/var/log/lshell/','%y%m%d-%u.log','a',0600)
+    
     # CONFIGURATION END
 
 ###

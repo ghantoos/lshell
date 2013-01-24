@@ -37,7 +37,7 @@ import getopt
 import logging
 import logging.config
 from logging import handlers
-from logging.handlers import TimedRotatingFileHandler
+from pwd import getpwnam
 import signal
 import readline
 import grp
@@ -86,6 +86,17 @@ Cheers.
 intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
 
+class CustomFileHandler(logging.FileHandler):
+    def __init__(self,path,fileName,mode,perm):
+        currentime = time.localtime()
+        fileName = fileName.replace('%y','%s'   %currentime[0])
+        fileName = fileName.replace('%m','%02d' %currentime[1])
+        fileName = fileName.replace('%d','%02d' %currentime[2])
+        fileName = fileName.replace('%h','%02d' %currentime[3])
+        fileName = fileName.replace('%u',getuser())
+        super(CustomFileHandler,self).__init__(path+"/"+fileName,mode)
+        os.chmod(path+"/"+fileName,perm)
+        os.chown(path+"/"+fileName,getpwnam(getuser()).pw_uid,getpwnam(getuser()).pw_gid)
 
 class CustomFormatter(logging.Formatter):
     def __init__(self, default, logname):

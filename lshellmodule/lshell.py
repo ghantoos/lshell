@@ -529,6 +529,7 @@ class ShellCmd(cmd.Cmd, object):
                     readline.read_history_file(self.conf['history_file'])
                 except IOError:
                     pass
+            readline.set_completer_delims(readline.get_completer_delims().replace('-', ''))
             self.old_completer = readline.get_completer()
             readline.set_completer(self.complete)
             readline.parse_and_bind(self.completekey+": complete")
@@ -564,6 +565,7 @@ class ShellCmd(cmd.Cmd, object):
         finally:
             if self.use_rawinput and self.completekey:
                 try:
+                    readline.set_completer_delims(readline.get_completer_delims().replace('-', ''))
                     readline.set_completer(self.old_completer)
                 except ImportError:
                     pass

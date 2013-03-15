@@ -176,6 +176,9 @@ class ShellCmd(cmd.Cmd, object):
             # builtin export function
             elif self.g_cmd == 'export':
                 self.export()
+            # builtin . (source)  function
+            elif self.g_cmd == '.':
+                self.source()   
             else:
                 os.system(self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 
@@ -279,6 +282,17 @@ class ShellCmd(cmd.Cmd, object):
         else:
             os.chdir(self.conf['home_path'])
             self.updateprompt(os.getcwd())
+
+    def source(self):
+        """
+        Launch . (source) command.
+        Only import variable (not alias, etc).
+        """
+        from commands import getoutput
+        from re import match
+        new_env = getoutput('. %s && env' % self.g_arg).splitlines()
+        new_env_dict = dict( [ match(r'([^=]*)=(.*)', var).groups() for var in new_env ] )
+        os.environ.update(new_env_dict)
 
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.      \

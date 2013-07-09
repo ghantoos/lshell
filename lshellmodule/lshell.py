@@ -129,6 +129,16 @@ class ShellCmd(cmd.Cmd, object):
         self.g_cmd = g_cmd
         self.g_line = g_line
 
+        if self.conf['winscp']:
+            #Add minimum commands required for WinSCP working
+            self.conf['allowed'].extend(['scp', 'env', 'pwd', 'groups', 'unset', 'unalias'])
+            #Remove doubles
+            self.conf['allowed'] = list(set(self.conf['allowed']))
+            while ';' in self.conf['forbidden']:
+                self.conf['forbidden'].remove(';')
+            #Without if Winscp can't read symlinks if LC_TIME not latin
+            os.environ['LC_TIME'] = 'en_US.UTF-8'
+
     def __getattr__(self, attr):
         """ This method actually takes care of all the called method that are  \
         not resolved (i.e not existing methods). It actually will simulate     \
@@ -138,7 +148,7 @@ class ShellCmd(cmd.Cmd, object):
         the 'allowed' variable, and lshell will react as if you had            \
         added a do_uname in the ShellCmd class!
         """
-
+        
         # in case the configuration file has been modified, reload it
         if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
             self.conf = CheckConfig(self.args).returnconf()
@@ -153,6 +163,8 @@ class ShellCmd(cmd.Cmd, object):
         if self.check_secure(self.g_line, self.conf['strict']) == 1: 
             return object.__getattribute__(self, attr)
         if self.check_path(self.g_line, strict = self.conf['strict']) == 1:
+            if self.conf['winscp'] and re.search( r'WinSCP: this is end-of-file', self.g_line ):
+                os.system('echo "WinSCP: this is end-of-file: 0"')
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
             self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],      \
@@ -248,6 +260,24 @@ class ShellCmd(cmd.Cmd, object):
     def cd(self):
         """ implementation of the "cd" command
         """
+        #Split commands if user entered cd dir; comm2; comm3...
+        arr = self.g_arg.split(';', 1)
+        #cd command is a first place, we get it
+        cd_cmd = arr[0].strip()
+
+        #if directory in quotas, remove it cd "dir1" => cd dir1
+        if cd_cmd.startswith('"') and cd_cmd.endswith('"'):
+            cd_cmd = cd_cmd[1:-1]
+
+        #if we have other commands after ;
+        #save it in other_cmd var.    
+        other_cmd = False
+        if len(arr) > 1:
+           other_cmd = arr[1].strip()
+
+        #because we wan't only cd command, not entire string with commands after ;
+        self.g_arg = cd_cmd
+
         if len(self.g_arg) >= 1:
             # add wildcard completion support to cd
             if self.g_arg.find('*'):
@@ -279,6 +309,10 @@ class ShellCmd(cmd.Cmd, object):
         else:
             os.chdir(self.conf['home_path'])
             self.updateprompt(os.getcwd())
+
+        #if we have commands after ; - execute it
+        if other_cmd:
+            self.onecmd(other_cmd)
 
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.      \
@@ -1135,7 +1169,8 @@ class CheckConfig:
                     'prompt_short',
                     'allowed_cmd_path',
                     'history_size',
-                    'login_script']:
+                    'login_script',
+                    'winscp']:
             try:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""

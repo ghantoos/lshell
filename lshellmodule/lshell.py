@@ -350,7 +350,7 @@ class ShellCmd(cmd.Cmd, object):
             return 0
 
         # in case ';', '|' or '&' are not forbidden, check if in line
-        lines = re.split('&|\||;', line)
+        lines = re.split('[^\\\\]&|[^\\\\]\||[^\\\\];', line)
         # remove trailing parenthesis
         line = re.sub('\)$', '', line)
         for sperate_line in lines:
@@ -474,9 +474,7 @@ class ShellCmd(cmd.Cmd, object):
                         else: 
                             self.log.critical('*** Forbidden path: %s'        \
                                                         % tomatch)
-                            return 1
-                    else:
-                        return 1
+                return 1
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:
@@ -487,9 +485,7 @@ class ShellCmd(cmd.Cmd, object):
                     else:
                         self.log.critical('*** Forbidden path: %s'            \
                                                         %os.getcwd())
-                        return 1
-                else:
-                    return 1
+                return 1
         return 0
 
     def updateprompt(self, path):

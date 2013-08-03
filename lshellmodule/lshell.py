@@ -258,6 +258,18 @@ class ShellCmd(cmd.Cmd, object):
             # if it conatins the equal sign, consider only the first one
             if env.count('='):
                 var, value = env.split(' ')[0].split('=')[0:2]
+                # expand values, if variable is surcharged by other variables
+                try:
+                    import subprocess
+                    p = subprocess.Popen( "`which echo` %s" % value,
+                                          shell=True,
+                                          stdin=subprocess.PIPE,
+                                          stdout=subprocess.PIPE )
+                    (cin, cout) = (p.stdin, p.stdout)
+                except ImportError:
+                    cin, cout = os.popen2('`which echo` %s' % value)
+                value = cout.readlines()[0]
+
                 os.environ.update({var:value})
 
     def cd(self):

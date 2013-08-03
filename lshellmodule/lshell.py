@@ -1450,7 +1450,7 @@ def get_aliases(line, aliases):
         # replace the key by the actual alias
         line = line.replace(aliaskey, aliases[item])
 
-    for char in [';', '&', '|']:
+    for char in [';']:
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)
     return line

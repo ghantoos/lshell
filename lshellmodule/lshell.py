@@ -350,7 +350,26 @@ class ShellCmd(cmd.Cmd, object):
             return 0
 
         # in case ';', '|' or '&' are not forbidden, check if in line
-        lines = re.split('&|\||;', line)
+        lines = []
+        
+        # first char
+        if line[0] in ["&", "|", ";"]:
+            start = 1
+        else:
+            start = 0
+        
+        # split remaining
+        for i in range(1, len(line)):
+            # in case \& or \| or \; don't split it
+            if line[i] in ["&", "|", ";"] and line[i-1] != "\\":
+                # if there is present more && or || skip it
+                if start != i:
+                    lines.append(line[start:i])
+                start = i+1
+        # last part
+        if start != len(line):
+            lines.append(line[start:len(line)])
+        
         # remove trailing parenthesis
         line = re.sub('\)$', '', line)
         for sperate_line in lines:

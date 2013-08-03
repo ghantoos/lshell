@@ -191,6 +191,11 @@ class ShellCmd(cmd.Cmd, object):
             # builtin export function
             elif self.g_cmd == 'export':
                 self.export()
+            # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
+            elif self.g_line[0:2] == 'cd':
+                self.g_cmd = self.g_line.split()[0]
+                self.g_arg = ' '.join(self.g_line.split()[1:])
+                self.cd()
             else:
                 os.system(self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 

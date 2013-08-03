@@ -153,7 +153,6 @@ class ShellCmd(cmd.Cmd, object):
         the 'allowed' variable, and lshell will react as if you had            \
         added a do_uname in the ShellCmd class!
         """
-
         # in case the configuration file has been modified, reload it
         if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
             self.conf = CheckConfig(self.args).returnconf()
@@ -192,7 +191,12 @@ class ShellCmd(cmd.Cmd, object):
             elif self.g_cmd == 'export':
                 self.export()
             else:
-                os.system(self.g_line)
+                if self.g_line[0:2] == 'cd':
+                   self.g_cmd = self.g_line.split()[0]
+                   self.g_arg = ' '.join(self.g_line.split()[1:])
+                   self.cd()
+                else:
+                   os.system(self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
@@ -599,6 +603,7 @@ class ShellCmd(cmd.Cmd, object):
                         else:
                             line = line[:-1] # chop \n
                 line = self.precmd(line)
+                # Execute cmd
                 stop = self.onecmd(line)
                 stop = self.postcmd(stop, line)
             self.postloop()
@@ -1505,3 +1510,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

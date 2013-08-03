@@ -41,6 +41,21 @@ import grp
 import time
 import glob
 
+try:
+    from os import urandom
+except:
+    def urandom(n):
+        try:
+            _urandomfd = open("/dev/urandom", 'r')
+        except Exception,e:
+            print e
+            raise NotImplementedError("/dev/urandom (or equivalent) not found")
+        bytes = ""
+        while len(bytes) < n:
+            bytes += _urandomfd.read(n - len(bytes))
+        _urandomfd.close()
+        return bytes
+
 __author__ = "Ignace Mouzannar <ghantoos@ghantoos.org>"
 __version__ = "0.9.16"
 
@@ -1435,7 +1450,7 @@ def get_aliases(line, aliases):
 
         # in case aliase bigin with the same command
         # (this is until i find a proper regex solution..)
-        aliaskey = os.urandom(10)
+        aliaskey = urandom(10)
 
         while re.findall(reg1, line):
             (before, after, rest) = re.findall(reg1, line)[0]

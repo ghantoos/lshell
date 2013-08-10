@@ -262,6 +262,9 @@ class ShellCmd(cmd.Cmd, object):
         # store original string
         oline = line
 
+        # strip all spaces/tabs
+        line = " ".join(line.split())
+
         # ignore quoted text
         line = re.sub(r'\"(.+?)\"', '', line)
         line = re.sub(r'\'(.+?)\'', '', line)
@@ -349,8 +352,9 @@ class ShellCmd(cmd.Cmd, object):
         
         # remove trailing parenthesis
         line = re.sub('\)$', '', line)
-        for sperate_line in lines:
-            splitcmd = sperate_line.strip().split(' ')
+        for separate_line in lines:
+            separate_line = " ".join(separate_line.split())
+            splitcmd = separate_line.strip().split(' ')
             command = splitcmd[0]
             if len(splitcmd) > 1:
                 cmdargs = splitcmd

@@ -259,12 +259,19 @@ class ShellCmd(cmd.Cmd, object):
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
 
+        # store original string
+        oline = line
+
+        # ignore quoted text
+        line = re.sub(r'\"(.+?)\"', '', line)
+        line = re.sub(r'\'(.+?)\'', '', line)
+
         if re.findall('[:cntrl:].*\n', line):
             if not ssh:
                 if strict:
                     self.counter_update('syntax')
                 else:
-                    self.log.critical('*** forbidden syntax -> %s' % line)
+                    self.log.critical('*** forbidden syntax -> %s' % oline)
             return 1
 
         for item in self.conf['forbidden']:
@@ -276,7 +283,7 @@ class ShellCmd(cmd.Cmd, object):
                             self.counter_update('syntax')
                         else:
                             self.log.critical('*** forbidden syntax -> %s'    \
-                                                    % line)
+                                                    % oline)
                     return 1
             else:
                 if item in line:
@@ -285,7 +292,7 @@ class ShellCmd(cmd.Cmd, object):
                             self.counter_update('syntax')
                         else:
                             self.log.critical('*** forbidden syntax -> %s'    \
-                                                    % line)
+                                                    % oline)
                     return 1
 
         returncode = 0
@@ -358,7 +365,7 @@ class ShellCmd(cmd.Cmd, object):
                                 self.counter_update('command')
                         else:
                             self.log.critical('*** forbidden sudo -> %s'       \
-                                                    % line )
+                                                    % oline )
                         return 1
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
@@ -368,7 +375,7 @@ class ShellCmd(cmd.Cmd, object):
             if command not in self.conf['allowed'] and command:
                 if not ssh:
                     if strict:
-                        self.counter_update('command', line)
+                        self.counter_update('command', oline)
                     else:
                         self.log.critical('*** unknown command: %s' %command)
                 return 1

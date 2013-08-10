@@ -21,7 +21,34 @@
 
 """ calls lshell function """
 
-import lshell
+import os
+import sys
+
+from lshell.checkconfig import CheckConfig
+from lshell.shellcmd import ShellCmd, LshellTimeOut
+
+
+def main():
+    """ main function """
+    # set SHELL and get LSHELL_ARGS env variables
+    os.environ['SHELL'] = os.path.realpath(sys.argv[0])
+    if 'LSHELL_ARGS' in os.environ:
+        args = sys.argv[1:] + eval(os.environ['LSHELL_ARGS'])
+    else:
+        args = sys.argv[1:]
+
+    userconf = CheckConfig(args).returnconf()
+
+    try:
+        cli = ShellCmd(userconf, args)
+        cli.cmdloop()
+
+    except (KeyboardInterrupt, EOFError):
+        sys.stdout.write('\nExited on user request\n')
+        sys.exit(0)
+    except LshellTimeOut:
+        userconf['logpath'].error('Timer expired')
+        sys.stdout.write('\nTime is up.\n')
 
 if __name__ == '__main__':
-    lshell.main()
+    main()

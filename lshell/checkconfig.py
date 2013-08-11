@@ -280,7 +280,10 @@ class CheckConfig:
                     # if log file is writable add new log file handler
                     logfile = os.path.join(self.conf['logpath'], \
                                                             logfilename+'.log')
+                    # create log file if it does not exist, and set permissions
                     fp = open(logfile,'a').close()
+                    os.chmod(logfile, 0600)
+                    # set logging handler
                     self.logfile = logging.FileHandler(logfile)
                     self.logfile.setFormatter(formatter)
                     self.logfile.setLevel(self.levels[self.conf['loglevel']])

@@ -58,10 +58,10 @@ lock_file = ".lshell_lock"
 
 # help text
 usage = """Usage: lshell [OPTIONS]
-  --config <file> : Config file location (default %s)
-  --log    <dir>  : Log files directory
-  -h, --help      : Show this help message
-  --version       : Show version
+  --config <file>   : Config file location (default %s)
+  --<param> <value> : where <param> is *any* config file parameter
+  -h, --help        : Show this help message
+  --version         : Show version
 """ % configfile
 
 help_help = """Limited Shell (lshell) limited help.
@@ -71,6 +71,36 @@ Cheers.
 # Intro Text
 intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
+
+# configuration parameters
+configparams = [ 'log=',
+                 'logpath=',
+                 'loglevel=',
+                 'logfilename=',
+                 'syslogname=',
+                 'allowed=',
+                 'forbidden=',
+                 'sudo_commands=',
+                 'warning_counter=',
+                 'aliases=',
+                 'intro=',
+                 'prompt=',
+                 'prompt_short=',
+                 'timer=',
+                 'path=',
+                 'home_path=',
+                 'env_path=',
+                 'allowed_cmd_path=',
+                 'env_vars=',
+                 'scp=',
+                 'scp_upload=',
+                 'scp_download=',
+                 'sftp=',
+                 'overssh=',
+                 'strict=',
+                 'scpforce=',
+                 'history_size=',
+                 'history_file=' ]
 
 
 class CheckConfig:
@@ -120,23 +150,23 @@ class CheckConfig:
         # set configfile as default configuration file
         conf['configfile'] = configfile
 
+        params = configparams + ['config=', 'help', 'version']
+
         try:
             optlist, args = getopt.getopt(arguments,
                                           'hc:',
-                                          ['config=',
-                                           'log=',
-                                           'help',
-                                           'Version'])
+                                          params)
         except getopt.GetoptError:
             self.stderr.write('Missing or unknown argument(s)\n')
             self.usage()
-
 
         for option, value in optlist:
             if  option in ['--config']:
                 conf['configfile'] = os.path.realpath(value)
             if  option in ['--log']:
                 conf['logpath'] = os.path.realpath(value)
+            if  "%s=" %option[2:] in configparams:
+                conf[option[2:]] = value
             if  option in ['-c']:
                 conf['ssh'] = value
             if option in ['-h', '--help']:
@@ -226,7 +256,10 @@ class CheckConfig:
         # close any logger handler/filters if exists
         # this is useful if configuration is reloaded
         for loghandler in logger.handlers:
-            logging.shutdown(logger.handlers)
+            try:
+              logging.shutdown(logger.handlers)
+            except TypeError:
+              pass
         for logfilter in logger.filters:
             logger.removeFilter(logfilter)
 
@@ -464,6 +497,9 @@ class CheckConfig:
             except AttributeError:
                 pass
 
+        for key in self.conf.keys():
+            self.conf_raw[key] = self.conf[key]
+
         for item in ['allowed',
                     'forbidden',
                     'sudo_commands',
@@ -596,6 +632,7 @@ class CheckConfig:
                     cmd = os.path.join(path, item)
                     if os.access(cmd, os.X_OK):
                         self.conf['allowed'].append(item)
+
 
     def account_lock(self, user, lock_counter, check=None):
         """ check if user account is locked, in which case, exit """

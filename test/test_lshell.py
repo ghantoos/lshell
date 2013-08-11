@@ -10,13 +10,11 @@ TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 class TestFunctions(unittest.TestCase):
 
     user = getuser()
-    child = pexpect.spawn('%s/bin/lshell '
-                          '--config %s/etc/lshell.conf ' % (TOPDIR, TOPDIR))
 
     def setUp(self):
         """ spawn lshell with pexpext and return the child """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf '
+                                   '--config %s/etc/lshell.conf --strict 1'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 

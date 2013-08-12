@@ -370,16 +370,21 @@ class CheckConfig:
         """ this function is used to interpret the configuration +/-, 
             'all' etc.
         """
+        # convert commandline options from dict to list of tuples, in order to
+        # merge them with the output of the config parser
+        conf = []
+        for key in self.conf:
+            if key not in ['config_mtime', 'logpath']:
+                conf.append((key,self.conf[key]))
+
         if self.config.has_section(section):
-            for item in self.config.items(section):
+            conf = self.config.items(section) + conf
+            for item in conf:
                 key = item[0]
-                # if key is defined from input, override configuration file
-                if key in self.conf:
-                    value = self.conf[key]
-                # else read it from configuration file
-                else:
-                    value = item[1]
-                split = re.split('([\+\-\s]+\[[^\]]+\])', value.replace(' ',   \
+                value = item[1]
+                # if string, then split
+                if isinstance(value, str):
+                    split = re.split('([\+\-\s]+\[[^\]]+\])', value.replace(' ',
                                                                             ''))
                 if len(split) > 1 and key in ['path',                          \
                                               'overssh',                       \

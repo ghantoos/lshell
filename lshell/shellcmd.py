@@ -282,22 +282,10 @@ class ShellCmd(cmd.Cmd, object):
             # allow '&&' and '||' even if singles are forbidden
             if item in ['&', '|']:
                 if re.findall("[^\%s]\%s[^\%s]" %(item, item, item), line):
-                    if not ssh:
-                        if strict:
-                            self.counter_update('syntax')
-                        else:
-                            self.log.critical('*** forbidden syntax -> %s'    \
-                                                    % oline)
-                    return 1
+                    return self.warn_count('syntax', oline, strict, ssh)
             else:
                 if item in line:
-                    if not ssh:
-                        if strict:
-                            self.counter_update('syntax')
-                        else:
-                            self.log.critical('*** forbidden syntax -> %s'    \
-                                                    % oline)
-                    return 1
+                    return self.warn_count('syntax', oline, strict, ssh)
 
         returncode = 0
         # check if the line contains $(foo) executions, and check them
@@ -365,27 +353,47 @@ class ShellCmd(cmd.Cmd, object):
             if command == 'sudo':
                 if type(cmdargs) == list:
                     if cmdargs[1] not in self.conf['sudo_commands'] and cmdargs:
-                        if self.conf['strict'] == 1:
-                            if not ssh:
-                                self.counter_update('command')
-                        else:
-                            self.log.critical('*** forbidden sudo -> %s'       \
-                                                    % oline )
-                        return 1
+                        return self.warn_count('sudo command', oline, strict, ssh)
+
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']
             
             # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
-                if not ssh:
-                    if strict:
-                        self.counter_update('command', oline)
-                    else:
-                        self.log.critical('*** unknown command: %s' %command)
-                return 1
+                return self.warn_count('command', oline, strict, ssh, command)
         return 0
-         
+
+    def warn_count(self, messagetype, line=None, strict=None, ssh=None, command=None):
+        """ Update the warning_counter, log and display a warning to the user
+        """
+        if not line:
+            line = self.g_line
+        if command:
+            line = command
+
+        if not ssh:
+            if strict:
+                self.conf['warning_counter'] -= 1
+                if self.conf['warning_counter'] < 0:
+                    self.log.critical('*** forbidden %s -> "%s"'                   \
+                                                          % (messagetype ,line))
+                    self.log.critical('*** Kicked out')
+                    sys.exit(1)
+                else:
+                    self.log.critical('*** forbidden %s -> "%s"'                   \
+                                                          % (messagetype ,line))
+                    self.stderr.write('*** You have %s warning(s) left,'           \
+                                        ' before getting kicked out.\n'            \
+                                        %(self.conf['warning_counter']))
+                    self.stderr.write('This incident has been reported.\n')
+            else:
+                if not self.conf['quiet']:
+                    self.log.critical('*** forbidden %s: %s' % (messagetype, line))
+
+        # if you are here, means that you did something wrong. Return 1.
+        return 1
+
     def counter_update(self, messagetype, path=None):
         """ Update the warning_counter, log and display a warning to the user
         """
@@ -469,13 +477,7 @@ class ShellCmd(cmd.Cmd, object):
             else: match_denied = None
             if not match_allowed or match_denied:
                 if not completion:
-                    if not ssh:
-                        if strict: 
-                            self.counter_update('path', tomatch)
-                        else: 
-                            self.log.critical('*** Forbidden path: %s'        \
-                                                        % tomatch)
-                return 1
+                    return self.warn_count('paaath', tomatch, strict, ssh)
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:

@@ -73,7 +73,11 @@ intro = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
 
 # configuration parameters
-configparams = [ 'log=',
+configparams = [ 'config=',
+                 'help',
+                 'version',
+                 'quiet=',
+                 'log=',
                  'logpath=',
                  'loglevel=',
                  'logfilename=',
@@ -150,12 +154,10 @@ class CheckConfig:
         # set configfile as default configuration file
         conf['configfile'] = configfile
 
-        params = configparams + ['config=', 'help', 'version']
-
         try:
             optlist, args = getopt.getopt(arguments,
                                           'hc:',
-                                          params)
+                                          configparams)
         except getopt.GetoptError:
             self.stderr.write('Missing or unknown argument(s)\n')
             self.usage()
@@ -517,7 +519,8 @@ class CheckConfig:
                     'prompt_short',
                     'allowed_cmd_path',
                     'history_size',
-                    'login_script']:
+                    'login_script',
+                    'quiet']:
             try:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""

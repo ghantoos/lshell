@@ -373,7 +373,12 @@ class CheckConfig:
         if self.config.has_section(section):
             for item in self.config.items(section):
                 key = item[0]
-                value = item[1]
+                # if key is defined from input, override configuration file
+                if key in self.conf:
+                    value = self.conf[key]
+                # else read it from configuration file
+                else:
+                    value = item[1]
                 split = re.split('([\+\-\s]+\[[^\]]+\])', value.replace(' ',   \
                                                                             ''))
                 if len(split) > 1 and key in ['path',                          \
@@ -498,9 +503,6 @@ class CheckConfig:
                 self.logfile.setLevel(self.levels[self.conf['loglevel']])
             except AttributeError:
                 pass
-
-        for key in self.conf.keys():
-            self.conf_raw[key] = self.conf[key]
 
         for item in ['allowed',
                     'forbidden',

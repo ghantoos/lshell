@@ -134,7 +134,7 @@ class ShellCmd(cmd.Cmd, object):
                 self.g_arg = ' '.join(self.g_line.split()[1:])
                 self.cd()
             else:
-                os.system(self.g_line)
+                os.system('set -m; %s' % self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
@@ -477,7 +477,7 @@ class ShellCmd(cmd.Cmd, object):
             else: match_denied = None
             if not match_allowed or match_denied:
                 if not completion:
-                    return self.warn_count('paaath', tomatch, strict, ssh)
+                    return self.warn_count('path', tomatch, strict, ssh)
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:

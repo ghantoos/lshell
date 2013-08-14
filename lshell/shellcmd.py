@@ -528,8 +528,8 @@ class ShellCmd(cmd.Cmd, object):
             readline.set_completer(self.complete)
             readline.parse_and_bind(self.completekey+": complete")
         try:
-            if self.conf['intro']:
-                self.stdout.write(str(self.conf['intro'])+"\n")
+            if self.intro and isinstance(self.intro, str):
+                self.stdout.write("%s\n" % self.intro)
             if self.conf['login_script']:
                 os.system(self.conf['login_script'])
             stop = None

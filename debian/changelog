@@ -1,3 +1,9 @@
+lshell (0.9.16-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 14 Aug 2013 22:41:06 -0400
+
 lshell (0.9.15.1-1) unstable; urgency=low
 
   * New upstream release. 

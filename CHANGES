@@ -8,8 +8,22 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.16   xx/xx/2013 ===
+=== v0.9.16   14/08/2013 ===
     * Added support to login script. Thank you Laurent Debacker for the patch.
+    * Fixed auto-complete failing with "-"
+    * Fixed bug where forbidden commands still execute if strict=1
+    * Fixed auto-completion complete of forbidden paths 
+    * Fixed wrong parsing &, | or ; characters
+    * Added urandom function definition for python 2.3 compat
+    * Corrected env variable expansion
+    * Add support for cd command in aliases
+    * Split lshellmodule in multiple files under the lshell directory
+    * Fixed check_secure function to ignore quoted text 
+    * Fixed multiple spaces escaping forbidden filtering
+    * Fixed log file permissions 644 -> 600
+    * Added possibility to override config file option via command-line
+    * Enabled job control when executing command
+    * Code cleanup
 
 === v0.9.15.2 08/05/2012 ===
     * Corrected mismatch in aliaskey variable.

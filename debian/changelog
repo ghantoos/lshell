@@ -1,8 +1,13 @@
-lshell (0.9.16-1) UNRELEASED; urgency=low
+lshell (0.9.16-1) unstable; urgency=low
 
-  * New upstream release.
+  * New upstream release (Closes: #668776).
+  * debian/control:
+    - Bumped Standards-Version to 3.9.4.
+    - Remove obsolete DM-Upload-Allowed field.
+  * debian/rules:
+    - Added override for dh_auto_install.
 
- -- Ignace Mouzannar <mouzannar@gmail.com>  Wed, 14 Aug 2013 22:41:06 -0400
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Thu, 15 Aug 2013 18:09:39 +0400
 
 lshell (0.9.15.1-1) unstable; urgency=low
 

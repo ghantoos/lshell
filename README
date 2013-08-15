@@ -207,8 +207,8 @@ All this information is in the man (man lshell)
 ###
     If you want to contribute to this project, please do not hesitate.
     Send me a patch, or just your new lshell.py so I can check it out.
-    You can use the interface on sourceforge.net: 
-    http://sourceforge.net/projects/lshell/
+    You can use the interface on github: 
+    https://github.com/ghantoos/lshell/issues
 
     Cheers,
-    Ignace Mouzannar ((ghantoos)) <ghantoos@ghantoos.org>
+    Ignace Mouzannar <ghantoos@ghantoos.org>

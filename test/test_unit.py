@@ -73,5 +73,14 @@ class TestStringsTest(unittest.TestCase):
     userconf = CheckConfig(args).returnconf()
     return self.assertEqual(userconf['strict'], 123)
 
+  def test_overssh(self):
+    """ test command over ssh """
+    args = self.args + ["--overssh=['exit']", '-c exit']
+    os.environ['SSH_CLIENT'] = '8.8.8.8 36000 22'
+    os.environ.pop('SSH_TTY')
+    with self.assertRaises(SystemExit) as cm:
+      userconf = CheckConfig(args).returnconf()
+    return self.assertEqual(cm.exception.code, 0)
+
 if __name__ == "__main__":
     unittest.main()

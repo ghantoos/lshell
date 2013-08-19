@@ -27,7 +27,6 @@ import signal
 import readline
 import glob
 
-from checkconfig import CheckConfig
 from utils import get_aliases
 
 
@@ -92,6 +91,7 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case the configuration file has been modified, reload it
         if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
+            from lshell.checkconfig import CheckConfig
             self.conf = CheckConfig(['--config', \
                                      self.conf['configfile']]).returnconf()
             self.prompt = '%s:~$ ' % self.setprompt(self.conf)

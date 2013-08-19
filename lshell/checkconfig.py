@@ -675,6 +675,7 @@ class CheckConfig:
                         sys.exit(0)
 
                 # initialise cli session
+                from lshell.shellcmd import ShellCmd
                 cli = ShellCmd(self.conf, None, None, None, None,              \
                                                             self.conf['ssh'])
                 if cli.check_path(self.conf['ssh'], None, ssh=1) == 1:

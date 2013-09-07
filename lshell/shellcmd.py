@@ -435,8 +435,11 @@ class ShellCmd(cmd.Cmd, object):
         line = sep.split(line)
 
         for item in line:
-            # remove potential quotes
-            item = re.sub(r'^["\']|["\']$', '', item)
+            # remove potential quotes or backticks
+            item = re.sub(r'^["\'`]|["\'`]$', '', item)
+
+            # remove potential $(), ${}, ``
+            item = re.sub(r'^\$[\(\{]|[\)\}]$', '', item)
 
             # if item has been converted to somthing other than a string
             # or an int, reconvert it to a string

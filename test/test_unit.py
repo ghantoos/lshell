@@ -67,6 +67,14 @@ class TestStringsTest(unittest.TestCase):
     INPUT = "cd /tmp"
     return self.assertEqual(shell.check_path(INPUT), 1)
 
+  def test_checkpath_dollarparenthesis(self):
+    """ when $() is allowed, return 0 if path allowed """
+    args = self.args + ["--forbidden=[';', '&', '|','`','>','<', '${']"]
+    userconf = CheckConfig(args).returnconf()
+    shell = ShellCmd(userconf, args)
+    INPUT = "echo $(echo aze)"
+    return self.assertEqual(shell.check_path(INPUT), 0)
+
   def test_checkconfig_configoverwrite(self):
     """ forbid ';', then check_secure should return 1 """
     args = ['--config=%s/etc/lshell.conf' % TOPDIR, '--strict=123']

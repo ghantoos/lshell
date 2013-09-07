@@ -45,7 +45,7 @@ choose a list of allowed commands for every limited account.""",
                         ('share/doc/lshell',['README', 'COPYING', 'CHANGES']),
                         ('share/man/man1/', ['man/lshell.1']) ],
           classifiers=[
-            'Development Status :: 4 - Beta',
+            'Development Status :: 5 - Production/Stable',
             'Environment :: Console'
             'Intended Audience :: Advanced End Users',
             'Intended Audience :: System Administrators',

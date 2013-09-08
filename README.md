@@ -17,13 +17,11 @@ You have 3 options:
             python setup.py install --no-compile --install-scripts=/usr/bin/
             # on *BSD:
             python setup.py install --no-compile --install-data=/usr/{pkg,local}/
-
     2.  Install the rpm
 
             yum install lshell
             # or 
             rpm -Uvh lshell-x.x-x.noarch.rpm
-
     3. Install the .deb
 
             apt-get install lshell

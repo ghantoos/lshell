@@ -106,9 +106,9 @@ By default lshell will try to launch using /${CONFPATH}/lshell.conf unless speci
 - "/etc/" for Linux
 - "/usr/{pkg,local}/etc/" for *BSD
 
-In order to log a user, you will have to add him to the lshellg group:
+In order to log a user, you will have to add him to the lshell group:
 
-    usermod -aG lshellg username
+    usermod -aG lshell username
 
 
 Use case 1: /etc/passwd

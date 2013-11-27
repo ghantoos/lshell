@@ -79,6 +79,9 @@ class ShellCmd(cmd.Cmd, object):
         self.g_cmd = g_cmd
         self.g_line = g_line
 
+        # initialize return code
+        self.retcode = None
+
     def __getattr__(self, attr):
         """ This method actually takes care of all the called method that are
         not resolved (i.e not existing methods). It actually will simulate
@@ -111,30 +114,34 @@ class ShellCmd(cmd.Cmd, object):
                                                                    self.g_arg)
             self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],        \
                                                                    self.g_arg)
+            # replace previous command exit code
+            self.g_line = re.sub('(\s|^)\$\?(\s|$)', ' %s '  %self.retcode,
+                                                                   self.g_line)
+
             if type(self.conf['aliases']) == dict:
                 self.g_line = get_aliases(self.g_line, self.conf['aliases'])
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd == 'cd':
-                self.cd()
+                self.retcode = self.cd()
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
-                self.lpath()
+                self.retcode = self.lpath()
             # builtin lsudo function: list all allowed sudo commands
             elif self.g_cmd == 'lsudo':
-                self.lsudo()
+                self.retcode = self.lsudo()
             # builtin history function: print command history
             elif self.g_cmd == 'history':
-                self.history()
+                self.retcode = self.history()
             # builtin export function
             elif self.g_cmd == 'export':
-                self.export()
+                self.retcode = self.export()
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == 'cd':
                 self.g_cmd = self.g_line.split()[0]
                 self.g_arg = ' '.join(self.g_line.split()[1:])
-                self.cd()
+                self.retcode = self.cd()
             else:
-                os.system('set -m; %s' % self.g_line)
+                self.retcode = os.system('set -m; %s' % self.g_line)
         elif self.g_cmd not in ['', '?', 'help', None]: 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
@@ -166,6 +173,7 @@ class ShellCmd(cmd.Cmd, object):
             for path in self.conf['path'][1].split('|'):
                 if path:
                     sys.stdout.write(" %s\n" % path[:-2])
+        return 0
 
     def lsudo(self):
         """ lists allowed sudo commands
@@ -174,6 +182,7 @@ class ShellCmd(cmd.Cmd, object):
             sys.stdout.write("Allowed sudo commands:\n")
             for command in self.conf['sudo_commands']:
                 sys.stdout.write(" - %s\n" % command)
+        return 0
 
     def history(self):
         """ print the commands history
@@ -184,6 +193,7 @@ class ShellCmd(cmd.Cmd, object):
             except IOError:
                 self.log.error('WARN: couldn\'t write history ' \
                                    'to file %s\n' % self.conf['history_file'])
+                return 1
             f = open(self.conf['history_file'], 'r')
             i = 1
             for item in f.readlines():
@@ -191,6 +201,8 @@ class ShellCmd(cmd.Cmd, object):
                 i += 1
         except:
             self.log.critical('** Unable to read the history file.')
+            return 1
+        return 0
 
     def export(self):
         """ export environment variables """
@@ -213,6 +225,7 @@ class ShellCmd(cmd.Cmd, object):
                 value = cout.readlines()[0]
 
                 os.environ.update({var: value})
+        return 0
 
     def cd(self):
         """ implementation of the "cd" command
@@ -245,9 +258,12 @@ class ShellCmd(cmd.Cmd, object):
                 self.updateprompt(os.getcwd())
             except OSError, (ErrorNumber, ErrorMessage):
                 sys.stdout.write("lshell: %s: %s\n" %(self.g_arg, ErrorMessage))
+                return ErrorNumber
         else:
             os.chdir(self.conf['home_path'])
             self.updateprompt(os.getcwd())
+
+        return 0
 
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.      \

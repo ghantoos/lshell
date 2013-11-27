@@ -188,6 +188,19 @@ class TestFunctions(unittest.TestCase):
 #        result = self.child.before
 #        self.assertEqual(expected, result)
 
+    def test_16_exitcode(self):
+        """ 16 - test exit codes """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = "2"
+        self.child.sendline('ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[2].strip()
+        self.assertEqual(expected, result)
+
 
 if __name__ == '__main__':
     unittest.main()

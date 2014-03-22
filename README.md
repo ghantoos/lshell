@@ -132,7 +132,7 @@ In order to launch lshell limited to the 'ssh' command, I used ssh's authorized_
 
     # vi /home/foo/.ssh/authorized_keys
     # and add :
-    command="/usr/bin/lshell --config /path/to/lshell.conf",no-port-for warding,no-X11-forwarding,no-agent-forwarding,no-pty just before the public key part.
+    command="/usr/bin/lshell --config /path/to/lshell.conf",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty just before the public key part.
 
 This will have the effect of executing lshell upon user's SSH connection. 
 

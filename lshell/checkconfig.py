@@ -104,7 +104,8 @@ configparams = [ 'config=',
                  'strict=',
                  'scpforce=',
                  'history_size=',
-                 'history_file=' ]
+                 'history_file=',
+                 'include_dir=']
 
 
 class CheckConfig:
@@ -133,6 +134,8 @@ class CheckConfig:
         self.conf['config_mtime'] = self.get_config_mtime(configfile)
         self.check_file(configfile)
         self.get_global()
+        if self.conf.has_key('include_dir'):
+            self.include_customconf()
         self.check_log()
         self.get_config()
         self.check_user_integrity()
@@ -141,11 +144,24 @@ class CheckConfig:
         self.check_scp_sftp()
         self.check_passwd()
 
+    def include_customconf(self):
+        config_list = []
+
+        if not os.path.isdir(self.conf['include_dir']):
+            self.stderr.write('The %s directory doesn\'t exist.'
+                              % self.conf['include_dir'])
+            sys.exit(0)
+
+        for file in os.listdir(self.conf['include_dir']):
+            if file.endswith(".conf"):
+                config_list.append(os.path.abspath(self.conf['include_dir'] + file))
+        self.conf['configfile_optional'] = config_list
+
     def getoptions(self, arguments, conf):
         """ This method checks the usage. lshell.py must be called with a      \
         configuration file.
         If no configuration file is specified, it will set the configuration   \
-        file path to /etc/lshell.confelf.conf['allowed'].append('exit')
+        file path to /etc/lshell.conf
         """
         # uncomment the following to set the -c/--config as mandatory argument
         #if '-c' not in arguments and '--config' not in arguments:
@@ -182,7 +198,7 @@ class CheckConfig:
         if conf.has_key('logpath'): args += ['--log', conf['logpath']]
         os.environ['LSHELL_ARGS'] = str(args)
 
-        # if lshell is invoked using shh autorized_keys file e.g.
+        # if lshell is invoked using ssh autorized_keys file e.g.
         # command="/usr/bin/lshell", ssh-dss ....
         if os.environ.has_key('SSH_ORIGINAL_COMMAND'):
             conf['ssh'] = os.environ['SSH_ORIGINAL_COMMAND']
@@ -221,8 +237,10 @@ class CheckConfig:
         """
         try:
             self.config.read(self.conf['configfile'])
-        except (ConfigParser.MissingSectionHeaderError,                        \
-                                    ConfigParser.ParsingError), argument:
+            if self.conf.has_key('configfile_optional'):
+                self.config.read(self.conf['configfile_optional'])
+        except (ConfigParser.MissingSectionHeaderError,
+                ConfigParser.ParsingError), argument:
             self.stderr.write('ERR: %s\n' %argument)
             sys.exit(0)
 
@@ -343,6 +361,9 @@ class CheckConfig:
             3- Default section
         """
         self.config.read(self.conf['configfile'])
+        if self.conf.has_key('configfile_optional'):
+            self.config.read(self.conf['configfile_optional'])
+
         self.user = getuser()
 
         self.conf_raw = {}
@@ -367,7 +388,7 @@ class CheckConfig:
         self.get_config_sub(self.user)
 
     def get_config_sub(self, section):
-        """ this function is used to interpret the configuration +/-, 
+        """ this function is used to interpret the configuration +/-,
             'all' etc.
         """
         # convert commandline options from dict to list of tuples, in order to
@@ -386,14 +407,14 @@ class CheckConfig:
                 if isinstance(value, str):
                     split = re.split('([\+\-\s]+\[[^\]]+\])', value.replace(' ',
                                                                             ''))
-                if len(split) > 1 and key in ['path',                          \
-                                              'overssh',                       \
-                                              'allowed',                       \
+                if len(split) > 1 and key in ['path',
+                                              'overssh',
+                                              'allowed',
                                               'forbidden']:
                     for stuff in split:
                         if stuff.startswith('-') or stuff.startswith('+'):
-                            self.conf_raw.update(self.minusplus(self.conf_raw, \
-                                                                    key,stuff))
+                            self.conf_raw.update(self.minusplus(self.conf_raw,
+                                                                key,stuff))
                         elif stuff == "'all'":
                             self.conf_raw.update({key:self.expand_all()})
                         elif stuff and key == 'path':
@@ -451,17 +472,16 @@ class CheckConfig:
         """ expand allowed, if set to 'all'
         """
         # initialize list to common shell builtins
-        expanded_all = ['bg', 'break', 'case', 'cd', 'continue', 'eval', \
-                        'exec', 'exit', 'fg', 'if', 'jobs', 'kill', 'login', \
-                        'logout', 'set', 'shift', 'stop', 'suspend', 'umask', \
+        expanded_all = ['bg', 'break', 'case', 'cd', 'continue', 'eval',
+                        'exec', 'exit', 'fg', 'if', 'jobs', 'kill', 'login',
+                        'logout', 'set', 'shift', 'stop', 'suspend', 'umask',
                         'unset', 'wait', 'while' ]
         for directory in os.environ['PATH'].split(':'):
             if os.path.exists(directory):
                 for item in os.listdir(directory):
                     if os.access(os.path.join(directory, item), os.X_OK):
                         expanded_all.append(item)
-            else: self.log.error('CONF: PATH entry "%s" does not exist'        \
-                                                                    % directory)
+            else: self.log.error('CONF: PATH entry "%s" does not exist' % directory)
 
         return str(expanded_all)
  
@@ -471,8 +491,7 @@ class CheckConfig:
             evaluated = eval(value)
             return evaluated
         except SyntaxError:
-            self.log.critical('CONF: Incomplete %s field in configuration file'\
-                                                            % info)
+            self.log.critical('CONF: Incomplete %s field in configuration file' % info)
             sys.exit(1)
 
     def check_user_integrity(self):
@@ -714,7 +733,7 @@ class CheckConfig:
                             # case scp upload is forbidden
                             else:
                                 self.log.error('SCP: upload forbidden: "%s"'   \
-                                                            % self.conf['ssh']) 
+                                                            % self.conf['ssh'])
                                 sys.exit(0)
                         os.system(self.conf['ssh'])
                         self.log.error('SCP disconnect')

@@ -481,7 +481,8 @@ class CheckConfig:
                 for item in os.listdir(directory):
                     if os.access(os.path.join(directory, item), os.X_OK):
                         expanded_all.append(item)
-            else: self.log.error('CONF: PATH entry "%s" does not exist' % directory)
+            else: self.log.error('CONF: PATH entry "%s" does not exist'
+                                 % directory)
 
         return str(expanded_all)
  
@@ -491,7 +492,8 @@ class CheckConfig:
             evaluated = eval(value)
             return evaluated
         except SyntaxError:
-            self.log.critical('CONF: Incomplete %s field in configuration file' % info)
+            self.log.critical('CONF: Incomplete %s field in configuration file'
+                              % info)
             sys.exit(1)
 
     def check_user_integrity(self):

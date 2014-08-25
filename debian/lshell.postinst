@@ -16,7 +16,7 @@ case "$1" in
     fi
 
     chown root:lshell /var/log/lshell/
-    chmod -R 770 /var/log/lshell/
+    chmod -R 750 /var/log/lshell/
 
     if [ -x /usr/sbin/add-shell ]; then
         add-shell /usr/bin/lshell

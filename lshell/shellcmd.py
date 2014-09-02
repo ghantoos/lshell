@@ -105,11 +105,13 @@ class ShellCmd(cmd.Cmd, object):
             if self.g_cmd == 'EOF':
                 self.stdout.write('\n')
             sys.exit(0)
-        if self.check_secure(self.g_line, self.conf['strict']) == 1: 
+        if self.check_secure(self.g_line, self.conf['strict']) == 1:
             return object.__getattribute__(self, attr)
         if self.check_path(self.g_line, strict = self.conf['strict']) == 1:
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
+            if self.conf['timer'] > 0:
+                self.mytimer(0)
             self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],      \
                                                                    self.g_arg)
             self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],        \
@@ -145,7 +147,9 @@ class ShellCmd(cmd.Cmd, object):
         elif self.g_cmd not in ['', '?', 'help', None]: 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
-        self.g_cmd, self.g_arg, self.g_line = ['', '', ''] 
+        self.g_cmd, self.g_arg, self.g_line = ['', '', '']
+        if self.conf['timer'] > 0:
+            self.mytimer(self.conf['timer'])
         return object.__getattribute__(self, attr)
 
     def setprompt(self, conf):
@@ -746,7 +750,7 @@ class ShellCmd(cmd.Cmd, object):
         """
         # set timer
         signal.signal(signal.SIGALRM, self._timererror)
-        signal.alarm(self.conf['timer'])
+        signal.alarm(timeout)
 
     def _timererror(self, signum, frame):
         raise LshellTimeOut("lshell timer timeout")

@@ -117,11 +117,17 @@ class ShellCmd(cmd.Cmd, object):
             self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],        \
                                                                    self.g_arg)
             # replace previous command exit code
-            self.g_line = re.sub('(\s|^)\$\?(\s|$)', ' %s '  %self.retcode,
-                                                                   self.g_line)
+            # in case multiple commands (using separators), only replace first command
+            # regex replaces all occureces of $?, before ;,&,|
+            if re.search('[;&\|]', self.g_line):
+              p = re.compile("(\s|^)(\$\?)([\s|$]?[;&|].*)")
+            else:
+              p = re.compile("(\s|^)(\$\?)(\s|$)")
+            self.g_line = p.sub(r' %s \3' % self.retcode, self.g_line)
 
             if type(self.conf['aliases']) == dict:
                 self.g_line = get_aliases(self.g_line, self.conf['aliases'])
+
             self.log.info('CMD: "%s"' %self.g_line)
             if self.g_cmd == 'cd':
                 self.retcode = self.cd()

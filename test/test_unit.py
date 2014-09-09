@@ -3,6 +3,7 @@ import unittest
 import lshell
 from lshell.shellcmd import ShellCmd, LshellTimeOut
 from lshell.checkconfig import CheckConfig
+from lshell.utils import get_aliases
 import os
 
 TOPDIR="%s/../" % os.path.dirname(os.path.realpath(__file__))
@@ -90,6 +91,14 @@ class TestStringsTest(unittest.TestCase):
     with self.assertRaises(SystemExit) as cm:
       userconf = CheckConfig(args).returnconf()
     return self.assertEqual(cm.exception.code, 0)
+
+  def test_multiple_aliases_with_separator(self):
+    """ multiple aliases using &&, || and ; separators """
+    # enable &, | and ; characters
+    aliases={'foo':'foo -l', 'bar':'open'}
+    INPUT = "foo; fooo  ;bar&&foo  &&   foo || bar||bar   ||     foo"
+    return self.assertEqual(get_aliases(INPUT, aliases),
+              ' foo -l; fooo  ; open&& foo -l  && foo -l || open|| open   || foo -l')
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 #
 #    Limited command Shell (lshell)
-#  
+#
 #    Copyright (C) 2008-2013 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
 #    This file is part of lshell
@@ -150,7 +150,7 @@ class ShellCmd(cmd.Cmd, object):
                 self.retcode = self.cd()
             else:
                 self.retcode = os.system('%s' % self.g_line)
-        elif self.g_cmd not in ['', '?', 'help', None]: 
+        elif self.g_cmd not in ['', '?', 'help', None]:
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', '']
@@ -278,7 +278,7 @@ class ShellCmd(cmd.Cmd, object):
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.      \
         Its purpose is to forbid the user to user to override the lshell       \
-        command restrictions. 
+        command restrictions.
         The forbidden characters are placed in the 'forbidden' variable.
         Feel free to update the list. Emptying it would be quite useless..: )
 
@@ -313,6 +313,12 @@ class ShellCmd(cmd.Cmd, object):
                 if item in line:
                     return self.warn_count('syntax', oline, strict, ssh)
 
+
+        # check files access
+        if not self.check_files(line):
+            return 1
+
+
         returncode = 0
         # check if the line contains $(foo) executions, and check them
         executions = re.findall('\$\([^)]+[)]', line)
@@ -334,7 +340,7 @@ class ShellCmd(cmd.Cmd, object):
             else:
                 variable = item
             returncode += self.check_path(variable[1][:-1], strict = strict)
-            
+
         # if unknown commands where found, return 1 and don't execute the line
         if returncode > 0:
             return 1
@@ -344,14 +350,14 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case ';', '|' or '&' are not forbidden, check if in line
         lines = []
-        
+
         # corrected by Alojzij Blatnik #48
         # test first character
         if line[0] in ["&", "|", ";"]:
             start = 1
         else:
             start = 0
-        
+
         # split remaining command line
         for i in range(1, len(line)):
             # in case \& or \| or \; don't split it
@@ -364,7 +370,7 @@ class ShellCmd(cmd.Cmd, object):
         # append remaining command line
         if start != len(line):
             lines.append(line[start:len(line)])
-        
+
         # remove trailing parenthesis
         line = re.sub('\)$', '', line)
         for separate_line in lines:
@@ -384,11 +390,49 @@ class ShellCmd(cmd.Cmd, object):
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']
-            
+
             # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
                 return self.warn_count('command', oline, strict, ssh, command)
         return 0
+
+    def check_files(self, line):
+        """ Check the name, extension files and parameter"""
+
+        oline = line
+        sep=re.compile(r'\ |;|\||&')
+        line = line.strip()
+        line = sep.split(line)
+        if 'sudo' in line:
+            del line[1]
+        del line[0]
+
+        for item in line:
+            if '.' in item or '/' in item:
+                fileName, fileExtension = os.path.splitext(item)
+                print fileName, fileExtension
+                # Verify extension file
+                if fileExtension and fileExtension not in self.conf['extension_files']:
+                    print fileName, fileExtension
+                    print 'Extension file not allowed (%s)' % (fileExtension)
+                    self.warn_count('File extension file not allowed (%s)' % (fileExtension), oline)
+                    return False
+
+                #verify name file
+                if self.conf['name_files'] and os.path.basename(fileName) not in self.conf['name_files']:
+                    print os.path.basename(fileName)
+                    print 'name file not allowed (%s)' % (os.path.basename(fileName))
+                    self.warn_count('File name not allowed (%s)' % (os.path.basename(fileName)), oline)
+                    return False
+            else :
+                #verify parameter
+                if self.conf['parameters'] and item not in self.conf['parameters']:
+                    print item
+                    print 'parameter not allowed (%s)' % (item)
+                    self.warn_count('Parameter not allowed (%s)' % (item), oline)
+                    return False
+        return True
+
 
     def warn_count(self, messagetype, line=None, strict=None, ssh=None, command=None):
         """ Update the warning_counter, log and display a warning to the user
@@ -434,7 +478,7 @@ class ShellCmd(cmd.Cmd, object):
                                                       % (messagetype ,line))
         else:
             self.conf['warning_counter'] -= 1
-            if self.conf['warning_counter'] < 0: 
+            if self.conf['warning_counter'] < 0:
                 self.log.critical('*** forbidden %s -> "%s"'                   \
                                                       % (messagetype ,line))
                 self.log.critical('*** Kicked out')
@@ -501,7 +545,7 @@ class ShellCmd(cmd.Cmd, object):
             tomatch = os.path.realpath(item)
             if os.path.isdir(tomatch) and tomatch[-1] != '/': tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)
-            if denied_path_re: 
+            if denied_path_re:
                 match_denied = re.findall(denied_path_re, tomatch)
             else: match_denied = None
             if not match_allowed or match_denied:
@@ -601,7 +645,7 @@ class ShellCmd(cmd.Cmd, object):
 
     def complete(self, text, state):
         """Return the next possible completion for 'text'.
-        If a command has not been entered, then complete against command list. 
+        If a command has not been entered, then complete against command list.
         Otherwise try to call complete_<command> to get list of completions.
         """
         if state == 0:
@@ -635,9 +679,9 @@ class ShellCmd(cmd.Cmd, object):
             return None
 
     def default(self, line):
-        """ This method overrides the original default method. 
+        """ This method overrides the original default method.
         It was originally used to warn when an unknown command was entered     \
-        (e.g. *** Unknown syntax: blabla). 
+        (e.g. *** Unknown syntax: blabla).
         It has been implemented in the __getattr__ method.
         So it has no use here. Its output is now empty.
         """
@@ -650,7 +694,7 @@ class ShellCmd(cmd.Cmd, object):
         """
         dotext = 'do_'+text
         names = self.get_names()
-        for command in self.conf['allowed']: 
+        for command in self.conf['allowed']:
             names.append('do_' + command)
         return [a[3:] for a in names if a.startswith(dotext)]
 
@@ -666,7 +710,7 @@ class ShellCmd(cmd.Cmd, object):
         tocomplete = re.sub('^~', self.conf['home_path'], tocomplete)
         try:
             directory = os.path.realpath(tocomplete)
-        except: 
+        except:
             directory = os.getcwd()
 
         if not os.path.isdir(directory):
@@ -696,7 +740,7 @@ class ShellCmd(cmd.Cmd, object):
         Thos variables are then used by the __getattr__ method
         """
         cmd, arg, line = self.parseline(line)
-        self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line] 
+        self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line]
         if not line:
             return self.emptyline()
         if cmd is None:
@@ -720,12 +764,12 @@ class ShellCmd(cmd.Cmd, object):
             return 0
 
     def do_help(self, arg):
-        """ This method overrides the original do_help method. 
+        """ This method overrides the original do_help method.
         Instead of printing out the that are documented or not, it returns the \
-        list of allowed commands when '?' or 'help' is entered. 
+        list of allowed commands when '?' or 'help' is entered.
         Of course, it doesn't override the help function: any help_* method    \
         will be called (e.g. help_help(self) )
-        """ 
+        """
         if arg:
             try:
                 func = getattr(self, 'help_' + arg)

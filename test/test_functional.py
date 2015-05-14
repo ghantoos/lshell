@@ -217,5 +217,20 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
 
+    def test_18_allow_slash(self):
+        """ 18 - user should able to allow / access minus some directory (e.g. /var) """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --path "[\'/\'] - [\'/var\']"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = "*** forbidden path: /var/"
+        self.child.sendline('cd /')
+        self.child.expect('%s:/\$' % self.user)
+        self.child.sendline('cd var')
+        self.child.expect('%s:/\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
+
 if __name__ == '__main__':
     unittest.main()

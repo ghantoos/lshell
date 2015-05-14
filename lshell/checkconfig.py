@@ -401,6 +401,8 @@ class CheckConfig:
                             for path in eval(stuff):
                                 for item in glob.glob(path):
                                     liste[0] += os.path.realpath(item) + '/.*|'
+                            # remove double slashes
+                            liste[0] = liste[0].replace("//","/")
                             self.conf_raw.update({key:str(liste)})
                         elif stuff and type(eval(stuff)) is list:
                             self.conf_raw.update({key:stuff})
@@ -412,6 +414,8 @@ class CheckConfig:
                     for path in self.myeval(value, 'path'):
                         for item in glob.glob(path):
                             liste[0] += os.path.realpath(item) + '/.*|'
+                    # remove double slashes
+                    liste[0] = liste[0].replace("//","/")
                     self.conf_raw.update({key:str(liste)})
                 else:
                     self.conf_raw.update(dict([item]))

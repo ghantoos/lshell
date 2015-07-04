@@ -232,5 +232,42 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
 
+    def test_19_expand_env_variables(self):
+        """ 07 - test expanding of environment variables """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --allowed "+ [\'export\']"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = "%s/test" % os.path.expanduser('~')
+        self.child.sendline('export A=test')
+        self.child.expect('%s:~\$' % self.user)
+        self.child.sendline('echo $HOME/$A')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
+
+    def test_20_expand_env_variables_cd(self):
+        """ 07 - test expanding of environment variables """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --allowed "+ [\'export\']"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        import random
+        import string
+
+        random = ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(32)])
+
+        expected = "lshell: %s/random_%s: No such file or directory" \
+                                            % (os.path.expanduser('~'),random)
+        self.child.sendline('export A=random_%s' % random)
+        self.child.expect('%s:~\$' % self.user)
+        self.child.sendline('cd $HOME/$A')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
+
+
 if __name__ == '__main__':
     unittest.main()

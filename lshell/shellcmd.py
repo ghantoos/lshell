@@ -92,6 +92,11 @@ class ShellCmd(cmd.Cmd, object):
         added a do_uname in the ShellCmd class!
         """
 
+        # expand environment variables in command line
+        self.g_cmd  = os.path.expandvars(self.g_cmd)
+        self.g_line = os.path.expandvars(self.g_line)
+        self.g_arg  = os.path.expandvars(self.g_arg)
+
         # in case the configuration file has been modified, reload it
         if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
             from lshell.checkconfig import CheckConfig
@@ -222,18 +227,6 @@ class ShellCmd(cmd.Cmd, object):
             # if it conatins the equal sign, consider only the first one
             if env.count('='):
                 var, value = env.split(' ')[0].split('=')[0:2]
-                # expand values, if variable is surcharged by other variables
-                try:
-                    import subprocess
-                    p = subprocess.Popen( "`which echo` %s" % value,
-                                          shell=True,
-                                          stdin=subprocess.PIPE,
-                                          stdout=subprocess.PIPE )
-                    (cin, cout) = (p.stdin, p.stdout)
-                except ImportError:
-                    cin, cout = os.popen2('`which echo` %s' % value)
-                value = cout.readlines()[0]
-
                 os.environ.update({var: value})
         return 0
 
@@ -473,20 +466,12 @@ class ShellCmd(cmd.Cmd, object):
                 item = str(item)
             # replace "~" with home path
             item = os.path.expanduser(item)
-            # if contains a shell variable
+
+            # expand shell wildcards using "echo"
+            # i know, this a bit nasty...
             if re.findall('\$|\*|\?', item):
                 # remove quotes if available
                 item = re.sub("\"|\'", "", item)
-                # expand shell variables (method 1)
-                #for var in re.findall(r'\$(\w+|\{[^}]*\})', item):
-                #    # get variable value (if defined)
-                #    if os.environ.has_key(var):
-                #        value = os.environ[var]
-                #    else: value = ''
-                #    # replace the variable
-                #    item = re.sub('\$%s|\${%s}' %(var, var), value, item)
-                # expand shell variables and wildcards using "echo"
-                # i know, this a bit nasty...
                 try:
                     import subprocess
                     p = subprocess.Popen( "`which echo` %s" % item,
@@ -498,6 +483,7 @@ class ShellCmd(cmd.Cmd, object):
                     cin, cout = os.popen2('`which echo` %s' % item)
                 item = cout.readlines()[0].split(' ')[0].strip()
                 item = os.path.expandvars(item)
+
             tomatch = os.path.realpath(item)
             if os.path.isdir(tomatch) and tomatch[-1] != '/': tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)

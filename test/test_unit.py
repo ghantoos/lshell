@@ -96,9 +96,9 @@ class TestStringsTest(unittest.TestCase):
     """ multiple aliases using &&, || and ; separators """
     # enable &, | and ; characters
     aliases={'foo':'foo -l', 'bar':'open'}
-    INPUT = "foo; fooo  ;bar&&foo  &&   foo || bar||bar   ||     foo"
+    INPUT = "foo; fooo  ;bar&&foo  &&   foo | bar||bar   ||     foo"
     return self.assertEqual(get_aliases(INPUT, aliases),
-              ' foo -l; fooo  ; open&& foo -l  && foo -l || open|| open   || foo -l')
+              ' foo -l; fooo  ; open&& foo -l  && foo -l | open|| open   || foo -l')
 
 if __name__ == "__main__":
     unittest.main()

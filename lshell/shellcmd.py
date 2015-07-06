@@ -376,9 +376,14 @@ class ShellCmd(cmd.Cmd, object):
 
             # in case of a sudo command, check in sudo_commands list if allowed
             if command == 'sudo':
-                if type(cmdargs) == list:
-                    if cmdargs[1] not in self.conf['sudo_commands'] and cmdargs:
-                        return self.warn_count('sudo command', oline, strict, ssh)
+              if type(cmdargs) == list:
+                # allow the -u (user) flag
+                if cmdargs[1] == '-u' and cmdargs:
+                  sudocmd = cmdargs[3]
+                else:
+                  sudocmd = cmdargs[1]
+                if sudocmd not in self.conf['sudo_commands'] and cmdargs:
+                  return self.warn_count('sudo command', oline, strict, ssh)
 
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:

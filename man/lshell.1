@@ -199,7 +199,9 @@ set to 0 to forbid scp uploads (default is 1)
 allow or forbid the use of sftp connection - set to 1 or 0
 .TP
 .I sudo_commands
-a list of the allowed commands that can be used with sudo(8)
+a list of the allowed commands that can be used with sudo(8).
+
+It is possible to use the -u sudo flag in order to run a command as a different user than the default root.
 .TP
 .I timer
 a value in seconds for the session timer

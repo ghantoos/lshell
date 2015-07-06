@@ -27,7 +27,7 @@ import signal
 import readline
 import glob
 
-from utils import get_aliases
+from utils import get_aliases,exec_cmd
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -138,7 +138,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.g_cmd == 'cd':
               if re.search('[;&\|]', self.g_line):
                 # ignore internal cd function in case more than one command
-                self.retcode = os.system('%s' % self.g_line)
+                self.retcode = exec_cmd(self.g_line)
               else:
                 # builtin cd function
                 self.retcode = self.cd()
@@ -160,7 +160,8 @@ class ShellCmd(cmd.Cmd, object):
                 self.g_arg = ' '.join(self.g_line.split()[1:])
                 self.retcode = self.cd()
             else:
-                self.retcode = os.system('%s' % self.g_line)
+                self.retcode = exec_cmd(self.g_line)
+
         elif self.g_cmd not in ['', '?', 'help', None]: 
             self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
             self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
@@ -483,15 +484,13 @@ class ShellCmd(cmd.Cmd, object):
             if re.findall('\$|\*|\?', item):
                 # remove quotes if available
                 item = re.sub("\"|\'", "", item)
-                try:
-                    import subprocess
-                    p = subprocess.Popen( "`which echo` %s" % item,
-                                          shell=True,
-                                          stdin=subprocess.PIPE,
-                                          stdout=subprocess.PIPE )
-                    (cin, cout) = (p.stdin, p.stdout)
-                except ImportError:
-                    cin, cout = os.popen2('`which echo` %s' % item)
+                import subprocess
+                p = subprocess.Popen( "`which echo` %s" % item,
+                                      shell=True,
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE )
+                (cin, cout) = (p.stdin, p.stdout)
+
                 item = cout.readlines()[0].split(' ')[0].strip()
                 item = os.path.expandvars(item)
 
@@ -557,7 +556,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write("%s\n" % self.intro)
             if self.conf['login_script']:
-                os.system(self.conf['login_script'])
+                retcode = exec_cmd(self.conf['login_script'])
             stop = None
             while not stop:
                 if self.cmdqueue:

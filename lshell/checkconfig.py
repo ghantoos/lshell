@@ -30,7 +30,7 @@ import grp
 import time
 import glob
 
-from utils import get_aliases
+from utils import get_aliases,exec_cmd
 
 __version__ = "0.9.16"
 
@@ -671,7 +671,7 @@ class CheckConfig:
                 if 'sftp-server' in self.conf['ssh']:
                     if self.conf['sftp'] is 1:
                         self.log.error('SFTP connect')
-                        os.system(self.conf['ssh'])
+                        exec_cmd(self.conf['ssh'])
                         self.log.error('SFTP disconnect')
                         sys.exit(0)
                     else:
@@ -720,7 +720,7 @@ class CheckConfig:
                                 self.log.error('SCP: upload forbidden: "%s"'   \
                                                             % self.conf['ssh']) 
                                 sys.exit(0)
-                        os.system(self.conf['ssh'])
+                        exec_cmd(self.conf['ssh'])
                         self.log.error('SCP disconnect')
                         sys.exit(0)
                     else:
@@ -740,7 +740,7 @@ class CheckConfig:
                     if self.conf['ssh'] == "help":
                         cli.do_help(None)
                     else:
-                        os.system(self.conf['ssh'])
+                        exec_cmd(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
 

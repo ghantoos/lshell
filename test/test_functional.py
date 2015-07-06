@@ -208,8 +208,7 @@ class TestFunctions(unittest.TestCase):
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
-        # for some reason, os.system returns 512 as error code
-        expected = "512"
+        expected = "2"
         self.child.sendline('ls nRVmmn8RGypVneYIp8HxyVAvaEaD55')
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $?')
@@ -233,7 +232,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_19_expand_env_variables(self):
-        """ 07 - test expanding of environment variables """
+        """ 19 - test expanding of environment variables """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf --allowed "+ [\'export\']"'
                                    % (TOPDIR, TOPDIR))
@@ -248,7 +247,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_20_expand_env_variables_cd(self):
-        """ 07 - test expanding of environment variables """
+        """ 20 - test expanding of environment variables when using cd """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf --allowed "+ [\'export\']"'
                                    % (TOPDIR, TOPDIR))
@@ -269,7 +268,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_21_cd_and_command(self):
-        """ 07 - test expanding of environment variables """
+        """ 07 - cd && command should not be interpreted by internal function """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf'
                                    % (TOPDIR, TOPDIR))
@@ -281,7 +280,19 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
 
+    def test_22_KeyboardInterrupt(self):
+        """ 07 - test cat(1) with KeyboardInterrupt, should not exit """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --allowed "+ [\'cat\']"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
 
+        expected = "^C"
+        self.child.sendline('cat')
+        self.child.sendcontrol('c');
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
 
 if __name__ == '__main__':
     unittest.main()

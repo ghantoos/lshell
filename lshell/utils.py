@@ -19,6 +19,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+import subprocess
 
 try:
     from os import urandom
@@ -67,3 +68,13 @@ def get_aliases(line, aliases):
         # remove all remaining double char
         line = line.replace('%s%s' %(char, char), '%s' %char)
     return line
+
+def exec_cmd(cmd):
+  """ execute a command, locally catching the signals """
+  try:
+    retcode = subprocess.call("%s" % cmd, shell=True)
+  except KeyboardInterrupt:
+    # exit code for user terminated scripts is 130
+    retcode = 130
+
+  return retcode

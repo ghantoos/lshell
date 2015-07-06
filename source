@@ -1,0 +1,5 @@
+# source me in order to update your python path
+# and test using the local lshell files
+# this is useful when you have multiple lshell installations
+
+export PYTHONPATH=$PWD/

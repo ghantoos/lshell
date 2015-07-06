@@ -268,6 +268,20 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
 
+    def test_21_cd_and_command(self):
+        """ 07 - test expanding of environment variables """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = "OK"
+        self.child.sendline('cd ~ && echo "OK"')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
+
+
 
 if __name__ == '__main__':
     unittest.main()

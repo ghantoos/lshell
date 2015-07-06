@@ -134,7 +134,13 @@ class ShellCmd(cmd.Cmd, object):
                 self.g_line = get_aliases(self.g_line, self.conf['aliases'])
 
             self.log.info('CMD: "%s"' %self.g_line)
+
             if self.g_cmd == 'cd':
+              if re.search('[;&\|]', self.g_line):
+                # ignore internal cd function in case more than one command
+                self.retcode = os.system('%s' % self.g_line)
+              else:
+                # builtin cd function
                 self.retcode = self.cd()
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':

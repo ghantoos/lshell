@@ -633,6 +633,7 @@ class CheckConfig:
         self.conf['allowed'].append('history')
         self.conf['allowed'].append('clear')
 
+        # in case sudo_commands is not empty, append sudo(8) to allowed commands
         if self.conf['sudo_commands']:
             self.conf['allowed'].append('sudo')
 
@@ -646,6 +647,15 @@ class CheckConfig:
                     cmd = os.path.join(path, item)
                     if os.access(cmd, os.X_OK):
                         self.conf['allowed'].append(item)
+
+        # case sudo_commands set to 'all', expand to all 'allowed' commands
+        if self.conf_raw.has_key('sudo_commands') and \
+                                      self.conf_raw['sudo_commands'] == 'all':
+            # exclude native commands and sudo(8)
+            exclude = ['exit','lpath','lsudo','history','clear','export','sudo']
+            self.conf['sudo_commands'] = \
+                        [x for x in self.conf['allowed'] if x not in exclude]
+
 
 
     def account_lock(self, user, lock_counter, check=None):

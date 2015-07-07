@@ -8,7 +8,7 @@ import os
 
 TOPDIR="%s/../" % os.path.dirname(os.path.realpath(__file__))
 
-class TestStringsTest(unittest.TestCase):
+class TestFunctions(unittest.TestCase):
   args = ['--config=%s/etc/lshell.conf' % TOPDIR, "--quiet=1"]
   userconf = CheckConfig(args).returnconf()
   shell = ShellCmd(userconf, args)
@@ -99,6 +99,15 @@ class TestStringsTest(unittest.TestCase):
     INPUT = "foo; fooo  ;bar&&foo  &&   foo | bar||bar   ||     foo"
     return self.assertEqual(get_aliases(INPUT, aliases),
               ' foo -l; fooo  ; open&& foo -l  && foo -l | open|| open   || foo -l')
+
+  def test_sudo_all_commands_expansion(self):
+    """ sudo_commands set to 'all' should be equal to allowed variable """
+    args = self.args + ["--sudo_commands=all"]
+    userconf = CheckConfig(args).returnconf()
+    # exclude internal and sudo(8) commands
+    exclude = ['exit','lpath','lsudo','history','clear','export','sudo']
+    allowed = [x for x in userconf['allowed'] if x not in exclude]
+    return self.assertEqual(allowed, userconf['sudo_commands'])
 
 if __name__ == "__main__":
     unittest.main()

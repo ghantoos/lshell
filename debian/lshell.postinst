@@ -18,9 +18,7 @@ case "$1" in
     chown root:lshell /var/log/lshell/
     chmod -R 770 /var/log/lshell/
 
-    if [ -x /usr/sbin/add-shell ]; then
-        add-shell /usr/bin/lshell
-    fi
+    add-shell /usr/bin/lshell
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

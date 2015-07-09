@@ -9,9 +9,7 @@ set -e
 
 case "$1" in
     remove|purge|disappear)
-        if [ -x /usr/sbin/remove-shell ] && [ -f /etc/shells ]; then
-            remove-shell /usr/bin/lshell 
-        fi
+        remove-shell /usr/bin/lshell 
         ;;
     upgrade|failed-upgrade|abort-upgrade|abort-install)
         # do nothing

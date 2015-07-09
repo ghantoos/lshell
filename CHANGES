@@ -8,6 +8,16 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.9.7 07/2015 ===
+    * Added possibility of using 'all' for sudo commands
+    * Replaced os.system by subprocess (python)
+    * Added support for sudo -u
+    * Corrected shell variable expansion
+    * Corrected bugs in aliases support
+    * Fixed timer (idle session)
+    * Added exit code support
+    * Fixed wrong group reference for logging
+
 === v0.9.16   14/08/2013 ===
     * Added support to login script. Thank you Laurent Debacker for the patch.
     * Fixed auto-complete failing with "-"

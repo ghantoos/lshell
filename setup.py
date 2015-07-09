@@ -24,7 +24,7 @@ from distutils.core import setup
 if __name__ == '__main__':
 
     setup(name='lshell',
-          version='0.9.16',
+          version='0.9.17',
           description='Limited Shell',
           long_description="""Limited Shell (lshell) is lets you restrict the \
 environment of any user. It provides an easily configurable shell: just \

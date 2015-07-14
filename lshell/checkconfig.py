@@ -161,7 +161,7 @@ class CheckConfig:
         """ This method checks the usage. lshell.py must be called with a      \
         configuration file.
         If no configuration file is specified, it will set the configuration   \
-        file path to /etc/lshell.conf
+        file path to /etc/lshell.confelf.conf['allowed'].append('exit')
         """
         # uncomment the following to set the -c/--config as mandatory argument
         #if '-c' not in arguments and '--config' not in arguments:
@@ -198,7 +198,7 @@ class CheckConfig:
         if conf.has_key('logpath'): args += ['--log', conf['logpath']]
         os.environ['LSHELL_ARGS'] = str(args)
 
-        # if lshell is invoked using ssh autorized_keys file e.g.
+        # if lshell is invoked using shh autorized_keys file e.g.
         # command="/usr/bin/lshell", ssh-dss ....
         if os.environ.has_key('SSH_ORIGINAL_COMMAND'):
             conf['ssh'] = os.environ['SSH_ORIGINAL_COMMAND']
@@ -388,7 +388,7 @@ class CheckConfig:
         self.get_config_sub(self.user)
 
     def get_config_sub(self, section):
-        """ this function is used to interpret the configuration +/-,
+        """ this function is used to interpret the configuration +/-, 
             'all' etc.
         """
         # convert commandline options from dict to list of tuples, in order to
@@ -407,14 +407,14 @@ class CheckConfig:
                 if isinstance(value, str):
                     split = re.split('([\+\-\s]+\[[^\]]+\])', value.replace(' ',
                                                                             ''))
-                if len(split) > 1 and key in ['path',
-                                              'overssh',
-                                              'allowed',
+                if len(split) > 1 and key in ['path',                          \
+                                              'overssh',                       \
+                                              'allowed',                       \
                                               'forbidden']:
                     for stuff in split:
                         if stuff.startswith('-') or stuff.startswith('+'):
-                            self.conf_raw.update(self.minusplus(self.conf_raw,
-                                                                key,stuff))
+                            self.conf_raw.update(self.minusplus(self.conf_raw, \
+                                                                    key,stuff))
                         elif stuff == "'all'":
                             self.conf_raw.update({key:self.expand_all()})
                         elif stuff and key == 'path':
@@ -472,17 +472,17 @@ class CheckConfig:
         """ expand allowed, if set to 'all'
         """
         # initialize list to common shell builtins
-        expanded_all = ['bg', 'break', 'case', 'cd', 'continue', 'eval',
-                        'exec', 'exit', 'fg', 'if', 'jobs', 'kill', 'login',
-                        'logout', 'set', 'shift', 'stop', 'suspend', 'umask',
+        expanded_all = ['bg', 'break', 'case', 'cd', 'continue', 'eval', \
+                        'exec', 'exit', 'fg', 'if', 'jobs', 'kill', 'login', \
+                        'logout', 'set', 'shift', 'stop', 'suspend', 'umask', \
                         'unset', 'wait', 'while' ]
         for directory in os.environ['PATH'].split(':'):
             if os.path.exists(directory):
                 for item in os.listdir(directory):
                     if os.access(os.path.join(directory, item), os.X_OK):
                         expanded_all.append(item)
-            else: self.log.error('CONF: PATH entry "%s" does not exist'
-                                 % directory)
+            else: self.log.error('CONF: PATH entry "%s" does not exist'        \
+                                                                    % directory)
 
         return str(expanded_all)
  
@@ -492,8 +492,8 @@ class CheckConfig:
             evaluated = eval(value)
             return evaluated
         except SyntaxError:
-            self.log.critical('CONF: Incomplete %s field in configuration file'
-                              % info)
+            self.log.critical('CONF: Incomplete %s field in configuration file'\
+                                                            % info)
             sys.exit(1)
 
     def check_user_integrity(self):
@@ -713,7 +713,7 @@ class CheckConfig:
                             # case scp download is forbidden
                             else:
                                 self.log.error('SCP: download forbidden: "%s"' \
-                                                            % self.conf['ssh'])
+                                                            % self.conf['ssh']) 
                                 sys.exit(0)
                         elif ' -t ' in self.conf['ssh']:
                             # case scp upload is allowed

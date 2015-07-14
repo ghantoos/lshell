@@ -104,7 +104,8 @@ configparams = [ 'config=',
                  'strict=',
                  'scpforce=',
                  'history_size=',
-                 'history_file=' ]
+                 'history_file=',
+                 'include_dir=']
 
 
 class CheckConfig:
@@ -133,6 +134,8 @@ class CheckConfig:
         self.conf['config_mtime'] = self.get_config_mtime(configfile)
         self.check_file(configfile)
         self.get_global()
+        if self.conf.has_key('include_dir'):
+            self.include_customconf()
         self.check_log()
         self.get_config()
         self.check_user_integrity()
@@ -140,6 +143,19 @@ class CheckConfig:
         self.check_env()
         self.check_scp_sftp()
         self.check_passwd()
+
+    def include_customconf(self):
+        config_list = []
+
+        if not os.path.isdir(self.conf['include_dir']):
+            self.stderr.write('The %s directory doesn\'t exist.'
+                              % self.conf['include_dir'])
+            sys.exit(0)
+
+        for file in os.listdir(self.conf['include_dir']):
+            if file.endswith(".conf"):
+                config_list.append(os.path.abspath(self.conf['include_dir'] + file))
+        self.conf['configfile_optional'] = config_list
 
     def getoptions(self, arguments, conf):
         """ This method checks the usage. lshell.py must be called with a      \
@@ -221,6 +237,8 @@ class CheckConfig:
         """
         try:
             self.config.read(self.conf['configfile'])
+            if self.conf.has_key('configfile_optional'):
+                self.config.read(self.conf['configfile_optional'])
         except (ConfigParser.MissingSectionHeaderError,                        \
                                     ConfigParser.ParsingError), argument:
             self.stderr.write('ERR: %s\n' %argument)
@@ -343,6 +361,9 @@ class CheckConfig:
             3- Default section
         """
         self.config.read(self.conf['configfile'])
+        if self.conf.has_key('configfile_optional'):
+            self.config.read(self.conf['configfile_optional'])
+
         self.user = getuser()
 
         self.conf_raw = {}

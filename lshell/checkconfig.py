@@ -239,8 +239,8 @@ class CheckConfig:
             self.config.read(self.conf['configfile'])
             if self.conf.has_key('configfile_optional'):
                 self.config.read(self.conf['configfile_optional'])
-        except (ConfigParser.MissingSectionHeaderError,
-                ConfigParser.ParsingError), argument:
+        except (ConfigParser.MissingSectionHeaderError,                        \
+                                    ConfigParser.ParsingError), argument:
             self.stderr.write('ERR: %s\n' %argument)
             sys.exit(0)
 
@@ -713,7 +713,7 @@ class CheckConfig:
                             # case scp download is forbidden
                             else:
                                 self.log.error('SCP: download forbidden: "%s"' \
-                                                            % self.conf['ssh']) 
+                                                            % self.conf['ssh'])
                                 sys.exit(0)
                         elif ' -t ' in self.conf['ssh']:
                             # case scp upload is allowed
@@ -735,7 +735,7 @@ class CheckConfig:
                             # case scp upload is forbidden
                             else:
                                 self.log.error('SCP: upload forbidden: "%s"'   \
-                                                            % self.conf['ssh'])
+                                                            % self.conf['ssh']) 
                                 sys.exit(0)
                         os.system(self.conf['ssh'])
                         self.log.error('SCP disconnect')

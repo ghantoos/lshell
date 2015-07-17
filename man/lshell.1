@@ -110,6 +110,12 @@ config path (default is /var/log/lshell/)
 .TP
 .I syslogname
 in case you are using syslog, set your logname (default: lshell)
+.TP
+.I include_dir
+include a directory containing multiple configuration files.
+These files can only contain default/user/group configuration. The
+global configuration will only be loaded from the default configuration
+file. This variable will be expanded (e.g. /path/*.conf).
 .RS
 .SS [default] and/or [username] and/or [grp:groupname]
 .TP

@@ -104,7 +104,8 @@ configparams = [ 'config=',
                  'strict=',
                  'scpforce=',
                  'history_size=',
-                 'history_file=' ]
+                 'history_file=',
+                 'include_dir=']
 
 
 class CheckConfig:
@@ -343,6 +344,13 @@ class CheckConfig:
             3- Default section
         """
         self.config.read(self.conf['configfile'])
+
+        # list the include_dir directory and read configuration files
+        if self.conf.has_key('include_dir'):
+          import glob
+          self.conf['include_dir_conf'] = glob.glob("%s*" % self.conf['include_dir'])
+          self.config.read(self.conf['include_dir_conf'])
+
         self.user = getuser()
 
         self.conf_raw = {}

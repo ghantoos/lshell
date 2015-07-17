@@ -664,6 +664,9 @@ class CheckConfig:
             self.conf['sudo_commands'] = \
                         [x for x in self.conf['allowed'] if x not in exclude]
 
+        # sort lsudo commands
+        self.conf['sudo_commands'].sort()
+
 
 
     def account_lock(self, user, lock_counter, check=None):

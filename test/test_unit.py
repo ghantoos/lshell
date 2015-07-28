@@ -68,6 +68,14 @@ class TestFunctions(unittest.TestCase):
     INPUT = "cd /tmp"
     return self.assertEqual(shell.check_path(INPUT), 1)
 
+  def test_checkpath_notallowed_path_completion(self):
+    """ forbidden command, should return 1 """
+    args = self.args + ["--path=['/home', '/var']"]
+    userconf = CheckConfig(args).returnconf()
+    shell = ShellCmd(userconf, args)
+    INPUT = "cd /tmp/"
+    return self.assertEqual(shell.check_path(INPUT, completion=1), 1)
+
   def test_checkpath_dollarparenthesis(self):
     """ when $() is allowed, return 0 if path allowed """
     args = self.args + ["--forbidden=[';', '&', '|','`','>','<', '${']"]

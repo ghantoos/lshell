@@ -500,9 +500,14 @@ class ShellCmd(cmd.Cmd, object):
             if denied_path_re: 
                 match_denied = re.findall(denied_path_re, tomatch)
             else: match_denied = None
+            # if path not allowed
+            # case path executed: warn, and return 1
+            # case completion: return 1
             if not match_allowed or match_denied:
                 if not completion:
-                    return self.warn_count('path', tomatch, strict, ssh)
+                    self.warn_count('path', tomatch, strict, ssh)
+                return 1
+
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 if not ssh:

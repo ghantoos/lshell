@@ -202,7 +202,10 @@ set to 0 to forbid scp downloads (default is 1)
 set to 0 to forbid scp uploads (default is 1)
 .TP
 .I sftp
-allow or forbid the use of sftp connection - set to 1 or 0
+allow or forbid the use of sftp connection - set to 1 or 0. 
+
+WARNING: This option will not work if you are using OpenSSH's \
+internal-sftp service (e.g. when configured in chroot)
 .TP
 .I sudo_commands
 a list of the allowed commands that can be used with sudo(8). If set to \

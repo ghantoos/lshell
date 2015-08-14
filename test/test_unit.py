@@ -115,6 +115,9 @@ class TestFunctions(unittest.TestCase):
     # exclude internal and sudo(8) commands
     exclude = ['exit','lpath','lsudo','history','clear','export','sudo']
     allowed = [x for x in userconf['allowed'] if x not in exclude]
+    # sort lists to compare
+    userconf['sudo_commands'].sort()
+    allowed.sort()
     return self.assertEqual(allowed, userconf['sudo_commands'])
 
 if __name__ == "__main__":

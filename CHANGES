@@ -8,7 +8,9 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.7 07/2015 ===
+=== v0.9.17 14/08/2015 ===
+    * Added include_dir directive to include split configuration files from
+      a directory.
     * Added possibility of using 'all' for sudo commands
     * Replaced os.system by subprocess (python)
     * Added support for sudo -u
@@ -17,8 +19,9 @@ http://sourceforge.net/projects/lshell/
     * Fixed timer (idle session)
     * Added exit code support
     * Fixed wrong group reference for logging
+    * Replaced Python os.system with subprocess
 
-=== v0.9.16   14/08/2013 ===
+=== v0.9.16 14/08/2013 ===
     * Added support to login script. Thank you Laurent Debacker for the patch.
     * Fixed auto-complete failing with "-"
     * Fixed bug where forbidden commands still execute if strict=1

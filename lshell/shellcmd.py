@@ -187,12 +187,16 @@ class ShellCmd(cmd.Cmd, object):
         """
         if self.conf['path'][0]:
             sys.stdout.write("Allowed:\n")
-            for path in self.conf['path'][0].split('|'):
+            lpath_allowed = self.conf['path'][0].split('|')
+            lpath_allowed.sort()
+            for path in lpath_allowed:
                 if path:
                     sys.stdout.write(" %s\n" % path[:-2])
         if self.conf['path'][1]:
             sys.stdout.write("Denied:\n")
-            for path in self.conf['path'][1].split('|'):
+            lpath_denied = self.conf['path'][1].split('|')
+            lpath_denied.sort()
+            for path in lpath_denied:
                 if path:
                     sys.stdout.write(" %s\n" % path[:-2])
         return 0

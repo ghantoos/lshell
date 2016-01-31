@@ -188,8 +188,8 @@ class TestFunctions(unittest.TestCase):
 #        result = self.child.before
 #        self.assertEqual(expected, result)
 
-    def test_16_exitcode_with_separator(self):
-        """ 16 - test exit codes with separator """
+    def test_16a_exitcode_with_separator_external_cmd(self):
+        """ 16a - test external command exit codes with separator """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf --forbidden "[]"'
                                    % (TOPDIR, TOPDIR))
@@ -201,8 +201,8 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.split('\n')[2].strip()
         self.assertEqual(expected, result)
 
-    def test_17_exitcode_without_separator(self):
-        """ 17 - test exit codes without separator """
+    def test_16b_exitcode_without_separator_external_cmd(self):
+        """ 16b - test external command exit codes without separator """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf --forbidden "[]"'
                                    % (TOPDIR, TOPDIR))
@@ -210,6 +210,34 @@ class TestFunctions(unittest.TestCase):
 
         expected = "2"
         self.child.sendline('ls nRVmmn8RGypVneYIp8HxyVAvaEaD55')
+        self.child.expect('%s:~\$' % self.user)
+        self.child.sendline('echo $?')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
+
+    def test_17a_exitcode_with_separator_internal_cmd(self):
+        """ 17a - test built-in command exit codes with separator """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = "2"
+        self.child.sendline('cd nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[2].strip()
+        self.assertEqual(expected, result)
+
+    def test_17b_exitcode_without_separator_external_cmd(self):
+        """ 17b - test built-in exit codes without separator """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = "2"
+        self.child.sendline('cd nRVmmn8RGypVneYIp8HxyVAvaEaD55')
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $?')
         self.child.expect('%s:~\$' % self.user)
@@ -287,7 +315,7 @@ class TestFunctions(unittest.TestCase):
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
-        expected = "^C"
+        expected = ""
         self.child.sendline('cat')
         self.child.sendcontrol('c');
         self.child.expect('%s:~\$' % self.user)

@@ -80,7 +80,7 @@ class ShellCmd(cmd.Cmd, object):
         self.g_line = g_line
 
         # initialize return code
-        self.retcode = None
+        self.retcode = 0
 
     def __getattr__(self, attr):
         """ This method actually takes care of all the called method that are
@@ -111,8 +111,12 @@ class ShellCmd(cmd.Cmd, object):
                 self.stdout.write('\n')
             sys.exit(0)
         if self.check_secure(self.g_line, self.conf['strict']) == 1:
+            # see http://tldp.org/LDP/abs/html/exitcodes.html
+            self.retcode = 126
             return object.__getattribute__(self, attr)
         if self.check_path(self.g_line, strict = self.conf['strict']) == 1:
+            # see http://tldp.org/LDP/abs/html/exitcodes.html
+            self.retcode = 126
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
             if self.conf['timer'] > 0:
@@ -204,11 +208,14 @@ class ShellCmd(cmd.Cmd, object):
     def lsudo(self):
         """ lists allowed sudo commands
         """
-        if self.conf.has_key('sudo_commands'):
+        if self.conf.has_key('sudo_commands') and len(self.conf['sudo_commands']) > 0:
             sys.stdout.write("Allowed sudo commands:\n")
             for command in self.conf['sudo_commands']:
                 sys.stdout.write(" - %s\n" % command)
-        return 0
+            return 0
+        else:
+            sys.stdout.write("No sudo commands allowed\n")
+            return 1
 
     def history(self):
         """ print the commands history

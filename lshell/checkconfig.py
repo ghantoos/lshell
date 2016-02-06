@@ -105,6 +105,8 @@ configparams = [ 'config=',
                  'scpforce=',
                  'history_size=',
                  'history_file=',
+                 'path_noxec=',
+                 'allowed_noexec=',
                  'include_dir=']
 
 
@@ -141,6 +143,7 @@ class CheckConfig:
         self.check_env()
         self.check_scp_sftp()
         self.check_passwd()
+        self.check_noexec()
 
     def getoptions(self, arguments, conf):
         """ This method checks the usage. lshell.py must be called with a      \
@@ -397,6 +400,7 @@ class CheckConfig:
                 if len(split) > 1 and key in ['path',                          \
                                               'overssh',                       \
                                               'allowed',                       \
+                                              'allowed_noexec',                \
                                               'forbidden']:
                     for stuff in split:
                         if stuff.startswith('-') or stuff.startswith('+'):
@@ -416,6 +420,8 @@ class CheckConfig:
                             self.conf_raw.update({key:stuff})
                 # case allowed is set to 'all'
                 elif key == 'allowed' and split[0] == "'all'":
+                    self.conf_raw.update({key:self.expand_all()})
+                elif key == 'allowed_noexec' and split[0] == "'all'":
                     self.conf_raw.update({key:self.expand_all()})
                 elif key == 'path':
                     liste = ['', '']
@@ -806,6 +812,47 @@ class CheckConfig:
                 self.log.critical('WARN: Wrong password')
                 sys.exit(0)
         else: return 0
+
+    def check_noexec(self):
+        """ This method checks the existence of the sudo_noexec                \
+        library.
+        """
+        possible_lib = [ '/lib/sudo_noexec.so',
+                         '/usr/lib/sudo_noexec.so',
+                         '/usr/lib/sudo/sudo_noexec.so',
+                         '/usr/libexec/sudo_noexec.so',
+                         '/usr/libexec/sudo/sudo_noexec.so',
+                         '/usr/local/lib/sudo_noexec.so',
+                         '/usr/local/lib/sudo/sudo_noexec.so',
+                         '/usr/local/libexec/sudo_noexec.so',
+                         '/usr/pkg/libexec/sudo_noexec.so',
+                         '/lib64/sudo_noexec.so',
+                         '/usr/lib64/sudo/sudo_noexec.so']
+
+        if not self.conf_raw.has_key('allowed_noexec'):
+            return 0
+
+        if self.conf_raw.has_key('path_noexec'):
+            self.conf['path_noexec'] = self.myeval(self.conf_raw['path_noexec'])
+            if not os.path.exists(self.conf_raw['path_noexec']):
+                self.stderr.write("Error: noexec library doesn't exist\n")
+                sys.exit(0)
+        else:
+            for path_lib in possible_lib:
+                if os.path.exists(path_lib):
+                    self.conf['path_noexec'] = path_lib
+
+        if not self.conf.has_key('path_noexec'):
+            self.stderr.write("Error: noexec library not found\n")
+            sys.exit(0)
+
+        nx = self.myeval(self.conf_raw['allowed_noexec'],'allowed_noexec')
+	self.conf['allowed'] += nx
+	for n in nx:
+            if self.conf['aliases'].has_key(n):
+                self.conf['aliases'][n]='LD_PRELOAD='+self.conf['path_noexec']+' '+self.conf['aliases'][n]
+	    else:
+                self.conf['aliases'][n]='LD_PRELOAD='+self.conf['path_noexec']+' '+n
 
     def get_config_mtime(self, configfile):
         """ get configuration file modification time, and store in the        \

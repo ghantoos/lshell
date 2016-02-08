@@ -106,7 +106,7 @@ configparams = [ 'config=',
                  'history_size=',
                  'history_file=',
                  'path_noxec=',
-                 'allowed_noexec=',
+                 'allowed_shell_escape=',
                  'include_dir=']
 
 
@@ -400,7 +400,7 @@ class CheckConfig:
                 if len(split) > 1 and key in ['path',                          \
                                               'overssh',                       \
                                               'allowed',                       \
-                                              'allowed_noexec',                \
+                                              'allowed_shell_escape',          \
                                               'forbidden']:
                     for stuff in split:
                         if stuff.startswith('-') or stuff.startswith('+'):
@@ -421,7 +421,7 @@ class CheckConfig:
                 # case allowed is set to 'all'
                 elif key == 'allowed' and split[0] == "'all'":
                     self.conf_raw.update({key:self.expand_all()})
-                elif key == 'allowed_noexec' and split[0] == "'all'":
+                elif key == 'allowed_shell_escape' and split[0] == "'all'":
                     self.conf_raw.update({key:self.expand_all()})
                 elif key == 'path':
                     liste = ['', '']
@@ -829,9 +829,6 @@ class CheckConfig:
                          '/lib64/sudo_noexec.so',
                          '/usr/lib64/sudo/sudo_noexec.so']
 
-        if not self.conf_raw.has_key('allowed_noexec'):
-            return 0
-
         if self.conf_raw.has_key('path_noexec'):
             self.conf['path_noexec'] = self.myeval(self.conf_raw['path_noexec'])
             if not os.path.exists(self.conf_raw['path_noexec']):
@@ -846,13 +843,17 @@ class CheckConfig:
             self.stderr.write("Error: noexec library not found\n")
             sys.exit(0)
 
-        nx = self.myeval(self.conf_raw['allowed_noexec'],'allowed_noexec')
-	self.conf['allowed'] += nx
-	for n in nx:
+	for n in self.conf['allowed']:
             if self.conf['aliases'].has_key(n):
-                self.conf['aliases'][n]='LD_PRELOAD='+self.conf['path_noexec']+' '+self.conf['aliases'][n]
+                self.conf['aliases'][n] = 'LD_PRELOAD=' +                      \
+                    self.conf['path_noexec']+' '+self.conf['aliases'][n]
 	    else:
-                self.conf['aliases'][n]='LD_PRELOAD='+self.conf['path_noexec']+' '+n
+                self.conf['aliases'][n] = 'LD_PRELOAD=' +                      \
+                    self.conf['path_noexec']+' '+n
+
+	self.conf['allowed'] +=                                                \
+            self.myeval(self.conf_raw['allowed_shell_escape'],                 \
+                        'allowed_shell_escape')
 
     def get_config_mtime(self, configfile):
         """ get configuration file modification time, and store in the        \

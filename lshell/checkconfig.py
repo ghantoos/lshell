@@ -851,9 +851,10 @@ class CheckConfig:
                 self.conf['aliases'][n] = 'LD_PRELOAD=' +                      \
                     self.conf['path_noexec']+' '+n
 
-	self.conf['allowed'] +=                                                \
-            self.myeval(self.conf_raw['allowed_shell_escape'],                 \
-                        'allowed_shell_escape')
+	if self.conf_raw.has_key('allowed_shell_escape'):
+	    self.conf['allowed'] +=                                            \
+                self.myeval(self.conf_raw['allowed_shell_escape'],             \
+                            'allowed_shell_escape')
 
     def get_config_mtime(self, configfile):
         """ get configuration file modification time, and store in the        \

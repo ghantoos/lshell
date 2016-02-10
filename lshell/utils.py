@@ -42,8 +42,9 @@ def get_aliases(line, aliases):
     """
 
     for item in aliases.keys():
-        reg1 = '(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)(.*)' % item
-        reg2 = '(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)' % item
+        escaped_item = re.escape(item)
+        reg1 = '(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)(.*)' % escaped_item
+        reg2 = '(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)' % escaped_item
 
         # in case aliase bigin with the same command
         # (this is until i find a proper regex solution..)

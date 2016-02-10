@@ -1,8 +1,0 @@
-* ability to lock user
-* iMil: add the possibility to use jokers in allowed commands
-* possibility to execute some command at login (like .bashrc)
-* add bash_completion like to lshell
-* check out syslog in python 2.7 (hint: 15 characters)
-* make warnings configurable
-* test commands with parameters (should work)
-* Traceback when command exists in allowed command (fill a bug report)

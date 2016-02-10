@@ -8,6 +8,12 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
+=== v0.9.18 --/--/---- ===
+    * Corrected exit codes of built-in commands
+    * Added default support for sudo_noexec.so in LD_PRELOAD. This feature
+      comes with a new variable 'allowed_shell_escape' to allow admins to
+      escape the new default behavior
+
 === v0.9.17 14/08/2015 ===
     * Added include_dir directive to include split configuration files from
       a directory.

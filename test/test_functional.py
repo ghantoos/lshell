@@ -174,8 +174,8 @@ class TestFunctions(unittest.TestCase):
 
     def test_15(self):
         """ 15 - tab to list commands """
-        expected = '\x07\r\ncd       echo     help     ll       ls       \r\n'\
-            'clear    exit     history  lpath    lsudo'
+        expected = '\x07\r\ncd       echo     export   history  lpath    '\
+                   'lsudo    \r\nclear    exit     help     ll       ls'
         self.child.sendline('\t\t')
         self.child.expect('%s:~\$' % self.user)
         result = self.child.before.strip()

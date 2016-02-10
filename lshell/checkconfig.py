@@ -109,6 +109,12 @@ configparams = [ 'config=',
                  'allowed_shell_escape=',
                  'include_dir=']
 
+builtins = [ 'clear',
+             'exit',
+             'export',
+             'history',
+             'lpath',
+             'lsudo']
 
 class CheckConfig:
     """ Check the configuration file.
@@ -643,11 +649,7 @@ class CheckConfig:
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         # append default commands to allowed list
-        self.conf['allowed'].append('exit')
-        self.conf['allowed'].append('lpath')
-        self.conf['allowed'].append('lsudo')
-        self.conf['allowed'].append('history')
-        self.conf['allowed'].append('clear')
+        self.conf['allowed'] += builtins
 
         # in case sudo_commands is not empty, append sudo(8) to allowed commands
         if self.conf['sudo_commands']:
@@ -668,7 +670,7 @@ class CheckConfig:
         if self.conf_raw.has_key('sudo_commands') and \
                                       self.conf_raw['sudo_commands'] == 'all':
             # exclude native commands and sudo(8)
-            exclude = ['exit','lpath','lsudo','history','clear','export','sudo']
+            exclude = builtins + ['sudo']
             self.conf['sudo_commands'] = \
                         [x for x in self.conf['allowed'] if x not in exclude]
 
@@ -860,8 +862,7 @@ class CheckConfig:
 
                 # add an alias to all the commands, prepending with LD_PRELOAD=
                 # except for built-in commands
-                if cmd not in ('clear','help','history',
-                                       'lpath','lsudo','export'):
+                if cmd not in builtins:
                     self.conf['aliases'][cmd] = 'LD_PRELOAD=%s %s' % (
                                                 self.conf['path_noexec'],
                                                 cmd)

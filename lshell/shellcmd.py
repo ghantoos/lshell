@@ -1,22 +1,22 @@
 #
-#    Limited command Shell (lshell)
-#  
-#    Copyright (C) 2008-2013 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
+#  Limited command Shell (lshell)
 #
-#    This file is part of lshell
+#  Copyright (C) 2008-2013 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
+#  This file is part of lshell
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import cmd
 import sys
@@ -27,7 +27,7 @@ import signal
 import readline
 import glob
 
-from utils import get_aliases,exec_cmd
+from utils import get_aliases, exec_cmd
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -93,14 +93,15 @@ class ShellCmd(cmd.Cmd, object):
         """
 
         # expand environment variables in command line
-        self.g_cmd  = os.path.expandvars(self.g_cmd)
+        self.g_cmd = os.path.expandvars(self.g_cmd)
         self.g_line = os.path.expandvars(self.g_line)
-        self.g_arg  = os.path.expandvars(self.g_arg)
+        self.g_arg = os.path.expandvars(self.g_arg)
 
         # in case the configuration file has been modified, reload it
-        if self.conf['config_mtime'] != os.path.getmtime(self.conf['configfile']):
+        if self.conf['config_mtime'] != os.path.getmtime(
+                                        self.conf['configfile']):
             from lshell.checkconfig import CheckConfig
-            self.conf = CheckConfig(['--config', \
+            self.conf = CheckConfig(['--config',
                                      self.conf['configfile']]).returnconf()
             self.prompt = '%s:~$ ' % self.setprompt(self.conf)
             self.log = self.conf['logpath']
@@ -114,38 +115,38 @@ class ShellCmd(cmd.Cmd, object):
             # see http://tldp.org/LDP/abs/html/exitcodes.html
             self.retcode = 126
             return object.__getattribute__(self, attr)
-        if self.check_path(self.g_line, strict = self.conf['strict']) == 1:
+        if self.check_path(self.g_line, strict=self.conf['strict']) == 1:
             # see http://tldp.org/LDP/abs/html/exitcodes.html
             self.retcode = 126
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
             if self.conf['timer'] > 0:
                 self.mytimer(0)
-            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],
-                                                                   self.g_arg)
-            self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],
-                                                                   self.g_arg)
+            self.g_arg = re.sub('^~$|^~/', '%s/' % self.conf['home_path'],
+                                self.g_arg)
+            self.g_arg = re.sub(' ~/', ' %s/' % self.conf['home_path'],
+                                self.g_arg)
             # replace previous command exit code
-            # in case multiple commands (using separators), only replace first command
-            # regex replaces all occureces of $?, before ;,&,|
+            # in case multiple commands (using separators), only replace first
+            # command. Regex replaces all occureces of $?, before ;,&,|
             if re.search('[;&\|]', self.g_line):
-              p = re.compile("(\s|^)(\$\?)([\s|$]?[;&|].*)")
+                p = re.compile("(\s|^)(\$\?)([\s|$]?[;&|].*)")
             else:
-              p = re.compile("(\s|^)(\$\?)(\s|$)")
+                p = re.compile("(\s|^)(\$\?)(\s|$)")
             self.g_line = p.sub(r' %s \3' % self.retcode, self.g_line)
 
             if type(self.conf['aliases']) == dict:
                 self.g_line = get_aliases(self.g_line, self.conf['aliases'])
 
-            self.log.info('CMD: "%s"' %self.g_line)
+            self.log.info('CMD: "%s"' % self.g_line)
 
             if self.g_cmd == 'cd':
-              if re.search('[;&\|]', self.g_line):
-                # ignore internal cd function in case more than one command
-                self.retcode = exec_cmd(self.g_line)
-              else:
-                # builtin cd function
-                self.retcode = self.cd()
+                if re.search('[;&\|]', self.g_line):
+                    # ignore internal cd function in case more than one command
+                    self.retcode = exec_cmd(self.g_line)
+                else:
+                    # builtin cd function
+                    self.retcode = self.cd()
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
                 self.retcode = self.lpath()
@@ -166,9 +167,9 @@ class ShellCmd(cmd.Cmd, object):
             else:
                 self.retcode = exec_cmd(self.g_line)
 
-        elif self.g_cmd not in ['', '?', 'help', None]: 
-            self.log.warn('INFO: unknown syntax -> "%s"' %self.g_line)
-            self.stderr.write('*** unknown syntax: %s\n' %self.g_cmd)
+        elif self.g_cmd not in ['', '?', 'help', None]:
+            self.log.warn('INFO: unknown syntax -> "%s"' % self.g_line)
+            self.stderr.write('*** unknown syntax: %s\n' % self.g_cmd)
         self.g_cmd, self.g_arg, self.g_line = ['', '', '']
         if self.conf['timer'] > 0:
             self.mytimer(self.conf['timer'])
@@ -177,7 +178,7 @@ class ShellCmd(cmd.Cmd, object):
     def setprompt(self, conf):
         """ set prompt used by the shell
         """
-        if conf.has_key('prompt'):
+        if 'prompt' in conf:
             promptbase = conf['prompt']
             promptbase = promptbase.replace('%u', getuser())
             promptbase = promptbase.replace('%h', os.uname()[1].split('.')[0])
@@ -208,7 +209,8 @@ class ShellCmd(cmd.Cmd, object):
     def lsudo(self):
         """ lists allowed sudo commands
         """
-        if self.conf.has_key('sudo_commands') and len(self.conf['sudo_commands']) > 0:
+        if 'sudo_commands' in self.conf \
+           and len(self.conf['sudo_commands']) > 0:
             sys.stdout.write("Allowed sudo commands:\n")
             for command in self.conf['sudo_commands']:
                 sys.stdout.write(" - %s\n" % command)
@@ -224,8 +226,8 @@ class ShellCmd(cmd.Cmd, object):
             try:
                 readline.write_history_file(self.conf['history_file'])
             except IOError:
-                self.log.error('WARN: couldn\'t write history ' \
-                                   'to file %s\n' % self.conf['history_file'])
+                self.log.error('WARN: couldn\'t write history '
+                               'to file %s\n' % self.conf['history_file'])
                 return 1
             f = open(self.conf['history_file'], 'r')
             i = 1
@@ -278,7 +280,8 @@ class ShellCmd(cmd.Cmd, object):
                 os.chdir(os.path.realpath(self.g_arg))
                 self.updateprompt(os.getcwd())
             except OSError, (ErrorNumber, ErrorMessage):
-                sys.stdout.write("lshell: %s: %s\n" %(self.g_arg, ErrorMessage))
+                sys.stdout.write("lshell: %s: %s\n" % (self.g_arg,
+                                                       ErrorMessage))
                 return ErrorNumber
         else:
             os.chdir(self.conf['home_path'])
@@ -289,7 +292,7 @@ class ShellCmd(cmd.Cmd, object):
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.
         Its purpose is to forbid the user to user to override the lshell
-        command restrictions. 
+        command restrictions.
         The forbidden characters are placed in the 'forbidden' variable.
         Feel free to update the list. Emptying it would be quite useless..: )
 
@@ -318,7 +321,7 @@ class ShellCmd(cmd.Cmd, object):
         for item in self.conf['forbidden']:
             # allow '&&' and '||' even if singles are forbidden
             if item in ['&', '|']:
-                if re.findall("[^\%s]\%s[^\%s]" %(item, item, item), line):
+                if re.findall("[^\%s]\%s[^\%s]" % (item, item, item), line):
                     return self.warn_count('syntax', oline, strict, ssh)
             else:
                 if item in line:
@@ -328,13 +331,13 @@ class ShellCmd(cmd.Cmd, object):
         # check if the line contains $(foo) executions, and check them
         executions = re.findall('\$\([^)]+[)]', line)
         for item in executions:
-            returncode += self.check_path(item[2:-1].strip(), strict = strict)
-            returncode += self.check_secure(item[2:-1].strip(), strict = strict)
+            returncode += self.check_path(item[2:-1].strip(), strict=strict)
+            returncode += self.check_secure(item[2:-1].strip(), strict=strict)
 
         # check fot executions using back quotes '`'
         executions = re.findall('\`[^`]+[`]', line)
         for item in executions:
-            returncode += self.check_secure(item[1:-1].strip(), strict = strict)
+            returncode += self.check_secure(item[1:-1].strip(), strict=strict)
 
         # check if the line contains ${foo=bar}, and check them
         curly = re.findall('\$\{[^}]+[}]', line)
@@ -344,8 +347,8 @@ class ShellCmd(cmd.Cmd, object):
                 variable = re.split('=|\+|\?|\-', item, 1)
             else:
                 variable = item
-            returncode += self.check_path(variable[1][:-1], strict = strict)
-            
+            returncode += self.check_path(variable[1][:-1], strict=strict)
+
         # if unknown commands where found, return 1 and don't execute the line
         if returncode > 0:
             return 1
@@ -355,14 +358,14 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case ';', '|' or '&' are not forbidden, check if in line
         lines = []
-        
+
         # corrected by Alojzij Blatnik #48
         # test first character
         if line[0] in ["&", "|", ";"]:
             start = 1
         else:
             start = 0
-        
+
         # split remaining command line
         for i in range(1, len(line)):
             # in case \& or \| or \; don't split it
@@ -375,7 +378,7 @@ class ShellCmd(cmd.Cmd, object):
         # append remaining command line
         if start != len(line):
             lines.append(line[start:len(line)])
-        
+
         # remove trailing parenthesis
         line = re.sub('\)$', '', line)
         for separate_line in lines:
@@ -384,29 +387,34 @@ class ShellCmd(cmd.Cmd, object):
             command = splitcmd[0]
             if len(splitcmd) > 1:
                 cmdargs = splitcmd
-            else: cmdargs = None
+            else:
+                cmdargs = None
 
             # in case of a sudo command, check in sudo_commands list if allowed
             if command == 'sudo':
-              if type(cmdargs) == list:
-                # allow the -u (user) flag
-                if cmdargs[1] == '-u' and cmdargs:
-                  sudocmd = cmdargs[3]
-                else:
-                  sudocmd = cmdargs[1]
-                if sudocmd not in self.conf['sudo_commands'] and cmdargs:
-                  return self.warn_count('sudo command', oline, strict, ssh)
+                if type(cmdargs) == list:
+                    # allow the -u (user) flag
+                    if cmdargs[1] == '-u' and cmdargs:
+                        sudocmd = cmdargs[3]
+                    else:
+                        sudocmd = cmdargs[1]
+                    if sudocmd not in self.conf['sudo_commands'] and cmdargs:
+                        return self.warn_count('sudo command',
+                                               oline,
+                                               strict,
+                                               ssh)
 
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
                 self.conf['allowed'] = self.conf['overssh']
-            
+
             # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
                 return self.warn_count('command', oline, strict, ssh, command)
         return 0
 
-    def warn_count(self, messagetype, line=None, strict=None, ssh=None, command=None):
+    def warn_count(self, messagetype, line=None, strict=None,
+                   ssh=None, command=None):
         """ Update the warning_counter, log and display a warning to the user
         """
         if not line:
@@ -419,19 +427,20 @@ class ShellCmd(cmd.Cmd, object):
                 self.conf['warning_counter'] -= 1
                 if self.conf['warning_counter'] < 0:
                     self.log.critical('*** forbidden %s -> "%s"'
-                                                          % (messagetype ,line))
+                                      % (messagetype, line))
                     self.log.critical('*** Kicked out')
                     sys.exit(1)
                 else:
                     self.log.critical('*** forbidden %s -> "%s"'
-                                                          % (messagetype ,line))
-                    self.stderr.write('*** You have %s warning(s) left,' \
-                                        ' before getting kicked out.\n'
-                                        %(self.conf['warning_counter']))
+                                      % (messagetype, line))
+                    self.stderr.write('*** You have %s warning(s) left,'
+                                      ' before getting kicked out.\n'
+                                      % (self.conf['warning_counter']))
                     self.stderr.write('This incident has been reported.\n')
             else:
                 if not self.conf['quiet']:
-                    self.log.critical('*** forbidden %s: %s' % (messagetype, line))
+                    self.log.critical('*** forbidden %s: %s'
+                                      % (messagetype, line))
 
         # if you are here, means that you did something wrong. Return 1.
         return 1
@@ -447,20 +456,20 @@ class ShellCmd(cmd.Cmd, object):
         # if warning_counter is set to -1, just warn, don't kick
         if self.conf['warning_counter'] == -1:
             self.log.critical('*** forbidden %s -> "%s"'
-                                                      % (messagetype ,line))
+                              % (messagetype, line))
         else:
             self.conf['warning_counter'] -= 1
-            if self.conf['warning_counter'] < 0: 
+            if self.conf['warning_counter'] < 0:
                 self.log.critical('*** forbidden %s -> "%s"'
-                                                      % (messagetype ,line))
+                                  % (messagetype, line))
                 self.log.critical('*** Kicked out')
                 sys.exit(1)
             else:
                 self.log.critical('*** forbidden %s -> "%s"'
-                                                      % (messagetype ,line))
-                self.stderr.write('*** You have %s warning(s) left,' \
-                                    ' before getting kicked out.\n'
-                                    %(self.conf['warning_counter']))
+                                  % (messagetype, line))
+                self.stderr.write('*** You have %s warning(s) left,'
+                                  ' before getting kicked out.\n'
+                                  % (self.conf['warning_counter']))
                 self.stderr.write('This incident has been reported.\n')
 
     def check_path(self, line, completion=None, ssh=None, strict=None):
@@ -472,7 +481,7 @@ class ShellCmd(cmd.Cmd, object):
         denied_path_re = str(self.conf['path'][1][:-1])
 
         # split line depending on the operators
-        sep=re.compile(r'\ |;|\||&')
+        sep = re.compile(r'\ |;|\||&')
         line = line.strip()
         line = sep.split(line)
 
@@ -496,21 +505,24 @@ class ShellCmd(cmd.Cmd, object):
                 # remove quotes if available
                 item = re.sub("\"|\'", "", item)
                 import subprocess
-                p = subprocess.Popen( "`which echo` %s" % item,
-                                      shell=True,
-                                      stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE )
-                (cin, cout) = (p.stdin, p.stdout)
+                p = subprocess.Popen("`which echo` %s" % item,
+                                     shell=True,
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE)
+                cout = p.stdout
 
                 item = cout.readlines()[0].split(' ')[0].strip()
                 item = os.path.expandvars(item)
 
             tomatch = os.path.realpath(item)
-            if os.path.isdir(tomatch) and tomatch[-1] != '/': tomatch += '/'
+            if os.path.isdir(tomatch) and tomatch[-1] != '/':
+                tomatch += '/'
             match_allowed = re.findall(allowed_path_re, tomatch)
-            if denied_path_re: 
+            if denied_path_re:
                 match_denied = re.findall(denied_path_re, tomatch)
-            else: match_denied = None
+            else:
+                match_denied = None
+
             # if path not allowed
             # case path executed: warn, and return 1
             # case completion: return 1
@@ -528,7 +540,7 @@ class ShellCmd(cmd.Cmd, object):
                         self.updateprompt(os.getcwd())
                     else:
                         self.log.critical('*** Forbidden path: %s'
-                                                        %os.getcwd())
+                                          % os.getcwd())
                 return 1
         return 0
 
@@ -541,8 +553,8 @@ class ShellCmd(cmd.Cmd, object):
         elif self.conf['prompt_short'] == 1:
             self.prompt = '%s: %s$ ' % (self.promptbase, path.split('/')[-1])
         elif re.findall(self.conf['home_path'], path):
-            self.prompt = '%s:~%s$ ' % ( self.promptbase,
-                                         path.split(self.conf['home_path'])[1])
+            self.prompt = '%s:~%s$ ' % (self.promptbase,
+                                        path.split(self.conf['home_path'])[1])
         else:
             self.prompt = '%s:%s$ ' % (self.promptbase, path)
 
@@ -564,7 +576,8 @@ class ShellCmd(cmd.Cmd, object):
                     readline.read_history_file(self.conf['history_file'])
                 except IOError:
                     pass
-            readline.set_completer_delims(readline.get_completer_delims().replace('-', ''))
+            readline.set_completer_delims(
+                      readline.get_completer_delims().replace('-', ''))
             self.old_completer = readline.get_completer()
             readline.set_completer(self.complete)
             readline.parse_and_bind(self.completekey+": complete")
@@ -572,7 +585,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write("%s\n" % self.intro)
             if self.conf['login_script']:
-                retcode = exec_cmd(self.conf['login_script'])
+                exec_cmd(self.conf['login_script'])
             stop = None
             while not stop:
                 if self.cmdqueue:
@@ -593,7 +606,8 @@ class ShellCmd(cmd.Cmd, object):
                         if not len(line):
                             line = 'EOF'
                         else:
-                            line = line[:-1] # chop \n
+                            # chop \n
+                            line = line[:-1]
                 line = self.precmd(line)
                 stop = self.onecmd(line)
                 stop = self.postcmd(stop, line)
@@ -601,19 +615,20 @@ class ShellCmd(cmd.Cmd, object):
         finally:
             if self.use_rawinput and self.completekey:
                 try:
-                    readline.set_completer_delims(readline.get_completer_delims().replace('-', ''))
+                    readline.set_completer_delims(
+                              readline.get_completer_delims().replace('-', ''))
                     readline.set_completer(self.old_completer)
                 except ImportError:
                     pass
             try:
                 readline.write_history_file(self.conf['history_file'])
             except IOError:
-                self.log.error('WARN: couldn\'t write history ' \
-                                   'to file %s\n' % self.conf['history_file'])
+                self.log.error('WARN: couldn\'t write history '
+                               'to file %s\n' % self.conf['history_file'])
 
     def complete(self, text, state):
         """Return the next possible completion for 'text'.
-        If a command has not been entered, then complete against command list. 
+        If a command has not been entered, then complete against command list.
         Otherwise try to call complete_<command> to get list of completions.
         """
         if state == 0:
@@ -626,8 +641,8 @@ class ShellCmd(cmd.Cmd, object):
             endidx = readline.get_endidx() - stripped
             if line.split(' ')[0] == 'sudo' and len(line.split(' ')) <= 2:
                 compfunc = self.completesudo
-            elif len (line.split(' ')) > 1 \
-                 and line.split(' ')[0] in self.conf['allowed']:
+            elif len(line.split(' ')) > 1 \
+                    and line.split(' ')[0] in self.conf['allowed']:
                 compfunc = self.completechdir
             elif begidx > 0:
                 cmd, args, foo = self.parseline(line)
@@ -647,9 +662,9 @@ class ShellCmd(cmd.Cmd, object):
             return None
 
     def default(self, line):
-        """ This method overrides the original default method. 
+        """ This method overrides the original default method.
         It was originally used to warn when an unknown command was entered
-        (e.g. *** Unknown syntax: blabla). 
+        (e.g. *** Unknown syntax: blabla).
         It has been implemented in the __getattr__ method.
         So it has no use here. Its output is now empty.
         """
@@ -662,7 +677,7 @@ class ShellCmd(cmd.Cmd, object):
         """
         dotext = 'do_'+text
         names = self.get_names()
-        for command in self.conf['allowed']: 
+        for command in self.conf['allowed']:
             names.append('do_' + command)
         return [a[3:] for a in names if a.startswith(dotext)]
 
@@ -678,12 +693,13 @@ class ShellCmd(cmd.Cmd, object):
         tocomplete = re.sub('^~', self.conf['home_path'], tocomplete)
         try:
             directory = os.path.realpath(tocomplete)
-        except: 
+        except:
             directory = os.getcwd()
 
         if not os.path.isdir(directory):
             directory = directory.rsplit('/', 1)[0]
-            if directory == '': directory = '/'
+            if directory == '':
+                directory = '/'
             if not os.path.isdir(directory):
                 directory = os.getcwd()
 
@@ -691,12 +707,15 @@ class ShellCmd(cmd.Cmd, object):
             for instance in os.listdir(directory):
                 if os.path.isdir(os.path.join(directory, instance)):
                     instance = instance + '/'
-                else: instance = instance + ' '
+                else:
+                    instance = instance + ' '
                 if instance.startswith('.'):
                     if text.startswith('.'):
                         toreturn.append(instance)
-                    else: pass
-                else: toreturn.append(instance)
+                    else:
+                        pass
+                else:
+                    toreturn.append(instance)
             return [a for a in toreturn if a.startswith(text)]
         else:
             return None
@@ -708,7 +727,7 @@ class ShellCmd(cmd.Cmd, object):
         Thos variables are then used by the __getattr__ method
         """
         cmd, arg, line = self.parseline(line)
-        self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line] 
+        self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line]
         if not line:
             return self.emptyline()
         if cmd is None:
@@ -732,12 +751,12 @@ class ShellCmd(cmd.Cmd, object):
             return 0
 
     def do_help(self, arg):
-        """ This method overrides the original do_help method. 
+        """ This method overrides the original do_help method.
         Instead of printing out the that are documented or not, it returns the
-        list of allowed commands when '?' or 'help' is entered. 
+        list of allowed commands when '?' or 'help' is entered.
         Of course, it doesn't override the help function: any help_* method
         will be called (e.g. help_help(self) )
-        """ 
+        """
         if arg:
             try:
                 func = getattr(self, 'help_' + arg)
@@ -745,22 +764,23 @@ class ShellCmd(cmd.Cmd, object):
                 try:
                     doc = getattr(self, 'do_' + arg).__doc__
                     if doc:
-                        self.stdout.write("%s\n"%str(doc))
+                        self.stdout.write("%s\n" % str(doc))
                         return
                 except AttributeError:
                     pass
-                self.stdout.write("%s\n"%str(self.nohelp % (arg,)))
+                self.stdout.write("%s\n" % str(self.nohelp % (arg,)))
                 return
             func()
         else:
-            # Get list of allowed commands, remove duplicate 'help' then sort it
+            # Get list of allowed commands, remove duplicate 'help' then sort
             list_tmp = dict.fromkeys(self.completenames('')).keys()
             list_tmp.sort()
             self.columnize(list_tmp)
 
     def help_help(self):
         """ Print Help on Help """
-        self.stdout.write(help_help)
+        self.stdout.write('Help! Help! Help! Help! '
+                          "Please contact your system's administrator.\n")
 
     def mytimer(self, timeout):
         """ This function is kicks you out the the lshell after

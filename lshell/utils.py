@@ -1,22 +1,22 @@
 #
 #    Limited command Shell (lshell)
-#  
-#    Copyright (C) 2008-2013 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
-#    This file is part of lshell
+#  Copyright (C) 2008-2013 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
 #
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
+#  This file is part of lshell
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 import subprocess
@@ -27,7 +27,7 @@ except:
     def urandom(n):
         try:
             _urandomfd = open("/dev/urandom", 'r')
-        except Exception,e:
+        except Exception, e:
             print e
             raise NotImplementedError("/dev/urandom (or equivalent) not found")
         bytes = ""
@@ -53,10 +53,10 @@ def get_aliases(line, aliases):
         while re.findall(reg1, line):
             (before, after, rest) = re.findall(reg1, line)[0]
             linesave = line
-            cmd = "%s %s" % (item, rest)
 
-            line = re.sub(reg2, "%s %s%s" % (before, aliaskey,
-                                                     after), line, 1)
+            line = re.sub(reg2, "%s %s%s" % (before,
+                                             aliaskey,
+                                             after), line, 1)
 
             # if line does not change after sub, exit loop
             if linesave == line:
@@ -67,15 +67,16 @@ def get_aliases(line, aliases):
 
     for char in [';']:
         # remove all remaining double char
-        line = line.replace('%s%s' %(char, char), '%s' %char)
+        line = line.replace('%s%s' % (char, char), '%s' % char)
     return line
 
-def exec_cmd(cmd):
-  """ execute a command, locally catching the signals """
-  try:
-    retcode = subprocess.call("%s" % cmd, shell=True)
-  except KeyboardInterrupt:
-    # exit code for user terminated scripts is 130
-    retcode = 130
 
-  return retcode
+def exec_cmd(cmd):
+    """ execute a command, locally catching the signals """
+    try:
+        retcode = subprocess.call("%s" % cmd, shell=True)
+    except KeyboardInterrupt:
+        # exit code for user terminated scripts is 130
+        retcode = 130
+
+    return retcode

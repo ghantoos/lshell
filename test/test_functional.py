@@ -191,7 +191,8 @@ class TestFunctions(unittest.TestCase):
     def test_16a_exitcode_with_separator_external_cmd(self):
         """ 16a - test external command exit codes with separator """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--forbidden "[]"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
@@ -204,7 +205,8 @@ class TestFunctions(unittest.TestCase):
     def test_16b_exitcode_without_separator_external_cmd(self):
         """ 16b - test external command exit codes without separator """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--forbidden "[]"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
@@ -219,7 +221,8 @@ class TestFunctions(unittest.TestCase):
     def test_17a_exitcode_with_separator_internal_cmd(self):
         """ 17a - test built-in command exit codes with separator """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--forbidden "[]"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
@@ -232,7 +235,8 @@ class TestFunctions(unittest.TestCase):
     def test_17b_exitcode_without_separator_external_cmd(self):
         """ 17b - test built-in exit codes without separator """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --forbidden "[]"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--forbidden "[]"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
@@ -245,9 +249,12 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_18_allow_slash(self):
-        """ 18 - user should able to allow / access minus some directory (e.g. /var) """
+        """ 18 - user should able to allow / access minus some directory
+            (e.g. /var)
+        """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --path "[\'/\'] - [\'/var\']"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--path "[\'/\'] - [\'/var\']"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
@@ -262,7 +269,8 @@ class TestFunctions(unittest.TestCase):
     def test_19_expand_env_variables(self):
         """ 19 - test expanding of environment variables """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --allowed "+ [\'export\']"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--allowed "+ [\'export\']"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
@@ -277,17 +285,19 @@ class TestFunctions(unittest.TestCase):
     def test_20_expand_env_variables_cd(self):
         """ 20 - test expanding of environment variables when using cd """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --allowed "+ [\'export\']"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--allowed "+ [\'export\']"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
         import random
         import string
 
-        random = ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(32)])
+        random = ''.join([random.choice(string.ascii_letters + string.digits)
+                          for n in xrange(32)])
 
-        expected = "lshell: %s/random_%s: No such file or directory" \
-                                            % (os.path.expanduser('~'),random)
+        expected = 'lshell: %s/random_%s: No such file or directory' % (
+                        os.path.expanduser('~'), random)
         self.child.sendline('export A=random_%s' % random)
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('cd $HOME/$A')
@@ -296,7 +306,8 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_21_cd_and_command(self):
-        """ 07 - cd && command should not be interpreted by internal function """
+        """ 07 - cd && command should not be interpreted by internal function
+        """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf'
                                    % (TOPDIR, TOPDIR))
@@ -311,13 +322,14 @@ class TestFunctions(unittest.TestCase):
     def test_22_KeyboardInterrupt(self):
         """ 07 - test cat(1) with KeyboardInterrupt, should not exit """
         self.child = pexpect.spawn('%s/bin/lshell '
-                                   '--config %s/etc/lshell.conf --allowed "+ [\'cat\']"'
+                                   '--config %s/etc/lshell.conf '
+                                   '--allowed "+ [\'cat\']"'
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
         expected = ""
         self.child.sendline('cat')
-        self.child.sendcontrol('c');
+        self.child.sendcontrol('c')
         self.child.expect('%s:~\$' % self.user)
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)

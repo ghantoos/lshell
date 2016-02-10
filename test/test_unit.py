@@ -120,5 +120,30 @@ class TestFunctions(unittest.TestCase):
     allowed.sort()
     return self.assertEqual(allowed, userconf['sudo_commands'])
 
+  def test_allowed_ld_preload_cmd(self):
+    """ all allowed commands should be prepended with LD_PRELOAD """
+    args = self.args + ["--allowed=['echo','export']"]
+    userconf = CheckConfig(args).returnconf()
+    # sort lists to compare
+    return self.assertEqual(userconf['aliases']['echo'],
+                            'LD_PRELOAD=%s echo' % userconf['path_noexec'])
+
+  def test_allowed_ld_preload_builtin(self):
+    """ builtin commands should NOT be prepended with LD_PRELOAD """
+    args = self.args + ["--allowed=['echo','export']"]
+    userconf = CheckConfig(args).returnconf()
+    # verify that export is not automatically added to the aliases (i.e.
+    # prepended with LD_PRELOAD)
+    return self.assertNotIn('export', userconf['aliases'])
+
+  def test_allowed_exec_cmd(self):
+    """ all allowed_shell_escape commands should NOT be prepended with
+        LD_PRELOAD. The command should not be added to the aliases variable
+    """
+    args = self.args + ["--allowed_shell_escape=['echo']"]
+    userconf = CheckConfig(args).returnconf()
+    # sort lists to compare
+    return self.assertNotIn('echo', userconf['aliases'])
+
 if __name__ == "__main__":
     unittest.main()

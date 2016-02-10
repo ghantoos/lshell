@@ -116,6 +116,12 @@ include a directory containing multiple configuration files.
 These files can only contain default/user/group configuration. The
 global configuration will only be loaded from the default configuration
 file. This variable will be expanded (e.g. /path/*.conf).
+.TP
+.I path_noexec
+set path to sudo noexec library. This path is usually autodetected, only set
+this variable to use alternate path. If set and the shared object is not found,
+lshell will exit immediately. Otherwise, please check your logs to verify that
+a standard path is detected.
 .RS
 .SS [default] and/or [username] and/or [grp:groupname]
 .TP
@@ -126,6 +132,22 @@ command aliases list (similar to bash's alias directive)
 .I allowed
 a list of the allowed commands or set to 'all' to allow all commands in user's \
 PATH
+
+if  sudo(8) is installed and sudo_noexec.so is available, it will be loaded
+before running every command, preventing it from  running  further  commands
+itself. If not available, beware of commands like vim/find/more/etc. that will
+allow users to execute code (e.g. /bin/sh) from within the application,
+thus easily escaping lshell. See variable 'path_noexec' to use an alternative
+path to library.
+.TP
+.I allowed_shell_escape
+a list of the allowed commands that are permitted to execute other programs
+(e.g. shell scripts with exec(3)). Setting this variable to 'all' is NOT
+allowed. Warning: do not put here any command that can execute arbitrary
+commands (e.g. find, vim, xargs).
+
+important: commands defined in 'allowed_shell_escape' override their definition
+in the \'allowed\' variable.
 .TP
 .I allowed_cmd_path
 a list of path; all executable files inside these path will be allowed
@@ -231,6 +253,9 @@ Here is the set of commands that are always available with lshell:
 .TP
 .I clear
 clears the terminal
+.TP
+.I export
+name of exported shell variable
 .TP
 .I help, ?
 print the list of allowed commands

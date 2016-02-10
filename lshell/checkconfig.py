@@ -143,7 +143,7 @@ class CheckConfig:
         self.check_env()
         self.check_scp_sftp()
         self.check_passwd()
-        self.check_noexec()
+        self.set_noexec()
 
     def getoptions(self, arguments, conf):
         """ This method checks the usage. lshell.py must be called with a      \
@@ -400,7 +400,7 @@ class CheckConfig:
                 if len(split) > 1 and key in ['path',                          \
                                               'overssh',                       \
                                               'allowed',                       \
-                                              'allowed_shell_escape',          \
+                                              'allowed_shell_escape',
                                               'forbidden']:
                     for stuff in split:
                         if stuff.startswith('-') or stuff.startswith('+'):
@@ -420,8 +420,6 @@ class CheckConfig:
                             self.conf_raw.update({key:stuff})
                 # case allowed is set to 'all'
                 elif key == 'allowed' and split[0] == "'all'":
-                    self.conf_raw.update({key:self.expand_all()})
-                elif key == 'allowed_shell_escape' and split[0] == "'all'":
                     self.conf_raw.update({key:self.expand_all()})
                 elif key == 'path':
                     liste = ['', '']
@@ -528,6 +526,7 @@ class CheckConfig:
                 pass
 
         for item in ['allowed',
+                    'allowed_shell_escape',
                     'forbidden',
                     'sudo_commands',
                     'warning_counter',
@@ -552,7 +551,10 @@ class CheckConfig:
                 else:
                     self.conf[item] = self.myeval(self.conf_raw[item], item)
             except KeyError:
-                if item in ['allowed', 'overssh', 'sudo_commands']:
+                if item in ['allowed',
+                            'allowed_shell_escape',
+                            'overssh',
+                            'sudo_commands']:
                     self.conf[item] = []
                 elif item in ['history_size']:
                     self.conf[item] = -1
@@ -813,10 +815,11 @@ class CheckConfig:
                 sys.exit(0)
         else: return 0
 
-    def check_noexec(self):
+    def set_noexec(self):
         """ This method checks the existence of the sudo_noexec                \
         library.
         """
+        # list of standard sudo_noexec.so file location
         possible_lib = [ '/lib/sudo_noexec.so',
                          '/usr/lib/sudo_noexec.so',
                          '/usr/lib/sudo/sudo_noexec.so',
@@ -829,32 +832,45 @@ class CheckConfig:
                          '/lib64/sudo_noexec.so',
                          '/usr/lib64/sudo/sudo_noexec.so']
 
+        # check if alternative path is set in configuration file
         if self.conf_raw.has_key('path_noexec'):
             self.conf['path_noexec'] = self.myeval(self.conf_raw['path_noexec'])
             if not os.path.exists(self.conf_raw['path_noexec']):
-                self.stderr.write("Error: noexec library doesn't exist\n")
-                sys.exit(0)
+                self.log.critical(
+                        "Fatal: 'path_noexec': %s No such file of directory"
+                        % (self.conf['path_noexec']) )
+                sys.exit(2)
         else:
+            # go through the list of standard lib locations
             for path_lib in possible_lib:
                 if os.path.exists(path_lib):
                     self.conf['path_noexec'] = path_lib
+                    break
 
-        if not self.conf.has_key('path_noexec'):
-            self.stderr.write("Error: noexec library not found\n")
-            sys.exit(0)
+        # in case the library was found, set the LD_PRELOAD aliases
+        if self.conf.has_key('path_noexec'):
+            # exclude allowed_shell_escape commands from loop
+            exclude_se = list(set(self.conf['allowed']) -
+                              set(self.conf['allowed_shell_escape']))
 
-	for n in self.conf['allowed']:
-            if self.conf['aliases'].has_key(n):
-                self.conf['aliases'][n] = 'LD_PRELOAD=' +                      \
-                    self.conf['path_noexec']+' '+self.conf['aliases'][n]
-	    else:
-                self.conf['aliases'][n] = 'LD_PRELOAD=' +                      \
-                    self.conf['path_noexec']+' '+n
+            for cmd in exclude_se:
+                # take already set aliases into consideration
+                if self.conf['aliases'].has_key(cmd):
+                    cmd = self.conf['aliases'][cmd]
 
-	if self.conf_raw.has_key('allowed_shell_escape'):
-	    self.conf['allowed'] +=                                            \
-                self.myeval(self.conf_raw['allowed_shell_escape'],             \
-                            'allowed_shell_escape')
+                # add an alias to all the commands, prepending with LD_PRELOAD=
+                # except for built-in commands
+                if cmd not in ('clear','help','history',
+                                       'lpath','lsudo','export'):
+                    self.conf['aliases'][cmd] = 'LD_PRELOAD=%s %s' % (
+                                                self.conf['path_noexec'],
+                                                cmd)
+        else:
+            # if sudo_noexec.so file is not found,  write error in log file,
+            # but don't exit tp  prevent strict dependincy on sudo noexec lib
+            self.log.error("Error: noexec library not found")
+
+        self.conf['allowed'] += self.conf['allowed_shell_escape']
 
     def get_config_mtime(self, configfile):
         """ get configuration file modification time, and store in the        \

@@ -55,7 +55,7 @@ def get_aliases(line, aliases):
             linesave = line
             cmd = "%s %s" % (item, rest)
 
-            line = re.sub(reg2, "%s %s%s" % (before, aliaskey,       \
+            line = re.sub(reg2, "%s %s%s" % (before, aliaskey,
                                                      after), line, 1)
 
             # if line does not change after sub, exit loop

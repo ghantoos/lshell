@@ -121,9 +121,9 @@ class ShellCmd(cmd.Cmd, object):
         if self.g_cmd in self.conf['allowed']:
             if self.conf['timer'] > 0:
                 self.mytimer(0)
-            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],      \
+            self.g_arg = re.sub('^~$|^~/', '%s/' %self.conf['home_path'],
                                                                    self.g_arg)
-            self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],        \
+            self.g_arg = re.sub(' ~/', ' %s/'  %self.conf['home_path'],
                                                                    self.g_arg)
             # replace previous command exit code
             # in case multiple commands (using separators), only replace first command
@@ -287,13 +287,13 @@ class ShellCmd(cmd.Cmd, object):
         return 0
 
     def check_secure(self, line, strict=None, ssh=None):
-        """This method is used to check the content on the typed command.      \
-        Its purpose is to forbid the user to user to override the lshell       \
+        """This method is used to check the content on the typed command.
+        Its purpose is to forbid the user to user to override the lshell
         command restrictions. 
         The forbidden characters are placed in the 'forbidden' variable.
         Feel free to update the list. Emptying it would be quite useless..: )
 
-        A warining counter has been added, to kick out of lshell a user if he  \
+        A warining counter has been added, to kick out of lshell a user if he
         is warned more than X time (X beeing the 'warning_counter' variable).
         """
 
@@ -418,15 +418,15 @@ class ShellCmd(cmd.Cmd, object):
             if strict:
                 self.conf['warning_counter'] -= 1
                 if self.conf['warning_counter'] < 0:
-                    self.log.critical('*** forbidden %s -> "%s"'                   \
+                    self.log.critical('*** forbidden %s -> "%s"'
                                                           % (messagetype ,line))
                     self.log.critical('*** Kicked out')
                     sys.exit(1)
                 else:
-                    self.log.critical('*** forbidden %s -> "%s"'                   \
+                    self.log.critical('*** forbidden %s -> "%s"'
                                                           % (messagetype ,line))
-                    self.stderr.write('*** You have %s warning(s) left,'           \
-                                        ' before getting kicked out.\n'            \
+                    self.stderr.write('*** You have %s warning(s) left,' \
+                                        ' before getting kicked out.\n'
                                         %(self.conf['warning_counter']))
                     self.stderr.write('This incident has been reported.\n')
             else:
@@ -446,26 +446,26 @@ class ShellCmd(cmd.Cmd, object):
 
         # if warning_counter is set to -1, just warn, don't kick
         if self.conf['warning_counter'] == -1:
-            self.log.critical('*** forbidden %s -> "%s"'                       \
+            self.log.critical('*** forbidden %s -> "%s"'
                                                       % (messagetype ,line))
         else:
             self.conf['warning_counter'] -= 1
             if self.conf['warning_counter'] < 0: 
-                self.log.critical('*** forbidden %s -> "%s"'                   \
+                self.log.critical('*** forbidden %s -> "%s"'
                                                       % (messagetype ,line))
                 self.log.critical('*** Kicked out')
                 sys.exit(1)
             else:
-                self.log.critical('*** forbidden %s -> "%s"'                   \
+                self.log.critical('*** forbidden %s -> "%s"'
                                                       % (messagetype ,line))
-                self.stderr.write('*** You have %s warning(s) left,'           \
-                                    ' before getting kicked out.\n'            \
+                self.stderr.write('*** You have %s warning(s) left,' \
+                                    ' before getting kicked out.\n'
                                     %(self.conf['warning_counter']))
                 self.stderr.write('This incident has been reported.\n')
 
     def check_path(self, line, completion=None, ssh=None, strict=None):
-        """ Check if a path is entered in the line. If so, it checks if user   \
-        are allowed to see this path. If user is not allowed, it calls         \
+        """ Check if a path is entered in the line. If so, it checks if user
+        are allowed to see this path. If user is not allowed, it calls
         self.counter_update. I case of completion, it only returns 0 or 1.
         """
         allowed_path_re = str(self.conf['path'][0])
@@ -527,7 +527,7 @@ class ShellCmd(cmd.Cmd, object):
                         os.chdir(self.conf['home_path'])
                         self.updateprompt(os.getcwd())
                     else:
-                        self.log.critical('*** Forbidden path: %s'            \
+                        self.log.critical('*** Forbidden path: %s'
                                                         %os.getcwd())
                 return 1
         return 0
@@ -541,14 +541,14 @@ class ShellCmd(cmd.Cmd, object):
         elif self.conf['prompt_short'] == 1:
             self.prompt = '%s: %s$ ' % (self.promptbase, path.split('/')[-1])
         elif re.findall(self.conf['home_path'], path):
-            self.prompt = '%s:~%s$ ' % ( self.promptbase, \
+            self.prompt = '%s:~%s$ ' % ( self.promptbase,
                                          path.split(self.conf['home_path'])[1])
         else:
             self.prompt = '%s:%s$ ' % (self.promptbase, path)
 
     def cmdloop(self, intro=None):
-        """Repeatedly issue a prompt, accept input, parse an initial prefix    \
-        off the received input, and dispatch to action methods, passing them   \
+        """Repeatedly issue a prompt, accept input, parse an initial prefix
+        off the received input, and dispatch to action methods, passing them
         the remainder of the line as argument.
         """
 
@@ -608,7 +608,7 @@ class ShellCmd(cmd.Cmd, object):
             try:
                 readline.write_history_file(self.conf['history_file'])
             except IOError:
-                self.log.error('WARN: couldn\'t write history '                \
+                self.log.error('WARN: couldn\'t write history ' \
                                    'to file %s\n' % self.conf['history_file'])
 
     def complete(self, text, state):
@@ -648,7 +648,7 @@ class ShellCmd(cmd.Cmd, object):
 
     def default(self, line):
         """ This method overrides the original default method. 
-        It was originally used to warn when an unknown command was entered     \
+        It was originally used to warn when an unknown command was entered
         (e.g. *** Unknown syntax: blabla). 
         It has been implemented in the __getattr__ method.
         So it has no use here. Its output is now empty.
@@ -656,8 +656,8 @@ class ShellCmd(cmd.Cmd, object):
         self.stdout.write('')
 
     def completenames(self, text, *ignored):
-        """ This method overrides the original completenames method to overload\
-        it's output with the command available in the 'allowed' variable       \
+        """ This method overrides the original completenames method to overload
+        it's output with the command available in the 'allowed' variable
         This is useful when typing 'tab-tab' in the command prompt
         """
         dotext = 'do_'+text
@@ -702,8 +702,8 @@ class ShellCmd(cmd.Cmd, object):
             return None
 
     def onecmd(self, line):
-        """ This method overrides the original onecomd method, to put the cmd, \
-        arg and line variables in class global variables: self.g_cmd,          \
+        """ This method overrides the original onecomd method, to put the cmd,
+        arg and line variables in class global variables: self.g_cmd,
         self.g_arg and self.g_line.
         Thos variables are then used by the __getattr__ method
         """
@@ -724,7 +724,7 @@ class ShellCmd(cmd.Cmd, object):
             return func(arg)
 
     def emptyline(self):
-        """ This method overrides the original emptyline method, so it doesn't \
+        """ This method overrides the original emptyline method, so it doesn't
         repeat the last command if last command was empty.
         I just found this annoying..
         """
@@ -733,9 +733,9 @@ class ShellCmd(cmd.Cmd, object):
 
     def do_help(self, arg):
         """ This method overrides the original do_help method. 
-        Instead of printing out the that are documented or not, it returns the \
+        Instead of printing out the that are documented or not, it returns the
         list of allowed commands when '?' or 'help' is entered. 
-        Of course, it doesn't override the help function: any help_* method    \
+        Of course, it doesn't override the help function: any help_* method
         will be called (e.g. help_help(self) )
         """ 
         if arg:
@@ -763,7 +763,7 @@ class ShellCmd(cmd.Cmd, object):
         self.stdout.write(help_help)
 
     def mytimer(self, timeout):
-        """ This function is kicks you out the the lshell after      \
+        """ This function is kicks you out the the lshell after
         the 'timer' variable exprires. 'timer' is set in seconds.
         """
         # set timer

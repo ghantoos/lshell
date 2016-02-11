@@ -52,9 +52,6 @@ configfile = conf_prefix + '/etc/lshell.conf'
 # history file
 history_file = ".lhistory"
 
-# lock_file
-lock_file = ".lshell_lock"
-
 # help text
 usage = """Usage: lshell [OPTIONS]
   --config <file>   : Config file location (default %s)
@@ -62,10 +59,6 @@ usage = """Usage: lshell [OPTIONS]
   -h, --help        : Show this help message
   --version         : Show version
 """ % configfile
-
-help_help = """Limited Shell (lshell) limited help.
-Cheers.
-"""
 
 # Intro Text
 intro = """You are in a limited shell.
@@ -624,11 +617,6 @@ class CheckConfig:
         else:
             self.conf['intro'] = intro
 
-        # check if user account if locked
-        if 'lock_counter' in self.conf_raw:
-            self.conf['lock_counter'] = self.conf_raw['lock_counter']
-            self.account_lock(self.user, self.conf['lock_counter'], 1)
-
         if os.path.isdir(self.conf['home_path']):
             os.chdir(self.conf['home_path'])
         else:
@@ -681,16 +669,6 @@ class CheckConfig:
 
         # sort lsudo commands
         self.conf['sudo_commands'].sort()
-
-    def account_lock(self, user, lock_counter, check=None):
-        """ check if user account is locked, in which case, exit """
-        # ### TODO ###
-        # check if account is locked
-        if check:
-            pass
-        # increment account lock
-        else:
-            pass
 
     def check_scp_sftp(self):
         """ This method checks if the user is trying to SCP a file onto the

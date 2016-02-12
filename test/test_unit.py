@@ -13,6 +13,22 @@ class TestFunctions(unittest.TestCase):
     userconf = CheckConfig(args).returnconf()
     shell = ShellCmd(userconf, args)
 
+    def test_forbidden_environment(self):
+        """ check unsafe environment are forbidden
+        """
+        INPUT = 'export LD_PRELOAD=/lib64/ld-2.21.so'
+        self.shell.g_line = INPUT
+        retcode = self.shell.export()[0]
+        return self.assertEqual(retcode, 1)
+
+    def test_allowed_environment(self):
+        """ check other environment are accepted
+        """
+        INPUT = 'export MY_PROJECT_VERSION=43'
+        self.shell.g_line = INPUT
+        retcode = self.shell.export()[0]
+        return self.assertEqual(retcode, 0)
+
     def test_checksecure_doublequote(self):
         """ quoted text should not be forbidden """
         INPUT = 'ls -E "1|2" tmp/test'

@@ -27,7 +27,7 @@ import signal
 import readline
 import glob
 
-from utils import get_aliases, exec_cmd
+from utils import get_aliases, exec_cmd, FORBIDDEN_ENVIRON
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -158,7 +158,10 @@ class ShellCmd(cmd.Cmd, object):
                 self.retcode = self.history()
             # builtin export function
             elif self.g_cmd == 'export':
-                self.retcode = self.export()
+                self.retcode, var = self.export()
+                if self.retcode == 1:
+                    self.log.critical("** forbidden environment variable '%s'"
+                                      % var)
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == 'cd':
                 self.g_cmd = self.g_line.split()[0]
@@ -247,8 +250,11 @@ class ShellCmd(cmd.Cmd, object):
             # if it conatins the equal sign, consider only the first one
             if env.count('='):
                 var, value = env.split(' ')[0].split('=')[0:2]
+                # disallow dangerous variable
+                if var in FORBIDDEN_ENVIRON:
+                    return 1, var
                 os.environ.update({var: value})
-        return 0
+        return 0, None
 
     def cd(self):
         """ implementation of the "cd" command

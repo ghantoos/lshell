@@ -514,11 +514,17 @@ class ShellCmd(cmd.Cmd, object):
                 p = subprocess.Popen("`which echo` %s" % item,
                                      shell=True,
                                      stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
                 cout = p.stdout
 
-                item = cout.readlines()[0].split(' ')[0].strip()
-                item = os.path.expandvars(item)
+                try:
+                    item = cout.readlines()[0].split(' ')[0].strip()
+                    item = os.path.expandvars(item)
+                except IndexError:
+                    self.log.critical('*** Internal error: command not '
+                                      'executed')
+                    return 1
 
             tomatch = os.path.realpath(item)
             if os.path.isdir(tomatch) and tomatch[-1] != '/':

@@ -130,7 +130,7 @@ class TestFunctions(unittest.TestCase):
         args = self.args + ["--sudo_commands=all"]
         userconf = CheckConfig(args).returnconf()
         # exclude internal and sudo(8) commands
-        exclude = ['exit', 'lpath', 'lsudo',
+        exclude = ['cd', 'exit', 'lpath', 'lsudo',
                    'history', 'clear', 'export', 'sudo']
         allowed = [x for x in userconf['allowed'] if x not in exclude]
         # sort lists to compare

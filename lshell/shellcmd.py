@@ -141,12 +141,24 @@ class ShellCmd(cmd.Cmd, object):
             self.log.info('CMD: "%s"' % self.g_line)
 
             if self.g_cmd == 'cd':
-                if re.search('[;&\|]', self.g_line):
-                    # ignore internal cd function in case more than one command
-                    self.retcode = exec_cmd(self.g_line)
+                # split cd <dir> and rest of command
+                cmd_split = re.split(';|&&|&|\|\||\|', self.g_line, 1)
+                # in case the are commands following cd, first change the
+                # directory, then execute the command
+                if len(cmd_split) == 2:
+                    directory, command = cmd_split
+                    # only keep cd's argument
+                    directory = directory.split('cd', 1)[1].strip()
+                    # change directory then, if success, execute the rest of
+                    # the cmd line
+                    self.retcode = self.cd(directory)
+                    if self.retcode == 0:
+                        self.retcode = exec_cmd(command)
                 else:
-                    # builtin cd function
-                    self.retcode = self.cd()
+                    # set directory to command line argument and change dir
+                    directory = self.g_arg
+                    self.retcode = self.cd(directory)
+
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
                 self.retcode = self.lpath()
@@ -256,14 +268,20 @@ class ShellCmd(cmd.Cmd, object):
                 os.environ.update({var: value})
         return 0, None
 
-    def cd(self):
+    def cd(self, directory):
         """ implementation of the "cd" command
         """
-        if len(self.g_arg) >= 1:
+        # expand user's ~
+        directory = os.path.expanduser(directory)
+
+        # remove quotes if present
+        directory = directory.strip("'").strip('"')
+
+        if len(directory) >= 1:
             # add wildcard completion support to cd
-            if self.g_arg.find('*'):
+            if directory.find('*'):
                 # get all files and directories matching wildcard
-                wildall = glob.glob(self.g_arg)
+                wildall = glob.glob(directory)
                 wilddir = []
                 # filter to only directories
                 for item in wildall:
@@ -273,20 +291,20 @@ class ShellCmd(cmd.Cmd, object):
                 wilddir.sort()
                 # if any results are returned, pick first one
                 if len(wilddir) >= 1:
-                    self.g_arg = wilddir[0]
+                    directory = wilddir[0]
             # go previous directory
-            if self.g_arg == '-':
-                self.g_arg = self.oldpwd
+            if directory == '-':
+                directory = self.oldpwd
 
             # store current directory in oldpwd variable
             self.oldpwd = os.getcwd()
 
             # change directory
             try:
-                os.chdir(os.path.realpath(self.g_arg))
+                os.chdir(os.path.realpath(directory))
                 self.updateprompt(os.getcwd())
             except OSError, (ErrorNumber, ErrorMessage):
-                sys.stdout.write("lshell: %s: %s\n" % (self.g_arg,
+                sys.stdout.write("lshell: %s: %s\n" % (directory,
                                                        ErrorMessage))
                 return ErrorNumber
         else:

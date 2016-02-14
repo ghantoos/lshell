@@ -101,7 +101,8 @@ configparams = ['config=',
                 'allowed_shell_escape=',
                 'include_dir=']
 
-builtins = ['clear',
+builtins = ['cd',
+            'clear',
             'exit',
             'export',
             'history',
@@ -840,7 +841,8 @@ class CheckConfig:
         if 'path_noexec' in self.conf:
             # exclude allowed_shell_escape commands from loop
             exclude_se = list(set(self.conf['allowed']) -
-                              set(self.conf['allowed_shell_escape']))
+                              set(self.conf['allowed_shell_escape']) -
+                              set(builtins))
 
             for cmd in exclude_se:
                 # take already set aliases into consideration

@@ -218,7 +218,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
 
-    def test_17a_exitcode_with_separator_internal_cmd(self):
+    def test_17a_cd_exitcode_with_separator_internal_cmd(self):
         """ 17a - test built-in command exit codes with separator """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf '
@@ -229,10 +229,12 @@ class TestFunctions(unittest.TestCase):
         expected = "2"
         self.child.sendline('cd nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[2].strip()
+        self.child.sendline('echo $?')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
 
-    def test_17b_exitcode_without_separator_external_cmd(self):
+    def test_17b_cd_exitcode_without_separator_external_cmd(self):
         """ 17b - test built-in exit codes without separator """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf '
@@ -244,6 +246,24 @@ class TestFunctions(unittest.TestCase):
         self.child.sendline('cd nRVmmn8RGypVneYIp8HxyVAvaEaD55')
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $?')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.split('\n')[1].strip()
+        self.assertEqual(expected, result)
+
+    def test_17c_cd_with_cmd_unknwon_dir(self):
+        """ 17c - test built-in cd with command when dir does not exist
+            Should be returning error, not executing cmd
+        """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf '
+                                   '--forbidden "[]"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = 'lshell: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or '\
+                   'directory'
+
+        self.child.sendline('cd nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?')
         self.child.expect('%s:~\$' % self.user)
         result = self.child.before.split('\n')[1].strip()
         self.assertEqual(expected, result)
@@ -306,7 +326,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_21_cd_and_command(self):
-        """ 07 - cd && command should not be interpreted by internal function
+        """ 21 - cd && command should not be interpreted by internal function
         """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf'
@@ -320,7 +340,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_22_KeyboardInterrupt(self):
-        """ 07 - test cat(1) with KeyboardInterrupt, should not exit """
+        """ 22 - test cat(1) with KeyboardInterrupt, should not exit """
         self.child = pexpect.spawn('%s/bin/lshell '
                                    '--config %s/etc/lshell.conf '
                                    '--allowed "+ [\'cat\']"'

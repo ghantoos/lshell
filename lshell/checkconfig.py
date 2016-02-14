@@ -99,6 +99,7 @@ configparams = ['config=',
                 'history_file=',
                 'path_noxec=',
                 'allowed_shell_escape=',
+                'winscp=',
                 'include_dir=']
 
 builtins = ['cd',
@@ -547,6 +548,7 @@ class CheckConfig:
                      'allowed_cmd_path',
                      'history_size',
                      'login_script',
+                     'winscp',
                      'quiet']:
             try:
                 if len(self.conf_raw[item]) == 0:
@@ -670,6 +672,19 @@ class CheckConfig:
 
         # sort lsudo commands
         self.conf['sudo_commands'].sort()
+
+        # in case winscp is set, load the needed configuration
+        if 'winscp' in self.conf and self.conf['winscp'] == 1:
+            # add minimum commands required for WinSCP to work
+            self.conf['allowed'].extend(['scp', 'env', 'pwd',
+                                         'groups', 'unset', 'unalias'])
+            # remove duplicate commands, in case added in the above extension
+            self.conf['allowed'] = list(set(self.conf['allowed']))
+            # allow the use of semicolon
+            if ';' in self.conf['forbidden']:
+                self.conf['forbidden'].remove(';')
+
+            self.log.error('WinSCP session started')
 
     def check_scp_sftp(self):
         """ This method checks if the user is trying to SCP a file onto the

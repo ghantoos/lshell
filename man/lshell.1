@@ -247,6 +247,31 @@ considered as unknown, and user is only warned (i.e. *** unknown synthax)
 .I warning_counter
 number of warnings when user enters a forbidden value before getting exited \
 from lshell. Set to \fB\-1\fR  to disable the counter, and just warn the user.
+.TP
+.I winscp
+enable support for WinSCP with scp mode (NOT sftp)
+
+When enabled, the following parameters will be overridden:
+.RS
+.BR \ \ \ \ scp_upload  :
+1 (uses scp(1) from within session)
+.RE
+.RS
+.BR \ \ \ \ scp_download:
+1 (uses scp(1) from within session)
+.RE
+.RS
+.BR \ \ \ \ scpforce    :
+ignored (uses scp(1) from within session)
+.RE
+.RS
+.BR \ \ \ \ forbidden   :
+-[';']
+.RE
+.RS
+.BR \ \ \ \ allowed     :
++['scp', 'env', 'pwd', 'groups', 'unset', 'unalias']
+.RE
 
 .SH SHELL BUILTIN COMMANDS
 Here is the set of commands that are always available with lshell:

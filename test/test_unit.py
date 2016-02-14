@@ -1,7 +1,7 @@
 import unittest
 
 from lshell.shellcmd import ShellCmd
-from lshell.checkconfig import CheckConfig
+from lshell.checkconfig import CheckConfig, builtins
 from lshell.utils import get_aliases
 import os
 
@@ -162,6 +162,27 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare
         return self.assertNotIn('echo', userconf['aliases'])
+
+    def test_winscp_allowed_commands(self):
+        """ when winscp is enabled, new allowed commands are automatically
+            added (see man).
+        """
+        args = self.args + ["--allowed=[]", "--winscp=1"]
+        userconf = CheckConfig(args).returnconf()
+        # sort lists to compare
+        expected = builtins + ['scp', 'env', 'pwd', 'groups',
+                               'unset', 'unalias']
+        expected.sort()
+        allowed = userconf['allowed']
+        allowed.sort()
+        return self.assertEqual(allowed, expected)
+
+    def test_winscp_allowed_semicolon(self):
+        """ when winscp is enabled, use of semicolon is allowed """
+        args = self.args + ["--forbidden=[';']", "--winscp=1"]
+        userconf = CheckConfig(args).returnconf()
+        # sort lists to compare
+        return self.assertNotIn(';', userconf['forbidden'])
 
 if __name__ == "__main__":
     unittest.main()

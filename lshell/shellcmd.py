@@ -118,6 +118,12 @@ class ShellCmd(cmd.Cmd, object):
         if self.check_path(self.g_line, strict=self.conf['strict']) == 1:
             # see http://tldp.org/LDP/abs/html/exitcodes.html
             self.retcode = 126
+            # in case request was sent by WinSCP, return error code has to be
+            # sent via an specific echo command
+            if self.conf['winscp'] and re.search('WinSCP: this is end-of-file',
+                                                 self.g_line):
+                exec_cmd('echo "WinSCP: this is end-of-file: %s"'
+                         % self.retcode)
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
             if self.conf['timer'] > 0:

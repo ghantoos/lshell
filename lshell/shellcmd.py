@@ -341,12 +341,7 @@ class ShellCmd(cmd.Cmd, object):
         line = re.sub(r'\'(.+?)\'', '', line)
 
         if re.findall('[:cntrl:].*\n', line):
-            if not ssh:
-                if strict:
-                    self.counter_update('syntax')
-                else:
-                    self.log.critical('*** forbidden syntax -> %s' % oline)
-            return 1
+            return self.warn_count('syntax', oline, strict, ssh)
 
         for item in self.conf['forbidden']:
             # allow '&&' and '||' even if singles are forbidden
@@ -465,7 +460,9 @@ class ShellCmd(cmd.Cmd, object):
                                       % (messagetype, line))
                     self.stderr.write('*** You have %s warning(s) left,'
                                       ' before getting kicked out.\n'
-                                      % (self.conf['warning_counter']))
+                                      % self.conf['warning_counter'])
+                    self.log.error('*** User warned, counter: %s'
+                                   % self.conf['warning_counter'])
                     self.stderr.write('This incident has been reported.\n')
             else:
                 if not self.conf['quiet']:
@@ -475,37 +472,10 @@ class ShellCmd(cmd.Cmd, object):
         # if you are here, means that you did something wrong. Return 1.
         return 1
 
-    def counter_update(self, messagetype, path=None):
-        """ Update the warning_counter, log and display a warning to the user
-        """
-        if path:
-            line = path
-        else:
-            line = self.g_line
-
-        # if warning_counter is set to -1, just warn, don't kick
-        if self.conf['warning_counter'] == -1:
-            self.log.critical('*** forbidden %s -> "%s"'
-                              % (messagetype, line))
-        else:
-            self.conf['warning_counter'] -= 1
-            if self.conf['warning_counter'] < 0:
-                self.log.critical('*** forbidden %s -> "%s"'
-                                  % (messagetype, line))
-                self.log.critical('*** Kicked out')
-                sys.exit(1)
-            else:
-                self.log.critical('*** forbidden %s -> "%s"'
-                                  % (messagetype, line))
-                self.stderr.write('*** You have %s warning(s) left,'
-                                  ' before getting kicked out.\n'
-                                  % (self.conf['warning_counter']))
-                self.stderr.write('This incident has been reported.\n')
-
     def check_path(self, line, completion=None, ssh=None, strict=None):
         """ Check if a path is entered in the line. If so, it checks if user
         are allowed to see this path. If user is not allowed, it calls
-        self.counter_update. I case of completion, it only returns 0 or 1.
+        self.warn_count. In case of completion, it only returns 0 or 1.
         """
         allowed_path_re = str(self.conf['path'][0])
         denied_path_re = str(self.conf['path'][1][:-1])
@@ -569,14 +539,9 @@ class ShellCmd(cmd.Cmd, object):
 
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
-                if not ssh:
-                    if strict:
-                        self.counter_update('path', os.getcwd())
-                        os.chdir(self.conf['home_path'])
-                        self.updateprompt(os.getcwd())
-                    else:
-                        self.log.critical('*** Forbidden path: %s'
-                                          % os.getcwd())
+                self.warn_count('path', tomatch, strict, ssh)
+                os.chdir(self.conf['home_path'])
+                self.updateprompt(os.getcwd())
                 return 1
         return 0
 

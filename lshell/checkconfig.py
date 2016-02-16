@@ -569,7 +569,7 @@ class CheckConfig:
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         # append default commands to allowed list
-        self.conf['allowed'] += variables.builtins
+        self.conf['allowed'] += variables.builtins_list
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf['sudo_commands']:
@@ -590,7 +590,7 @@ class CheckConfig:
         if 'sudo_commands' in self.conf_raw \
            and self.conf_raw['sudo_commands'] == 'all':
             # exclude native commands and sudo(8)
-            exclude = variables.builtins + ['sudo']
+            exclude = variables.builtins_list + ['sudo']
             self.conf['sudo_commands'] = [x for x in self.conf['allowed']
                                           if x not in exclude]
 
@@ -781,7 +781,7 @@ class CheckConfig:
             # exclude allowed_shell_escape commands from loop
             exclude_se = list(set(self.conf['allowed']) -
                               set(self.conf['allowed_shell_escape']) -
-                              set(variables.builtins))
+                              set(variables.builtins_list))
 
             for cmd in exclude_se:
                 # take already set aliases into consideration
@@ -790,7 +790,7 @@ class CheckConfig:
 
                 # add an alias to all the commands, prepending with LD_PRELOAD=
                 # except for built-in commands
-                if cmd not in variables.builtins:
+                if cmd not in variables.builtins_list:
                     self.conf['aliases'][cmd] = 'LD_PRELOAD=%s %s' % (
                                                 self.conf['path_noexec'],
                                                 cmd)

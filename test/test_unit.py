@@ -5,7 +5,8 @@ import os
 from lshell.shellcmd import ShellCmd
 from lshell.checkconfig import CheckConfig
 from lshell.utils import get_aliases
-from lshell.variables import builtins
+from lshell.variables import builtins_list
+from lshell import builtins
 
 TOPDIR = '%s/../' % os.path.dirname(os.path.realpath(__file__))
 
@@ -153,16 +154,16 @@ class TestFunctions(unittest.TestCase):
         """ U18 | unsafe environment are forbidden
         """
         INPUT = 'export LD_PRELOAD=/lib64/ld-2.21.so'
-        self.shell.g_line = INPUT
-        retcode = self.shell.export()[0]
+        args = INPUT
+        retcode = builtins.export(args)[0]
         return self.assertEqual(retcode, 1)
 
     def test_19_allowed_environment(self):
         """ U19 | other environment are accepted
         """
         INPUT = 'export MY_PROJECT_VERSION=43'
-        self.shell.g_line = INPUT
-        retcode = self.shell.export()[0]
+        args = INPUT
+        retcode = builtins.export(args)[0]
         return self.assertEqual(retcode, 0)
 
     def test_20_winscp_allowed_commands(self):
@@ -172,8 +173,8 @@ class TestFunctions(unittest.TestCase):
         args = self.args + ["--allowed=[]", "--winscp=1"]
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare
-        expected = builtins + ['scp', 'env', 'pwd', 'groups',
-                               'unset', 'unalias']
+        expected = builtins_list + ['scp', 'env', 'pwd', 'groups',
+                                    'unset', 'unalias']
         expected.sort()
         allowed = userconf['allowed']
         allowed.sort()

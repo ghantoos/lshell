@@ -89,13 +89,13 @@ configparams = ['config=',
                 'winscp=',
                 'include_dir=']
 
-builtins = ['cd',
-            'clear',
-            'exit',
-            'export',
-            'history',
-            'lpath',
-            'lsudo']
+builtins_list = ['cd',
+                 'clear',
+                 'exit',
+                 'export',
+                 'history',
+                 'lpath',
+                 'lsudo']
 
 FORBIDDEN_ENVIRON = (
  'LD_AOUT_LIBRARY_PATH', 'LD_AOUT_PRELOAD', 'LD_LIBRARY_PATH', 'LD_PRELOAD',

@@ -25,11 +25,10 @@ from getpass import getuser
 import re
 import signal
 import readline
-import glob
 
 # import lshell specifics
 from lshell.utils import get_aliases, exec_cmd
-from lshell import variables
+from lshell import builtins
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -159,34 +158,45 @@ class ShellCmd(cmd.Cmd, object):
                     directory = directory.split('cd', 1)[1].strip()
                     # change directory then, if success, execute the rest of
                     # the cmd line
-                    self.retcode = self.cd(directory)
+                    self.retcode, self.oldpwd = builtins.cd(directory,
+                                                            self.conf,
+                                                            self.oldpwd,
+                                                            self.updateprompt)
+
                     if self.retcode == 0:
                         self.retcode = exec_cmd(command)
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
-                    self.retcode = self.cd(directory)
+                    self.retcode, self.oldpwd = builtins.cd(directory,
+                                                            self.conf,
+                                                            self.oldpwd,
+                                                            self.updateprompt)
 
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
-                self.retcode = self.lpath()
+                self.retcode = builtins.lpath(self.conf)
             # builtin lsudo function: list all allowed sudo commands
             elif self.g_cmd == 'lsudo':
-                self.retcode = self.lsudo()
+                self.retcode = builtins.lsudo(self.conf)
             # builtin history function: print command history
             elif self.g_cmd == 'history':
-                self.retcode = self.history()
+                self.retcode = builtins.history(self.conf, self.log)
             # builtin export function
             elif self.g_cmd == 'export':
-                self.retcode, var = self.export()
+                self.retcode, var = builtins.export(self.g_line)
                 if self.retcode == 1:
                     self.log.critical("** forbidden environment variable '%s'"
                                       % var)
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == 'cd':
                 self.g_cmd = self.g_line.split()[0]
-                self.g_arg = ' '.join(self.g_line.split()[1:])
-                self.retcode = self.cd()
+                directory = ' '.join(self.g_line.split()[1:])
+                self.retcode, self.oldpwd = builtins.cd(directory,
+                                                        self.conf,
+                                                        self.oldpwd,
+                                                        self.updateprompt)
+
             else:
                 self.retcode = exec_cmd(self.g_line)
 
@@ -209,117 +219,6 @@ class ShellCmd(cmd.Cmd, object):
             promptbase = getuser()
 
         return promptbase
-
-    def lpath(self):
-        """ lists allowed and forbidden path
-        """
-        if self.conf['path'][0]:
-            sys.stdout.write("Allowed:\n")
-            lpath_allowed = self.conf['path'][0].split('|')
-            lpath_allowed.sort()
-            for path in lpath_allowed:
-                if path:
-                    sys.stdout.write(" %s\n" % path[:-2])
-        if self.conf['path'][1]:
-            sys.stdout.write("Denied:\n")
-            lpath_denied = self.conf['path'][1].split('|')
-            lpath_denied.sort()
-            for path in lpath_denied:
-                if path:
-                    sys.stdout.write(" %s\n" % path[:-2])
-        return 0
-
-    def lsudo(self):
-        """ lists allowed sudo commands
-        """
-        if 'sudo_commands' in self.conf \
-           and len(self.conf['sudo_commands']) > 0:
-            sys.stdout.write("Allowed sudo commands:\n")
-            for command in self.conf['sudo_commands']:
-                sys.stdout.write(" - %s\n" % command)
-            return 0
-        else:
-            sys.stdout.write("No sudo commands allowed\n")
-            return 1
-
-    def history(self):
-        """ print the commands history
-        """
-        try:
-            try:
-                readline.write_history_file(self.conf['history_file'])
-            except IOError:
-                self.log.error('WARN: couldn\'t write history '
-                               'to file %s\n' % self.conf['history_file'])
-                return 1
-            f = open(self.conf['history_file'], 'r')
-            i = 1
-            for item in f.readlines():
-                sys.stdout.write("%d:  %s" % (i, item))
-                i += 1
-        except:
-            self.log.critical('** Unable to read the history file.')
-            return 1
-        return 0
-
-    def export(self):
-        """ export environment variables """
-        # if command contains at least 1 space
-        if self.g_line.count(' '):
-            env = self.g_line.split(" ", 1)[1]
-            # if it conatins the equal sign, consider only the first one
-            if env.count('='):
-                var, value = env.split(' ')[0].split('=')[0:2]
-                # disallow dangerous variable
-                if var in variables.FORBIDDEN_ENVIRON:
-                    return 1, var
-                os.environ.update({var: value})
-        return 0, None
-
-    def cd(self, directory):
-        """ implementation of the "cd" command
-        """
-        # expand user's ~
-        directory = os.path.expanduser(directory)
-
-        # remove quotes if present
-        directory = directory.strip("'").strip('"')
-
-        if len(directory) >= 1:
-            # add wildcard completion support to cd
-            if directory.find('*'):
-                # get all files and directories matching wildcard
-                wildall = glob.glob(directory)
-                wilddir = []
-                # filter to only directories
-                for item in wildall:
-                    if os.path.isdir(item):
-                        wilddir.append(item)
-                # sort results
-                wilddir.sort()
-                # if any results are returned, pick first one
-                if len(wilddir) >= 1:
-                    directory = wilddir[0]
-            # go previous directory
-            if directory == '-':
-                directory = self.oldpwd
-
-            # store current directory in oldpwd variable
-            self.oldpwd = os.getcwd()
-
-            # change directory
-            try:
-                os.chdir(os.path.realpath(directory))
-                self.updateprompt(os.getcwd())
-            except OSError, (ErrorNumber, ErrorMessage):
-                sys.stdout.write("lshell: %s: %s\n" % (directory,
-                                                       ErrorMessage))
-                return ErrorNumber
-        else:
-            os.chdir(self.conf['home_path'])
-            self.updateprompt(os.getcwd())
-
-        return 0
 
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.

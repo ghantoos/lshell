@@ -1,0 +1,5 @@
+bandit
+coverage
+flake8
+nose
+pexpect

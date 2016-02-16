@@ -1,2 +1,5 @@
 *.pyc
 *.swp
+.coverage
+.tox/
+lshell.egg-info/

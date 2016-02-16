@@ -1,9 +1,11 @@
 import unittest
-
-from lshell.shellcmd import ShellCmd
-from lshell.checkconfig import CheckConfig, builtins
-from lshell.utils import get_aliases
 import os
+
+# import lshell specifics
+from lshell.shellcmd import ShellCmd
+from lshell.checkconfig import CheckConfig
+from lshell.utils import get_aliases
+from lshell.variables import builtins
 
 TOPDIR = '%s/../' % os.path.dirname(os.path.realpath(__file__))
 

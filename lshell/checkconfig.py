@@ -30,85 +30,9 @@ import grp
 import time
 import glob
 
-from utils import get_aliases, exec_cmd
-
-__version__ = "0.9.18"
-
-# Required config variable list per user
-required_config = ['allowed', 'forbidden', 'warning_counter']
-
-# set configuration file path depending on sys.exec_prefix
-# on *Linux sys.exec_prefix = '/usr' and default path must be in '/etc'
-# on *BSD sys.exec_prefix = '/usr/{pkg,local}/' and default path
-# is '/usr/{pkg,local}/etc'
-if sys.exec_prefix != '/usr':
-    # for *BSD
-    conf_prefix = sys.exec_prefix
-else:
-    # for *Linux
-    conf_prefix = ''
-configfile = conf_prefix + '/etc/lshell.conf'
-
-# history file
-history_file = ".lhistory"
-
-# help text
-usage = """Usage: lshell [OPTIONS]
-  --config <file>   : Config file location (default %s)
-  --<param> <value> : where <param> is *any* config file parameter
-  -h, --help        : Show this help message
-  --version         : Show version
-""" % configfile
-
-# Intro Text
-intro = """You are in a limited shell.
-Type '?' or 'help' to get the list of allowed commands"""
-
-# configuration parameters
-configparams = ['config=',
-                'help',
-                'version',
-                'quiet=',
-                'log=',
-                'logpath=',
-                'loglevel=',
-                'logfilename=',
-                'syslogname=',
-                'allowed=',
-                'forbidden=',
-                'sudo_commands=',
-                'warning_counter=',
-                'aliases=',
-                'intro=',
-                'prompt=',
-                'prompt_short=',
-                'timer=',
-                'path=',
-                'home_path=',
-                'env_path=',
-                'allowed_cmd_path=',
-                'env_vars=',
-                'scp=',
-                'scp_upload=',
-                'scp_download=',
-                'sftp=',
-                'overssh=',
-                'strict=',
-                'scpforce=',
-                'history_size=',
-                'history_file=',
-                'path_noxec=',
-                'allowed_shell_escape=',
-                'winscp=',
-                'include_dir=']
-
-builtins = ['cd',
-            'clear',
-            'exit',
-            'export',
-            'history',
-            'lpath',
-            'lsudo']
+# import lshell specifics
+from lshell.utils import get_aliases, exec_cmd
+from lshell import variables
 
 
 class CheckConfig:
@@ -153,12 +77,12 @@ class CheckConfig:
         file path to /etc/lshell.confelf.conf['allowed'].append('exit')
         """
         # set configfile as default configuration file
-        conf['configfile'] = configfile
+        conf['configfile'] = variables.configfile
 
         try:
             optlist, args = getopt.getopt(arguments,
                                           'hc:',
-                                          configparams)
+                                          variables.configparams)
         except getopt.GetoptError:
             self.stderr.write('Missing or unknown argument(s)\n')
             self.usage()
@@ -168,7 +92,7 @@ class CheckConfig:
                 conf['configfile'] = os.path.realpath(value)
             if option in ['--log']:
                 conf['logpath'] = os.path.realpath(value)
-            if "%s=" % option[2:] in configparams:
+            if "%s=" % option[2:] in variables.configparams:
                 conf[option[2:]] = value
             if option in ['-c']:
                 conf['ssh'] = value
@@ -193,12 +117,12 @@ class CheckConfig:
 
     def usage(self):
         """ Prints the usage """
-        sys.stderr.write(usage)
+        sys.stderr.write(variables.usage)
         sys.exit(0)
 
     def version(self):
         """ Prints the version """
-        sys.stderr.write('lshell-%s - Limited Shell\n' % __version__)
+        sys.stderr.write('lshell-%s - Limited Shell\n' % variables.__version__)
         sys.exit(0)
 
     def check_env(self):
@@ -214,7 +138,7 @@ class CheckConfig:
         """
         if not os.path.exists(file):
             self.stderr.write("Error: Config file doesn't exist\n")
-            self.stderr.write(usage)
+            self.stderr.write(variables.usage)
             sys.exit(0)
         else:
             self.config = ConfigParser.ConfigParser()
@@ -499,7 +423,7 @@ class CheckConfig:
         for the present user.
         In case fields are missing, the user is notified and exited from lshell
         """
-        for item in required_config:
+        for item in variables.required_config:
             if item not in self.conf_raw.keys():
                 self.log.critical("ERROR: Missing parameter '%s'" % item)
                 self.log.critical('ERROR: Add it in the in the [%s] '
@@ -618,7 +542,7 @@ class CheckConfig:
         if 'intro' in self.conf_raw:
             self.conf['intro'] = self.myeval(self.conf_raw['intro'])
         else:
-            self.conf['intro'] = intro
+            self.conf['intro'] = variables.intro
 
         if os.path.isdir(self.conf['home_path']):
             os.chdir(self.conf['home_path'])
@@ -636,7 +560,7 @@ class CheckConfig:
                 self.log.error('CONF: history file error: %s'
                                % self.conf['history_file'])
         else:
-            self.conf['history_file'] = history_file
+            self.conf['history_file'] = variables.history_file
 
         if not self.conf['history_file'].startswith('/'):
             self.conf['history_file'] = "%s/%s" % (self.conf['home_path'],
@@ -645,7 +569,7 @@ class CheckConfig:
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         # append default commands to allowed list
-        self.conf['allowed'] += builtins
+        self.conf['allowed'] += variables.builtins
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf['sudo_commands']:
@@ -666,7 +590,7 @@ class CheckConfig:
         if 'sudo_commands' in self.conf_raw \
            and self.conf_raw['sudo_commands'] == 'all':
             # exclude native commands and sudo(8)
-            exclude = builtins + ['sudo']
+            exclude = variables.builtins + ['sudo']
             self.conf['sudo_commands'] = [x for x in self.conf['allowed']
                                           if x not in exclude]
 
@@ -857,7 +781,7 @@ class CheckConfig:
             # exclude allowed_shell_escape commands from loop
             exclude_se = list(set(self.conf['allowed']) -
                               set(self.conf['allowed_shell_escape']) -
-                              set(builtins))
+                              set(variables.builtins))
 
             for cmd in exclude_se:
                 # take already set aliases into consideration
@@ -866,7 +790,7 @@ class CheckConfig:
 
                 # add an alias to all the commands, prepending with LD_PRELOAD=
                 # except for built-in commands
-                if cmd not in builtins:
+                if cmd not in variables.builtins:
                     self.conf['aliases'][cmd] = 'LD_PRELOAD=%s %s' % (
                                                 self.conf['path_noexec'],
                                                 cmd)

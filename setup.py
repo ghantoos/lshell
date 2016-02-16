@@ -19,20 +19,23 @@
 
 from distutils.core import setup
 
+# import lshell specifics
+from lshell.variables import __version__
+
 if __name__ == '__main__':
 
     setup(name='lshell',
-          version='0.9.18',
+          version='%s' % __version__,
           description='Limited Shell',
           long_description="""Limited Shell (lshell) is lets you restrict the \
 environment of any user. It provides an easily configurable shell: just \
 choose a list of allowed commands for every limited account.""",
-          author='Ignace Mouzannar (ghantoos)',
+          author='Ignace Mouzannar',
           author_email='ghantoos@ghantoos.org',
-          maintainer='Ignace Mouzannar (ghantoos)',
+          maintainer='Ignace Mouzannar',
           maintainer_email='ghantoos@ghantoos.org',
           keywords=['limited', 'shell', 'security', 'python'],
-          url='http://ghantoos.org/limited-shell-lshell/',
+          url='https://github.com/ghantoos/lshell',
           license='GPL',
           platforms='UNIX',
           scripts=['bin/lshell'],

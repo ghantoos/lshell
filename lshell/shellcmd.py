@@ -27,7 +27,9 @@ import signal
 import readline
 import glob
 
-from utils import get_aliases, exec_cmd, FORBIDDEN_ENVIRON
+# import lshell specifics
+from lshell.utils import get_aliases, exec_cmd
+from lshell import variables
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -269,7 +271,7 @@ class ShellCmd(cmd.Cmd, object):
             if env.count('='):
                 var, value = env.split(' ')[0].split('=')[0:2]
                 # disallow dangerous variable
-                if var in FORBIDDEN_ENVIRON:
+                if var in variables.FORBIDDEN_ENVIRON:
                     return 1, var
                 os.environ.update({var: value})
         return 0, None

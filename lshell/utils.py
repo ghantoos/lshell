@@ -20,6 +20,8 @@
 
 import re
 import subprocess
+import os
+from getpass import getuser
 
 try:
     from os import urandom
@@ -80,3 +82,16 @@ def exec_cmd(cmd):
         retcode = 130
 
     return retcode
+
+
+def setprompt(conf):
+    """ set prompt used by the shell
+    """
+    if 'prompt' in conf:
+        promptbase = conf['prompt']
+        promptbase = promptbase.replace('%u', getuser())
+        promptbase = promptbase.replace('%h', os.uname()[1].split('.')[0])
+    else:
+        promptbase = getuser()
+
+    return promptbase

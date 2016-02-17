@@ -21,13 +21,12 @@
 import cmd
 import sys
 import os
-from getpass import getuser
 import re
 import signal
 import readline
 
 # import lshell specifics
-from lshell.utils import get_aliases, exec_cmd
+from lshell import utils
 from lshell import builtins
 
 
@@ -60,15 +59,9 @@ class ShellCmd(cmd.Cmd, object):
         self.identchars = self.identchars + '+./-'
         self.log.error('Logged in')
         cmd.Cmd.__init__(self)
-        if 'prompt' in self.conf:
-            self.promptbase = self.conf['prompt']
-            self.promptbase = self.promptbase.replace('%u', getuser())
-            self.promptbase = self.promptbase.replace(
-                '%h',
-                os.uname()[1].split('.')[0])
-        else:
-            self.promptbase = getuser()
 
+        # set prompt
+        self.promptbase = utils.setprompt(self.conf)
         self.prompt = '%s:~$ ' % self.promptbase
 
         self.intro = self.conf['intro']
@@ -123,8 +116,8 @@ class ShellCmd(cmd.Cmd, object):
             # sent via an specific echo command
             if self.conf['winscp'] and re.search('WinSCP: this is end-of-file',
                                                  self.g_line):
-                exec_cmd('echo "WinSCP: this is end-of-file: %s"'
-                         % self.retcode)
+                utils.exec_cmd('echo "WinSCP: this is end-of-file: %s"'
+                               % self.retcode)
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf['allowed']:
             if self.conf['timer'] > 0:
@@ -143,7 +136,8 @@ class ShellCmd(cmd.Cmd, object):
             self.g_line = p.sub(r' %s \3' % self.retcode, self.g_line)
 
             if type(self.conf['aliases']) == dict:
-                self.g_line = get_aliases(self.g_line, self.conf['aliases'])
+                self.g_line = utils.get_aliases(self.g_line,
+                                                self.conf['aliases'])
 
             self.log.info('CMD: "%s"' % self.g_line)
 
@@ -164,7 +158,7 @@ class ShellCmd(cmd.Cmd, object):
                                                             self.updateprompt)
 
                     if self.retcode == 0:
-                        self.retcode = exec_cmd(command)
+                        self.retcode = utils.exec_cmd(command)
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
@@ -198,7 +192,7 @@ class ShellCmd(cmd.Cmd, object):
                                                         self.updateprompt)
 
             else:
-                self.retcode = exec_cmd(self.g_line)
+                self.retcode = utils.exec_cmd(self.g_line)
 
         elif self.g_cmd not in ['', '?', 'help', None]:
             self.log.warn('INFO: unknown syntax -> "%s"' % self.g_line)
@@ -207,18 +201,6 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['timer'] > 0:
             self.mytimer(self.conf['timer'])
         return object.__getattribute__(self, attr)
-
-    def setprompt(self, conf):
-        """ set prompt used by the shell
-        """
-        if 'prompt' in conf:
-            promptbase = conf['prompt']
-            promptbase = promptbase.replace('%u', getuser())
-            promptbase = promptbase.replace('%h', os.uname()[1].split('.')[0])
-        else:
-            promptbase = getuser()
-
-        return promptbase
 
     def check_secure(self, line, strict=None, ssh=None):
         """This method is used to check the content on the typed command.
@@ -487,7 +469,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write("%s\n" % self.intro)
             if self.conf['login_script']:
-                exec_cmd(self.conf['login_script'])
+                utils.exec_cmd(self.conf['login_script'])
             stop = None
             while not stop:
                 if self.cmdqueue:

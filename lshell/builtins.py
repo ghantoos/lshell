@@ -133,10 +133,10 @@ def cd(directory, conf):
         try:
             os.chdir(os.path.realpath(directory))
             conf['promptprint'] = utils.updateprompt(os.getcwd(), conf)
-        except OSError, (ErrorNumber, ErrorMessage):
+        except OSError as excp:
             sys.stdout.write("lshell: %s: %s\n" % (directory,
-                                                   ErrorMessage))
-            return ErrorNumber, conf
+                                                   excp.strerror))
+            return excp.errno, conf
     else:
         os.chdir(conf['home_path'])
         conf['promptprint'] = utils.updateprompt(os.getcwd(), conf)

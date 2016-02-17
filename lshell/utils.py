@@ -29,8 +29,8 @@ except:
     def urandom(n):
         try:
             _urandomfd = open("/dev/urandom", 'r')
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
             raise NotImplementedError("/dev/urandom (or equivalent) not found")
         bytes = ""
         while len(bytes) < n:

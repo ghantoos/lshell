@@ -303,11 +303,17 @@ class TestFunctions(unittest.TestCase):
         import random
         import string
 
+        # xrange renamed as range in py3
+        try:
+            range = xrange
+        except NameError:
+            pass
+
         random = ''.join([random.choice(string.ascii_letters + string.digits)
-                          for n in xrange(32)])
+                          for n in range(32)])
 
         expected = 'lshell: %s/random_%s: No such file or directory' % (
-                        os.path.expanduser('~'), random)
+            os.path.expanduser('~'), random)
         self.child.sendline('export A=random_%s' % random)
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('cd $HOME/$A')

@@ -92,7 +92,7 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case the configuration file has been modified, reload it
         if self.conf['config_mtime'] != os.path.getmtime(
-                                        self.conf['configfile']):
+                self.conf['configfile']):
             from lshell.checkconfig import CheckConfig
             self.conf = CheckConfig(['--config',
                                      self.conf['configfile']]).returnconf()
@@ -271,11 +271,11 @@ class ShellCmd(cmd.Cmd, object):
         # split remaining command line
         for i in range(1, len(line)):
             # in case \& or \| or \; don't split it
-            if line[i] in ["&", "|", ";"] and line[i-1] != "\\":
+            if line[i] in ["&", "|", ";"] and line[i - 1] != "\\":
                 # if there is more && or || skip it
                 if start != i:
                     lines.append(line[start:i])
-                start = i+1
+                start = i + 1
 
         # append remaining command line
         if start != len(line):
@@ -415,7 +415,7 @@ class ShellCmd(cmd.Cmd, object):
                 return 1
 
         if not completion:
-            if not re.findall(allowed_path_re, os.getcwd()+'/'):
+            if not re.findall(allowed_path_re, os.getcwd() + '/'):
                 self.warn_count('path', tomatch, strict, ssh)
                 os.chdir(self.conf['home_path'])
                 self.conf['promptprint'] = utils.updateprompt(os.getcwd(),
@@ -442,10 +442,10 @@ class ShellCmd(cmd.Cmd, object):
                 except IOError:
                     pass
             readline.set_completer_delims(
-                      readline.get_completer_delims().replace('-', ''))
+                readline.get_completer_delims().replace('-', ''))
             self.old_completer = readline.get_completer()
             readline.set_completer(self.complete)
-            readline.parse_and_bind(self.completekey+": complete")
+            readline.parse_and_bind(self.completekey + ": complete")
         try:
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write("%s\n" % self.intro)
@@ -458,7 +458,12 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     if self.use_rawinput:
                         try:
-                            line = raw_input(self.conf['promptprint'])
+                            # raw_input renamed as input in py3
+                            try:
+                                input = raw_input
+                            except NameError:
+                                pass
+                            line = input(self.conf['promptprint'])
                         except EOFError:
                             line = 'EOF'
                         except KeyboardInterrupt:
@@ -481,7 +486,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.use_rawinput and self.completekey:
                 try:
                     readline.set_completer_delims(
-                              readline.get_completer_delims().replace('-', ''))
+                        readline.get_completer_delims().replace('-', ''))
                     readline.set_completer(self.old_completer)
                 except ImportError:
                     pass
@@ -540,7 +545,7 @@ class ShellCmd(cmd.Cmd, object):
         it's output with the command available in the 'allowed' variable
         This is useful when typing 'tab-tab' in the command prompt
         """
-        dotext = 'do_'+text
+        dotext = 'do_' + text
         names = self.get_names()
         for command in self.conf['allowed']:
             names.append('do_' + command)

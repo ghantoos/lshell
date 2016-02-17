@@ -149,7 +149,7 @@ class CheckConfig:
         try:
             self.config.read(self.conf['configfile'])
         except (ConfigParser.MissingSectionHeaderError,
-                ConfigParser.ParsingError), argument:
+                ConfigParser.ParsingError) as argument:
             self.stderr.write('ERR: %s\n' % argument)
             sys.exit(0)
 
@@ -247,11 +247,11 @@ class CheckConfig:
                 else:
                     # if log file is writable add new log file handler
                     logfile = os.path.join(self.conf['logpath'],
-                                           logfilename+'.log')
+                                           logfilename + '.log')
                     # create log file if it does not exist, and set permissions
                     fp = open(logfile, 'a')
                     fp.close()
-                    os.chmod(logfile, 0600)
+                    os.chmod(logfile, 0o600)
                     # set logging handler
                     self.logfile = logging.FileHandler(logfile)
                     self.logfile.setFormatter(formatter)
@@ -276,8 +276,8 @@ class CheckConfig:
         # list the include_dir directory and read configuration files
         if 'include_dir' in self.conf:
             import glob
-            self.conf['include_dir_conf'] = glob.glob(
-                                            "%s*" % self.conf['include_dir'])
+            self.conf['include_dir_conf'] = glob.glob("%s*" %
+                                                      self.conf['include_dir'])
             self.config.read(self.conf['include_dir_conf'])
 
         self.user = getuser()
@@ -505,12 +505,13 @@ class CheckConfig:
         self.conf['username'] = self.user
 
         if 'home_path' in self.conf_raw:
-            self.conf_raw['home_path'] = self.conf_raw['home_path'].replace(
-                                                   "%u", self.conf['username'])
+            home_path = self.conf_raw['home_path']
+            home_path = home_path.replace("%u", self.conf['username'])
+            self.conf_raw['home_path'] = home_path
             self.conf['home_path'] = os.path.normpath(
-                                          self.myeval(
-                                              self.conf_raw['home_path'],
-                                              'home_path'))
+                self.myeval(
+                    self.conf_raw['home_path'],
+                    'home_path'))
         else:
             self.conf['home_path'] = os.environ['HOME']
 
@@ -532,7 +533,7 @@ class CheckConfig:
 
         if 'scpforce' in self.conf_raw:
             self.conf_raw['scpforce'] = self.myeval(
-                                                self.conf_raw['scpforce'])
+                self.conf_raw['scpforce'])
             try:
                 if os.path.exists(self.conf_raw['scpforce']):
                     self.conf['scpforce'] = self.conf_raw['scpforce']
@@ -556,9 +557,9 @@ class CheckConfig:
 
         if 'history_file' in self.conf_raw:
             try:
-                self.conf['history_file'] = \
-                               eval(self.conf_raw['history_file'].replace(
-                                                  "%u", self.conf['username']))
+                self.conf['history_file'] = eval(
+                    self.conf_raw['history_file'].replace(
+                        "%u", self.conf['username']))
             except:
                 self.log.error('CONF: history file error: %s'
                                % self.conf['history_file'])
@@ -669,7 +670,7 @@ class CheckConfig:
                                         cmdsplit.pop(-1)
                                         cmdsplit.append(forcedpath)
                                         self.conf['ssh'] = string.join(
-                                                           cmdsplit)
+                                            cmdsplit)
                                 self.log.error('SCP: PUT "%s"'
                                                % self.conf['ssh'])
                             # case scp upload is forbidden
@@ -739,7 +740,7 @@ class CheckConfig:
             passwd = None
 
         if passwd:
-            password = getpass("Enter "+self.user+"'s password: ")
+            password = getpass("Enter " + self.user + "'s password: ")
             if password != passwd:
                 self.stderr.write('Error: Wrong password \nExiting..\n')
                 self.log.critical('WARN: Wrong password')
@@ -766,11 +767,11 @@ class CheckConfig:
         # check if alternative path is set in configuration file
         if 'path_noexec' in self.conf_raw:
             self.conf['path_noexec'] = self.myeval(
-                                       self.conf_raw['path_noexec'])
+                self.conf_raw['path_noexec'])
             if not os.path.exists(self.conf_raw['path_noexec']):
                 self.log.critical(
-                        "Fatal: 'path_noexec': %s No such file of directory"
-                        % (self.conf['path_noexec']))
+                    "Fatal: 'path_noexec': %s No such file of directory"
+                    % (self.conf['path_noexec']))
                 sys.exit(2)
         else:
             # go through the list of standard lib locations

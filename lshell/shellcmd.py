@@ -61,13 +61,12 @@ class ShellCmd(cmd.Cmd, object):
         cmd.Cmd.__init__(self)
 
         # set prompt
-        self.promptbase = utils.setprompt(self.conf)
-        self.prompt = '%s:~$ ' % self.promptbase
+        self.conf['promptprint'] = utils.updateprompt(os.getcwd(), self.conf)
 
         self.intro = self.conf['intro']
 
         # initialize oldpwd variable to home directory
-        self.oldpwd = self.conf['home_path']
+        self.conf['oldpwd'] = self.conf['home_path']
 
         # initialize cli variables
         self.g_cmd = g_cmd
@@ -97,7 +96,8 @@ class ShellCmd(cmd.Cmd, object):
             from lshell.checkconfig import CheckConfig
             self.conf = CheckConfig(['--config',
                                      self.conf['configfile']]).returnconf()
-            self.prompt = '%s:~$ ' % self.setprompt(self.conf)
+            self.conf['promptprint'] = utils.updateprompt(os.getcwd(),
+                                                          self.conf)
             self.log = self.conf['logpath']
 
         if self.g_cmd in ['quit', 'exit', 'EOF']:
@@ -152,20 +152,16 @@ class ShellCmd(cmd.Cmd, object):
                     directory = directory.split('cd', 1)[1].strip()
                     # change directory then, if success, execute the rest of
                     # the cmd line
-                    self.retcode, self.oldpwd = builtins.cd(directory,
-                                                            self.conf,
-                                                            self.oldpwd,
-                                                            self.updateprompt)
+                    self.retcode, self.conf = builtins.cd(directory,
+                                                          self.conf)
 
                     if self.retcode == 0:
                         self.retcode = utils.exec_cmd(command)
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
-                    self.retcode, self.oldpwd = builtins.cd(directory,
-                                                            self.conf,
-                                                            self.oldpwd,
-                                                            self.updateprompt)
+                    self.retcode, self.conf = builtins.cd(directory,
+                                                          self.conf)
 
             # builtin lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
@@ -186,10 +182,8 @@ class ShellCmd(cmd.Cmd, object):
             elif self.g_line[0:2] == 'cd':
                 self.g_cmd = self.g_line.split()[0]
                 directory = ' '.join(self.g_line.split()[1:])
-                self.retcode, self.oldpwd = builtins.cd(directory,
-                                                        self.conf,
-                                                        self.oldpwd,
-                                                        self.updateprompt)
+                self.retcode, self.conf = builtins.cd(directory,
+                                                      self.conf)
 
             else:
                 self.retcode = utils.exec_cmd(self.g_line)
@@ -424,23 +418,10 @@ class ShellCmd(cmd.Cmd, object):
             if not re.findall(allowed_path_re, os.getcwd()+'/'):
                 self.warn_count('path', tomatch, strict, ssh)
                 os.chdir(self.conf['home_path'])
-                self.updateprompt(os.getcwd())
+                self.conf['promptprint'] = utils.updateprompt(os.getcwd(),
+                                                              self.conf)
                 return 1
         return 0
-
-    def updateprompt(self, path):
-        """ Update prompt when changing directory
-        """
-
-        if path is self.conf['home_path']:
-            self.prompt = '%s:~$ ' % self.promptbase
-        elif self.conf['prompt_short'] == 1:
-            self.prompt = '%s: %s$ ' % (self.promptbase, path.split('/')[-1])
-        elif re.findall(self.conf['home_path'], path):
-            self.prompt = '%s:~%s$ ' % (self.promptbase,
-                                        path.split(self.conf['home_path'])[1])
-        else:
-            self.prompt = '%s:%s$ ' % (self.promptbase, path)
 
     def cmdloop(self, intro=None):
         """Repeatedly issue a prompt, accept input, parse an initial prefix
@@ -477,14 +458,14 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     if self.use_rawinput:
                         try:
-                            line = raw_input(self.prompt)
+                            line = raw_input(self.conf['promptprint'])
                         except EOFError:
                             line = 'EOF'
                         except KeyboardInterrupt:
                             self.stdout.write('\n')
                             line = ''
                     else:
-                        self.stdout.write(self.prompt)
+                        self.stdout.write(self.conf['promptprint'])
                         self.stdout.flush()
                         line = self.stdin.readline()
                         if not len(line):

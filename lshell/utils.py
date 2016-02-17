@@ -84,8 +84,8 @@ def exec_cmd(cmd):
     return retcode
 
 
-def setprompt(conf):
-    """ set prompt used by the shell
+def getpromptbase(conf):
+    """ get prompt used by the shell
     """
     if 'prompt' in conf:
         promptbase = conf['prompt']
@@ -95,3 +95,25 @@ def setprompt(conf):
         promptbase = getuser()
 
     return promptbase
+
+
+def updateprompt(path, conf):
+    """ Set actual prompt to print, updated when changing directories
+    """
+
+    # get initial promptbase (from configuration)
+    promptbase = getpromptbase(conf)
+
+    # update the prompt when directory is changed
+    if path is conf['home_path']:
+        prompt = '%s:~$ ' % promptbase
+    elif conf['prompt_short'] == 1:
+        prompt = '%s: %s$ ' % (promptbase,
+                               path.split('/')[-1])
+    elif re.findall(conf['home_path'], path):
+        prompt = '%s:~%s$ ' % (promptbase,
+                               path.split(conf['home_path'])[1])
+    else:
+        prompt = '%s:%s$ ' % (promptbase, path)
+
+    return prompt

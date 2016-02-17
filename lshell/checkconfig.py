@@ -514,6 +514,9 @@ class CheckConfig:
         else:
             self.conf['home_path'] = os.environ['HOME']
 
+        # initialize previous path to home path
+        self.conf['oldpwd'] = self.conf['home_path']
+
         if 'path' in self.conf_raw:
             self.conf['path'] = eval(self.conf_raw['path'])
             self.conf['path'][0] += self.conf['home_path'] + '.*'

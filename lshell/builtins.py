@@ -25,6 +25,7 @@ import readline
 
 # import lshell specifics
 from lshell import variables
+from lshell import utils
 
 
 def lpath(conf):
@@ -97,7 +98,7 @@ def export(args):
     return 0, None
 
 
-def cd(directory, conf, oldpwd, updateprompt):
+def cd(directory, conf):
     """ implementation of the "cd" command
     """
     # expand user's ~
@@ -123,21 +124,21 @@ def cd(directory, conf, oldpwd, updateprompt):
                 directory = wilddir[0]
         # go previous directory
         if directory == '-':
-            directory = oldpwd
+            directory = conf['oldpwd']
 
         # store current directory in oldpwd variable
-        oldpwd = os.getcwd()
+        conf['oldpwd'] = os.getcwd()
 
         # change directory
         try:
             os.chdir(os.path.realpath(directory))
-            updateprompt(os.getcwd())
+            conf['promptprint'] = utils.updateprompt(os.getcwd(), conf)
         except OSError, (ErrorNumber, ErrorMessage):
             sys.stdout.write("lshell: %s: %s\n" % (directory,
                                                    ErrorMessage))
-            return ErrorNumber, oldpwd
+            return ErrorNumber, conf
     else:
         os.chdir(conf['home_path'])
-        updateprompt(os.getcwd())
+        conf['promptprint'] = utils.updateprompt(os.getcwd(), conf)
 
-    return 0, oldpwd
+    return 0, conf

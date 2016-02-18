@@ -1,4 +1,4 @@
-lshell - limited shell
+lshell - limited shell  [![Build Status](https://travis-ci.org/ghantoos/lshell.svg?branch=master)](https://travis-ci.org/ghantoos/lshell)
 ======================
 
 All this information (and more) is in the man file.

@@ -23,20 +23,17 @@ import subprocess
 import os
 from getpass import getuser
 
-try:
-    from os import urandom
-except:
-    def urandom(n):
-        try:
-            _urandomfd = open("/dev/urandom", 'r')
-        except Exception as e:
-            print(e)
-            raise NotImplementedError("/dev/urandom (or equivalent) not found")
-        bytes = ""
-        while len(bytes) < n:
-            bytes += _urandomfd.read(n - len(bytes))
-        _urandomfd.close()
-        return bytes
+
+def random_string(length):
+    """ generate a random string """
+    import random
+    import string
+    randstring = ''
+    for char in range(length):
+        char = random.choice(string.ascii_letters + string.digits)
+        randstring += char
+
+    return randstring
 
 
 def get_aliases(line, aliases):
@@ -50,7 +47,7 @@ def get_aliases(line, aliases):
 
         # in case aliase bigin with the same command
         # (this is until i find a proper regex solution..)
-        aliaskey = urandom(10)
+        aliaskey = random_string(10)
 
         while re.findall(reg1, line):
             (before, after, rest) = re.findall(reg1, line)[0]

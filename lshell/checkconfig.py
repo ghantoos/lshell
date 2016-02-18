@@ -20,7 +20,10 @@
 
 import sys
 import os
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 from getpass import getpass, getuser
 import string
 import re
@@ -141,15 +144,15 @@ class CheckConfig:
             self.stderr.write(variables.usage)
             sys.exit(0)
         else:
-            self.config = ConfigParser.ConfigParser()
+            self.config = configparser.ConfigParser()
 
     def get_global(self):
         """ Loads the [global] parameters from the configuration file
         """
         try:
             self.config.read(self.conf['configfile'])
-        except (ConfigParser.MissingSectionHeaderError,
-                ConfigParser.ParsingError) as argument:
+        except (configparser.MissingSectionHeaderError,
+                configparser.ParsingError) as argument:
             self.stderr.write('ERR: %s\n' % argument)
             sys.exit(0)
 

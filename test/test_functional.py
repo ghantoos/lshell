@@ -4,6 +4,9 @@ import os
 import subprocess
 from getpass import getuser
 
+# import lshell specifics
+from lshell import utils
+
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
@@ -25,7 +28,7 @@ class TestFunctions(unittest.TestCase):
         """ F01 | lshell welcome message """
         expected = "You are in a limited shell.\r\nType '?' or 'help' to get" \
             " the list of allowed commands\r\n"
-        result = self.child.before
+        result = self.child.before.decode('utf8')
         self.assertEqual(expected, result)
 
     def test_02_builtin_ls_command(self):
@@ -38,7 +41,7 @@ class TestFunctions(unittest.TestCase):
         expected = cout.read(-1)
         self.child.sendline('ls')
         self.child.expect('%s:~\$' % self.user)
-        output = self.child.before.split('ls\r', 1)[1]
+        output = self.child.before.decode('utf8').split('ls\r', 1)[1]
         self.assertEqual(len(expected.strip().split()),
                          len(output.strip().split()))
 
@@ -47,7 +50,7 @@ class TestFunctions(unittest.TestCase):
         expected = "32"
         self.child.sendline('echo 32')
         self.child.expect("%s:~\$" % self.user)
-        result = self.child.before.split()[2]
+        result = self.child.before.decode('utf8').split()[2]
         self.assertEqual(expected, result)
 
     def test_04_external_echo_command_string(self):
@@ -55,7 +58,7 @@ class TestFunctions(unittest.TestCase):
         expected = "bla blabla  32 blibli! plop."
         self.child.sendline('echo "%s"' % expected)
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1].strip()
+        result = self.child.before.decode('utf8').split('\n', 1)[1].strip()
         self.assertEqual(expected, result)
 
     def test_05_external_echo_forbidden_syntax(self):
@@ -65,7 +68,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('echo $(uptime)')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_06_builtin_cd_change_dir(self):
@@ -82,7 +85,7 @@ class TestFunctions(unittest.TestCase):
             self.child.expect('%s:~/%s\$' % (self.user, path))
             self.child.sendline('cd ..')
             self.child.expect('%s:~\$' % self.user)
-            result = self.child.before.split('\n', 1)[1]
+            result = self.child.before.decode('utf8').split('\n', 1)[1]
             self.assertEqual(expected, result)
 
     def test_07_builtin_cd_tilda(self):
@@ -92,7 +95,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('ls ~/../../etc/passwd')
         self.child.expect("%s:~\$" % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_08_builtin_cd_quotes(self):
@@ -102,7 +105,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('ls -ld "/"')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_09_external_forbidden_path(self):
@@ -112,7 +115,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('ls ~root')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_10_builtin_cd_forbidden_path(self):
@@ -122,7 +125,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('cd ~root')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_11_etc_passwd_1(self):
@@ -132,7 +135,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('ls "$a"/etc/passwd')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_12_etc_passwd_2(self):
@@ -142,7 +145,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('ls -l .*./.*./etc/passwd')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_13_etc_passwd_3(self):
@@ -152,7 +155,7 @@ class TestFunctions(unittest.TestCase):
             "incident has been reported.\r\n"
         self.child.sendline('ls -l .?/.?/etc/passwd')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n', 1)[1]
+        result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
     def test_14_path_completion_tilda(self):
@@ -165,7 +168,7 @@ class TestFunctions(unittest.TestCase):
         expected = cout.read(-1)
         self.child.sendline('cd ~/\t\t')
         self.child.expect('%s:~\$' % self.user)
-        output = self.child.before.split('\n', 1)[1]
+        output = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(len(expected.strip().split()),
                          len(output.strip().split()))
 
@@ -175,7 +178,10 @@ class TestFunctions(unittest.TestCase):
                    'lsudo    \r\nclear    exit     help     ll       ls'
         self.child.sendline('\t\t')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.strip()
+        result = self.child.before.decode('utf8').strip()
+
+        print(expected)
+        print(result)
         self.assertEqual(expected, result)
 
     def test_16_exitcode_with_separator_external_cmd(self):
@@ -189,7 +195,7 @@ class TestFunctions(unittest.TestCase):
         expected = "2"
         self.child.sendline('ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[2].strip()
+        result = self.child.before.decode('utf8').split('\n')[2].strip()
         self.assertEqual(expected, result)
 
     def test_17_exitcode_without_separator_external_cmd(self):
@@ -205,7 +211,7 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $?')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_18_cd_exitcode_with_separator_internal_cmd(self):
@@ -221,7 +227,7 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $?')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_19_cd_exitcode_without_separator_external_cmd(self):
@@ -237,7 +243,7 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $?')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_20_cd_with_cmd_unknwon_dir(self):
@@ -255,7 +261,7 @@ class TestFunctions(unittest.TestCase):
 
         self.child.sendline('cd nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_21_allow_slash(self):
@@ -273,7 +279,7 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:/\$' % self.user)
         self.child.sendline('cd var')
         self.child.expect('%s:/\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_22_expand_env_variables(self):
@@ -289,7 +295,7 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('echo $HOME/$A')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_23_expand_env_variables_cd(self):
@@ -300,17 +306,7 @@ class TestFunctions(unittest.TestCase):
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
-        import random
-        import string
-
-        # xrange renamed as range in py3
-        try:
-            range = xrange
-        except NameError:
-            pass
-
-        random = ''.join([random.choice(string.ascii_letters + string.digits)
-                          for n in range(32)])
+        random = utils.random_string(32)
 
         expected = 'lshell: %s/random_%s: No such file or directory' % (
             os.path.expanduser('~'), random)
@@ -318,7 +314,7 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:~\$' % self.user)
         self.child.sendline('cd $HOME/$A')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_24_cd_and_command(self):
@@ -332,7 +328,7 @@ class TestFunctions(unittest.TestCase):
         expected = "OK"
         self.child.sendline('cd ~ && echo "OK"')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
     def test_25_KeyboardInterrupt(self):
@@ -347,7 +343,7 @@ class TestFunctions(unittest.TestCase):
         self.child.sendline('cat')
         self.child.sendcontrol('c')
         self.child.expect('%s:~\$' % self.user)
-        result = self.child.before.split('\n')[1].strip()
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
         self.assertEqual(expected, result)
 
 

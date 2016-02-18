@@ -390,7 +390,7 @@ class ShellCmd(cmd.Cmd, object):
                 cout = p.stdout
 
                 try:
-                    item = cout.readlines()[0].split(' ')[0].strip()
+                    item = cout.readlines()[0].decode('utf8').split(' ')[0].strip()
                     item = os.path.expandvars(item)
                 except IndexError:
                     self.log.critical('*** Internal error: command not '
@@ -460,10 +460,9 @@ class ShellCmd(cmd.Cmd, object):
                         try:
                             # raw_input renamed as input in py3
                             try:
-                                input = raw_input
+                                line = raw_input(self.conf['promptprint'])
                             except NameError:
-                                pass
-                            line = input(self.conf['promptprint'])
+                                line = input(self.conf['promptprint'])
                         except EOFError:
                             line = 'EOF'
                         except KeyboardInterrupt:

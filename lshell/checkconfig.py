@@ -24,7 +24,7 @@ try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
-from getpass import getpass, getuser
+from getpass import getuser
 import string
 import re
 import getopt
@@ -70,7 +70,6 @@ class CheckConfig:
         self.get_config_user()
         self.check_env()
         self.check_scp_sftp()
-        self.check_passwd()
         self.set_noexec()
 
     def getoptions(self, arguments, conf):
@@ -716,30 +715,6 @@ class CheckConfig:
         self.stderr.write('This incident has been reported.\n')
         self.log.error('Exited')
         sys.exit(0)
-
-    def check_passwd(self):
-        """ As a passwd field is required by user. This method checks in the
-        configuration file if the password is empty, in wich case, no password
-        check is required. In the other case, the password is asked to be
-        entered.
-        If the entered password is wrong, the user is exited from lshell.
-        """
-        if self.config.has_section(self.user):
-            if self.config.has_option(self.user, 'passwd'):
-                passwd = self.config.get(self.user, 'passwd')
-            else:
-                passwd = None
-        else:
-            passwd = None
-
-        if passwd:
-            password = getpass("Enter " + self.user + "'s password: ")
-            if password != passwd:
-                self.stderr.write('Error: Wrong password \nExiting..\n')
-                self.log.critical('WARN: Wrong password')
-                sys.exit(0)
-        else:
-            return 0
 
     def set_noexec(self):
         """ This method checks the existence of the sudo_noexec library.

@@ -339,12 +339,13 @@ class TestFunctions(unittest.TestCase):
                                    % (TOPDIR, TOPDIR))
         self.child.expect('%s:~\$' % self.user)
 
-        expected = ""
+        expected = "foo"
         self.child.sendline('cat')
+        self.child.sendline(' foo ')
         self.child.sendcontrol('c')
         self.child.expect('%s:~\$' % self.user)
         result = self.child.before.decode('utf8').split('\n')[1].strip()
-        self.assertEqual(expected, result)
+        self.assertIn(expected, result)
 
 
 if __name__ == '__main__':

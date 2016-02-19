@@ -34,7 +34,7 @@ import time
 import glob
 
 # import lshell specifics
-from lshell.utils import get_aliases, exec_cmd
+from lshell import utils
 from lshell import variables
 
 
@@ -88,7 +88,7 @@ class CheckConfig:
                                           variables.configparams)
         except getopt.GetoptError:
             self.stderr.write('Missing or unknown argument(s)\n')
-            self.usage()
+            utils.usage()
 
         for option, value in optlist:
             if option in ['--config']:
@@ -100,9 +100,9 @@ class CheckConfig:
             if option in ['-c']:
                 conf['ssh'] = value
             if option in ['-h', '--help']:
-                self.usage()
+                utils.usage()
             if option in ['--version']:
-                self.version()
+                utils.version()
 
         # put the expanded path of configfile and logpath (if exists) in
         # LSHELL_ARGS environment variable
@@ -117,16 +117,6 @@ class CheckConfig:
             conf['ssh'] = os.environ['SSH_ORIGINAL_COMMAND']
 
         return conf, args
-
-    def usage(self):
-        """ Prints the usage """
-        sys.stderr.write(variables.usage)
-        sys.exit(0)
-
-    def version(self):
-        """ Prints the version """
-        sys.stderr.write('lshell-%s - Limited Shell\n' % variables.__version__)
-        sys.exit(0)
 
     def check_env(self):
         """ Load environment variable set in configuration file """
@@ -630,7 +620,7 @@ class CheckConfig:
                 if 'sftp-server' in self.conf['ssh']:
                     if self.conf['sftp'] is 1:
                         self.log.error('SFTP connect')
-                        exec_cmd(self.conf['ssh'])
+                        utils.exec_cmd(self.conf['ssh'])
                         self.log.error('SFTP disconnect')
                         sys.exit(0)
                     else:
@@ -681,7 +671,7 @@ class CheckConfig:
                                 self.log.error('SCP: upload forbidden: "%s"'
                                                % self.conf['ssh'])
                                 sys.exit(0)
-                        exec_cmd(self.conf['ssh'])
+                        utils.exec_cmd(self.conf['ssh'])
                         self.log.error('SCP disconnect')
                         sys.exit(0)
                     else:
@@ -692,8 +682,8 @@ class CheckConfig:
                 # check if command is in allowed overssh commands
                 elif self.conf['ssh']:
                     # replace aliases
-                    self.conf['ssh'] = get_aliases(self.conf['ssh'],
-                                                   self.conf['aliases'])
+                    self.conf['ssh'] = utils.get_aliases(self.conf['ssh'],
+                                                         self.conf['aliases'])
                     # if command is not "secure", exit
                     if cli.check_secure(self.conf['ssh'], strict=1, ssh=1):
                         self.ssh_warn('char/command over SSH',
@@ -704,7 +694,7 @@ class CheckConfig:
                     if self.conf['ssh'] == "help":
                         cli.do_help(None)
                     else:
-                        exec_cmd(self.conf['ssh'])
+                        utils.exec_cmd(self.conf['ssh'])
                     self.log.error('Exited')
                     sys.exit(0)
 

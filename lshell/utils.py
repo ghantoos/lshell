@@ -21,7 +21,23 @@
 import re
 import subprocess
 import os
+import sys
 from getpass import getuser
+
+# import lshell specifics
+from lshell import variables
+
+
+def usage():
+    """ Prints the usage """
+    sys.stderr.write(variables.usage)
+    sys.exit(0)
+
+
+def version():
+    """ Prints the version """
+    sys.stderr.write('lshell-%s - Limited Shell\n' % variables.__version__)
+    sys.exit(0)
 
 
 def random_string(length):

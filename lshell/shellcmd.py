@@ -28,6 +28,7 @@ import readline
 # import lshell specifics
 from lshell import utils
 from lshell import builtins
+from lshell import sec
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -218,16 +219,31 @@ class ShellCmd(cmd.Cmd, object):
         line = re.sub(r'\'(.+?)\'', '', line)
 
         if re.findall('[:cntrl:].*\n', line):
-            return self.warn_count('syntax', oline, strict, ssh)
+            ret, self.conf = sec.warn_count('syntax',
+                                            oline,
+                                            self.conf,
+                                            strict=strict,
+                                            ssh=ssh)
+            return ret
 
         for item in self.conf['forbidden']:
             # allow '&&' and '||' even if singles are forbidden
             if item in ['&', '|']:
                 if re.findall("[^\%s]\%s[^\%s]" % (item, item, item), line):
-                    return self.warn_count('syntax', oline, strict, ssh)
+                    ret, self.conf = sec.warn_count('syntax',
+                                                    oline,
+                                                    self.conf,
+                                                    strict=strict,
+                                                    ssh=ssh)
+                    return ret
             else:
                 if item in line:
-                    return self.warn_count('syntax', oline, strict, ssh)
+                    ret, self.conf = sec.warn_count('syntax',
+                                                    oline,
+                                                    self.conf,
+                                                    strict=strict,
+                                                    ssh=ssh)
+                    return ret
 
         returncode = 0
         # check if the line contains $(foo) executions, and check them
@@ -301,10 +317,12 @@ class ShellCmd(cmd.Cmd, object):
                     else:
                         sudocmd = cmdargs[1]
                     if sudocmd not in self.conf['sudo_commands'] and cmdargs:
-                        return self.warn_count('sudo command',
-                                               oline,
-                                               strict,
-                                               ssh)
+                        ret, self.conf = sec.warn_count('sudo command',
+                                                        oline,
+                                                        self.conf,
+                                                        strict=strict,
+                                                        ssh=ssh)
+                        return ret
 
             # if over SSH, replaced allowed list with the one of overssh
             if ssh:
@@ -312,42 +330,13 @@ class ShellCmd(cmd.Cmd, object):
 
             # for all other commands check in allowed list
             if command not in self.conf['allowed'] and command:
-                return self.warn_count('command', oline, strict, ssh, command)
+                ret, self.conf = sec.warn_count('command',
+                                                command,
+                                                self.conf,
+                                                strict=strict,
+                                                ssh=ssh)
+                return ret
         return 0
-
-    def warn_count(self, messagetype, line=None, strict=None,
-                   ssh=None, command=None):
-        """ Update the warning_counter, log and display a warning to the user
-        """
-        if not line:
-            line = self.g_line
-        if command:
-            line = command
-
-        if not ssh:
-            if strict:
-                self.conf['warning_counter'] -= 1
-                if self.conf['warning_counter'] < 0:
-                    self.log.critical('*** forbidden %s -> "%s"'
-                                      % (messagetype, line))
-                    self.log.critical('*** Kicked out')
-                    sys.exit(1)
-                else:
-                    self.log.critical('*** forbidden %s -> "%s"'
-                                      % (messagetype, line))
-                    self.stderr.write('*** You have %s warning(s) left,'
-                                      ' before getting kicked out.\n'
-                                      % self.conf['warning_counter'])
-                    self.log.error('*** User warned, counter: %s'
-                                   % self.conf['warning_counter'])
-                    self.stderr.write('This incident has been reported.\n')
-            else:
-                if not self.conf['quiet']:
-                    self.log.critical('*** forbidden %s: %s'
-                                      % (messagetype, line))
-
-        # if you are here, means that you did something wrong. Return 1.
-        return 1
 
     def check_path(self, line, completion=None, ssh=None, strict=None):
         """ Check if a path is entered in the line. If so, it checks if user
@@ -390,7 +379,8 @@ class ShellCmd(cmd.Cmd, object):
                 cout = p.stdout
 
                 try:
-                    item = cout.readlines()[0].decode('utf8').split(' ')[0].strip()
+                    item = cout.readlines()[0].decode('utf8').split(' ')[0]
+                    item = item.strip()
                     item = os.path.expandvars(item)
                 except IndexError:
                     self.log.critical('*** Internal error: command not '
@@ -411,12 +401,20 @@ class ShellCmd(cmd.Cmd, object):
             # case completion: return 1
             if not match_allowed or match_denied:
                 if not completion:
-                    self.warn_count('path', tomatch, strict, ssh)
+                    ret, self.conf = sec.warn_count('path',
+                                                    tomatch,
+                                                    self.conf,
+                                                    strict=strict,
+                                                    ssh=ssh)
                 return 1
 
         if not completion:
             if not re.findall(allowed_path_re, os.getcwd() + '/'):
-                self.warn_count('path', tomatch, strict, ssh)
+                ret, self.conf = sec.warn_count('path',
+                                                tomatch,
+                                                self.conf,
+                                                strict=strict,
+                                                ssh=ssh)
                 os.chdir(self.conf['home_path'])
                 self.conf['promptprint'] = utils.updateprompt(os.getcwd(),
                                                               self.conf)

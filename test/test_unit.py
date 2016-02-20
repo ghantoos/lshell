@@ -117,8 +117,7 @@ class TestFunctions(unittest.TestCase):
         args = self.args + ["--sudo_commands=all"]
         userconf = CheckConfig(args).returnconf()
         # exclude internal and sudo(8) commands
-        exclude = ['cd', 'exit', 'lpath', 'lsudo',
-                   'history', 'clear', 'export', 'sudo']
+        exclude = builtins_list + ['sudo']
         allowed = [x for x in userconf['allowed'] if x not in exclude]
         # sort lists to compare
         userconf['sudo_commands'].sort()
@@ -172,9 +171,10 @@ class TestFunctions(unittest.TestCase):
         """
         args = self.args + ["--allowed=[]", "--winscp=1"]
         userconf = CheckConfig(args).returnconf()
-        # sort lists to compare
-        expected = builtins_list + ['scp', 'env', 'pwd', 'groups',
-                                    'unset', 'unalias']
+        # sort lists to compare, except 'export'
+        exclude = list(set(builtins_list) - set(['export']))
+        expected = exclude + ['scp', 'env', 'pwd', 'groups',
+                              'unset', 'unalias']
         expected.sort()
         allowed = userconf['allowed']
         allowed.sort()

@@ -174,8 +174,8 @@ class TestFunctions(unittest.TestCase):
 
     def test_15_cmd_completion_tab_tab(self):
         """ F15 | command completion: tab to list commands """
-        expected = '\x07\r\ncd       echo     export   history  lpath    '\
-                   'lsudo    \r\nclear    exit     help     ll       ls'
+        expected = '\x07\r\ncd       echo     help     ll       ls       '\
+                   '\r\nclear    exit     history  lpath    lsudo'
         self.child.sendline('\t\t')
         self.child.expect('%s:~\$' % self.user)
         result = self.child.before.decode('utf8').strip()

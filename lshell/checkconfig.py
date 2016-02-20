@@ -565,7 +565,8 @@ class CheckConfig:
         os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         # append default commands to allowed list
-        self.conf['allowed'] += variables.builtins_list
+        self.conf['allowed'] += list(set(variables.builtins_list) -
+                                     set(['export']))
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf['sudo_commands']:

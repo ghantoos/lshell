@@ -94,8 +94,8 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf['config_mtime'] != os.path.getmtime(
                 self.conf['configfile']):
             from lshell.checkconfig import CheckConfig
-            self.conf = CheckConfig(['--config',
-                                     self.conf['configfile']]).returnconf()
+            self.conf = CheckConfig(['--config', self.conf['configfile']],
+                                    refresh=1).returnconf()
             self.conf['promptprint'] = utils.updateprompt(os.getcwd(),
                                                           self.conf)
             self.log = self.conf['logpath']

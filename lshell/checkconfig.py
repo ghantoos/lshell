@@ -42,7 +42,8 @@ class CheckConfig:
     """ Check the configuration file.
     """
 
-    def __init__(self, args, stdin=None, stdout=None, stderr=None):
+    def __init__(self, args, refresh=None,
+                 stdin=None, stdout=None, stderr=None):
         """ Force the calling of the methods below
         """
         if stdin is None:
@@ -58,6 +59,7 @@ class CheckConfig:
         else:
             self.stderr = stderr
 
+        self.refresh = refresh
         self.conf = {}
         self.conf, self.arguments = self.getoptions(args, self.conf)
         configfile = self.conf['configfile']
@@ -541,7 +543,12 @@ class CheckConfig:
             self.conf['intro'] = variables.intro
 
         if os.path.isdir(self.conf['home_path']):
-            os.chdir(self.conf['home_path'])
+            # change dir to home when initially loading the configuration
+            if self.refresh is None:
+                os.chdir(self.conf['home_path'])
+            # if reloading the configuration, do not change directory
+            else:
+                pass
         else:
             self.log.critical('ERR: home directory "%s" does not exist.'
                               % self.conf['home_path'])

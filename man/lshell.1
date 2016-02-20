@@ -50,7 +50,20 @@ On *BSD  \-> /usr/{pkg,local}/etc/lshell.conf
 .LP
 .RE
 .fi
-
+The configuration is dynamically reloaded. Which means that you can edit
+the configuration, and all the connected users will automatically load it. In
+case you are using multiple configuration files (see include_dir), you will
+need to refresh the main configuration's timestamp, in order to reload the
+configuration:
+.RS
+.ft 3
+.nf
+.sp
+touch /path/to/lshell.conf
+.ft
+.LP
+.RE
+.fi
 \fBlshell\fR configuration has 4 types of sections:
 .RS
 .ft 3

@@ -78,7 +78,7 @@ class CheckConfig:
         """ This method checks the usage. lshell.py must be called with a
         configuration file.
         If no configuration file is specified, it will set the configuration
-        file path to /etc/lshell.confelf.conf['allowed'].append('exit')
+        file path to /etc/lshell.conf
         """
         # set configfile as default configuration file
         conf['configfile'] = variables.configfile
@@ -127,8 +127,8 @@ class CheckConfig:
                 os.environ[key] = str(env_vars[key])
 
     def check_file(self, file):
-        """ This method checks the existence of the "argumently" given
-        configuration file.
+        """ This method checks the existence of the given configuration
+            file passed via command line arguments
         """
         if not os.path.exists(file):
             self.stderr.write("Error: Config file doesn't exist\n")
@@ -259,8 +259,8 @@ class CheckConfig:
         self.log = logger
 
     def get_config(self):
-        """ Load default, group and user configuation. Then merge them all.
-        The loadpriority is done in the following order:
+        """ Load default, group and user configuration. Then merge them all.
+        The load priority is done in the following order:
             1- User section
             2- Group section
             3- Default section
@@ -387,7 +387,7 @@ class CheckConfig:
     def expand_all(self):
         """ expand allowed, if set to 'all'
         """
-        # initialize list to common shell builtins
+        # initialize list to common shell built-ins
         expanded_all = ['bg', 'break', 'case', 'cd', 'continue', 'eval',
                         'exec', 'exit', 'fg', 'if', 'jobs', 'kill', 'login',
                         'logout', 'set', 'shift', 'stop', 'suspend', 'umask',
@@ -404,7 +404,7 @@ class CheckConfig:
         return str(expanded_all)
 
     def myeval(self, value, info=''):
-        """ if eval returns SyntaxError, log it as critical iconf missing """
+        """ if eval returns SyntaxError, log it as critical conf missing """
         try:
             evaluated = eval(value)
             return evaluated
@@ -635,7 +635,7 @@ class CheckConfig:
                         self.log.error('*** forbidden SFTP connection')
                         sys.exit(0)
 
-                # initialise cli session
+                # initialize cli session
                 from lshell.shellcmd import ShellCmd
                 cli = ShellCmd(self.conf,
                                None, None, None, None,
@@ -777,7 +777,7 @@ class CheckConfig:
                                                 cmd)
         else:
             # if sudo_noexec.so file is not found,  write error in log file,
-            # but don't exit tp  prevent strict dependincy on sudo noexec lib
+            # but don't exit tp  prevent strict dependency on sudo noexec lib
             self.log.error("Error: noexec library not found")
 
         self.conf['allowed'] += self.conf['allowed_shell_escape']

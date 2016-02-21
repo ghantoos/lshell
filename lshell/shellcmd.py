@@ -79,7 +79,7 @@ class ShellCmd(cmd.Cmd, object):
     def __getattr__(self, attr):
         """ This method actually takes care of all the called method that are
         not resolved (i.e not existing methods). It actually will simulate
-        the existance of any method    entered in the 'allowed' variable list.
+        the existence of any method    entered in the 'allowed' variable list.
 
         e.g. You just have to add 'uname' in list of allowed commands in
         the 'allowed' variable, and lshell will react as if you had
@@ -129,7 +129,7 @@ class ShellCmd(cmd.Cmd, object):
                                 self.g_arg)
             # replace previous command exit code
             # in case multiple commands (using separators), only replace first
-            # command. Regex replaces all occureces of $?, before ;,&,|
+            # command. Regex replaces all occurrences of $?, before ;,&,|
             if re.search('[;&\|]', self.g_line):
                 p = re.compile("(\s|^)(\$\?)([\s|$]?[;&|].*)")
             else:
@@ -164,16 +164,16 @@ class ShellCmd(cmd.Cmd, object):
                     self.retcode, self.conf = builtins.cd(directory,
                                                           self.conf)
 
-            # builtin lpath function: list all allowed path
+            # built-in lpath function: list all allowed path
             elif self.g_cmd == 'lpath':
                 self.retcode = builtins.lpath(self.conf)
-            # builtin lsudo function: list all allowed sudo commands
+            # built-in lsudo function: list all allowed sudo commands
             elif self.g_cmd == 'lsudo':
                 self.retcode = builtins.lsudo(self.conf)
-            # builtin history function: print command history
+            # built-in history function: print command history
             elif self.g_cmd == 'history':
                 self.retcode = builtins.history(self.conf, self.log)
-            # builtin export function
+            # built-in export function
             elif self.g_cmd == 'export':
                 self.retcode, var = builtins.export(self.g_line)
                 if self.retcode == 1:
@@ -204,8 +204,8 @@ class ShellCmd(cmd.Cmd, object):
         The forbidden characters are placed in the 'forbidden' variable.
         Feel free to update the list. Emptying it would be quite useless..: )
 
-        A warining counter has been added, to kick out of lshell a user if he
-        is warned more than X time (X beeing the 'warning_counter' variable).
+        A warning counter has been added, to kick out of lshell a user if he
+        is warned more than X time (X being the 'warning_counter' variable).
         """
 
         # store original string
@@ -352,13 +352,13 @@ class ShellCmd(cmd.Cmd, object):
         line = sep.split(line)
 
         for item in line:
-            # remove potential quotes or backticks
+            # remove potential quotes or back-ticks
             item = re.sub(r'^["\'`]|["\'`]$', '', item)
 
             # remove potential $(), ${}, ``
             item = re.sub(r'^\$[\(\{]|[\)\}]$', '', item)
 
-            # if item has been converted to somthing other than a string
+            # if item has been converted to something other than a string
             # or an int, reconvert it to a string
             if type(item) not in ['str', 'int']:
                 item = str(item)
@@ -588,7 +588,7 @@ class ShellCmd(cmd.Cmd, object):
             return None
 
     def onecmd(self, line):
-        """ This method overrides the original onecomd method, to put the cmd,
+        """ This method overrides the original onecmd method, to put the cmd,
         arg and line variables in class global variables: self.g_cmd,
         self.g_arg and self.g_line.
         Thos variables are then used by the __getattr__ method
@@ -651,7 +651,7 @@ class ShellCmd(cmd.Cmd, object):
 
     def mytimer(self, timeout):
         """ This function is kicks you out the the lshell after
-        the 'timer' variable exprires. 'timer' is set in seconds.
+        the 'timer' variable expires. 'timer' is set in seconds.
         """
         # set timer
         signal.signal(signal.SIGALRM, self._timererror)

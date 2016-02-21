@@ -61,7 +61,7 @@ def get_aliases(line, aliases):
         reg1 = '(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)(.*)' % escaped_item
         reg2 = '(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)' % escaped_item
 
-        # in case aliase bigin with the same command
+        # in case alias begins with the same command
         # (this is until i find a proper regex solution..)
         aliaskey = random_string(10)
 

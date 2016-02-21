@@ -88,7 +88,7 @@ def export(args):
     # if command contains at least 1 space
     if args.count(' '):
         env = args.split(" ", 1)[1]
-        # if it conatins the equal sign, consider only the first one
+        # if it contains the equal sign, consider only the first one
         if env.count('='):
             var, value = env.split(' ')[0].split('=')[0:2]
             # disallow dangerous variable

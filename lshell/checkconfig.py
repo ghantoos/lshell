@@ -36,6 +36,7 @@ import glob
 # import lshell specifics
 from lshell import utils
 from lshell import variables
+from lshell import sec
 
 
 class CheckConfig:
@@ -640,7 +641,10 @@ class CheckConfig:
                 cli = ShellCmd(self.conf,
                                None, None, None, None,
                                self.conf['ssh'])
-                if cli.check_path(self.conf['ssh'], None, ssh=1) == 1:
+                ret_check_path, self.conf = sec.check_path(self.conf['ssh'],
+                                                           self.conf,
+                                                           ssh=1)
+                if ret_check_path == 1:
                     self.ssh_warn('path over SSH', self.conf['ssh'])
 
                 # check if scp is requested and allowed

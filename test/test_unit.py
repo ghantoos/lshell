@@ -8,6 +8,7 @@ from lshell.checkconfig import CheckConfig
 from lshell.utils import get_aliases, updateprompt
 from lshell.variables import builtins_list
 from lshell import builtins
+from lshell import sec
 
 TOPDIR = '%s/../' % os.path.dirname(os.path.realpath(__file__))
 
@@ -68,25 +69,24 @@ class TestFunctions(unittest.TestCase):
         """ U08 | forbidden command, should return 1 """
         args = self.args + ["--path=['/home', '/var']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "cd /tmp"
-        return self.assertEqual(shell.check_path(INPUT), 1)
+        return self.assertEqual(sec.check_path(INPUT, userconf)[0], 1)
 
     def test_09_checkpath_notallowed_path_completion(self):
         """ U09 | forbidden command, should return 1 """
         args = self.args + ["--path=['/home', '/var']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "cd /tmp/"
-        return self.assertEqual(shell.check_path(INPUT, completion=1), 1)
+        return self.assertEqual(sec.check_path(INPUT,
+                                               userconf,
+                                               completion=1)[0], 1)
 
     def test_10_checkpath_dollarparenthesis(self):
         """ U10 | when $() is allowed, return 0 if path allowed """
         args = self.args + ["--forbidden=[';', '&', '|','`','>','<', '${']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "echo $(echo aze)"
-        return self.assertEqual(shell.check_path(INPUT), 0)
+        return self.assertEqual(sec.check_path(INPUT, userconf)[0], 0)
 
     def test_11_checkconfig_configoverwrite(self):
         """ U12 | forbid ';', then check_secure should return 1 """

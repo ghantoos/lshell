@@ -110,7 +110,12 @@ class ShellCmd(cmd.Cmd, object):
             # see http://tldp.org/LDP/abs/html/exitcodes.html
             self.retcode = 126
             return object.__getattribute__(self, attr)
-        if self.check_path(self.g_line, strict=self.conf['strict']) == 1:
+
+        # check that path present in line are allowed/secure
+        ret_check_path, self.conf = sec.check_path(self.g_line,
+                                                   self.conf,
+                                                   strict=self.conf['strict'])
+        if ret_check_path == 1:
             # see http://tldp.org/LDP/abs/html/exitcodes.html
             self.retcode = 126
             # in case request was sent by WinSCP, return error code has to be
@@ -249,7 +254,10 @@ class ShellCmd(cmd.Cmd, object):
         # check if the line contains $(foo) executions, and check them
         executions = re.findall('\$\([^)]+[)]', line)
         for item in executions:
-            returncode += self.check_path(item[2:-1].strip(), strict=strict)
+            ret_check_path, self.conf = sec.check_path(item[2:-1].strip(),
+                                                       self.conf,
+                                                       strict=strict)
+            returncode += ret_check_path
             returncode += self.check_secure(item[2:-1].strip(), strict=strict)
 
         # check fot executions using back quotes '`'
@@ -265,7 +273,10 @@ class ShellCmd(cmd.Cmd, object):
                 variable = re.split('=|\+|\?|\-', item, 1)
             else:
                 variable = item
-            returncode += self.check_path(variable[1][:-1], strict=strict)
+            ret_check_path, self.conf = sec.check_path(variable[1][:-1],
+                                                       self.conf,
+                                                       strict=strict)
+            returncode += ret_check_path
 
         # if unknown commands where found, return 1 and don't execute the line
         if returncode > 0:
@@ -336,89 +347,6 @@ class ShellCmd(cmd.Cmd, object):
                                                 strict=strict,
                                                 ssh=ssh)
                 return ret
-        return 0
-
-    def check_path(self, line, completion=None, ssh=None, strict=None):
-        """ Check if a path is entered in the line. If so, it checks if user
-        are allowed to see this path. If user is not allowed, it calls
-        self.warn_count. In case of completion, it only returns 0 or 1.
-        """
-        allowed_path_re = str(self.conf['path'][0])
-        denied_path_re = str(self.conf['path'][1][:-1])
-
-        # split line depending on the operators
-        sep = re.compile(r'\ |;|\||&')
-        line = line.strip()
-        line = sep.split(line)
-
-        for item in line:
-            # remove potential quotes or back-ticks
-            item = re.sub(r'^["\'`]|["\'`]$', '', item)
-
-            # remove potential $(), ${}, ``
-            item = re.sub(r'^\$[\(\{]|[\)\}]$', '', item)
-
-            # if item has been converted to something other than a string
-            # or an int, reconvert it to a string
-            if type(item) not in ['str', 'int']:
-                item = str(item)
-            # replace "~" with home path
-            item = os.path.expanduser(item)
-
-            # expand shell wildcards using "echo"
-            # i know, this a bit nasty...
-            if re.findall('\$|\*|\?', item):
-                # remove quotes if available
-                item = re.sub("\"|\'", "", item)
-                import subprocess
-                p = subprocess.Popen("`which echo` %s" % item,
-                                     shell=True,
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-                cout = p.stdout
-
-                try:
-                    item = cout.readlines()[0].decode('utf8').split(' ')[0]
-                    item = item.strip()
-                    item = os.path.expandvars(item)
-                except IndexError:
-                    self.log.critical('*** Internal error: command not '
-                                      'executed')
-                    return 1
-
-            tomatch = os.path.realpath(item)
-            if os.path.isdir(tomatch) and tomatch[-1] != '/':
-                tomatch += '/'
-            match_allowed = re.findall(allowed_path_re, tomatch)
-            if denied_path_re:
-                match_denied = re.findall(denied_path_re, tomatch)
-            else:
-                match_denied = None
-
-            # if path not allowed
-            # case path executed: warn, and return 1
-            # case completion: return 1
-            if not match_allowed or match_denied:
-                if not completion:
-                    ret, self.conf = sec.warn_count('path',
-                                                    tomatch,
-                                                    self.conf,
-                                                    strict=strict,
-                                                    ssh=ssh)
-                return 1
-
-        if not completion:
-            if not re.findall(allowed_path_re, os.getcwd() + '/'):
-                ret, self.conf = sec.warn_count('path',
-                                                tomatch,
-                                                self.conf,
-                                                strict=strict,
-                                                ssh=ssh)
-                os.chdir(self.conf['home_path'])
-                self.conf['promptprint'] = utils.updateprompt(os.getcwd(),
-                                                              self.conf)
-                return 1
         return 0
 
     def cmdloop(self, intro=None):
@@ -570,7 +498,10 @@ class ShellCmd(cmd.Cmd, object):
             if not os.path.isdir(directory):
                 directory = os.getcwd()
 
-        if self.check_path(directory, 1) == 0:
+        ret_check_path, self.conf = sec.check_path(directory,
+                                                   self.conf,
+                                                   completion=1)
+        if ret_check_path == 0:
             for instance in os.listdir(directory):
                 if os.path.isdir(os.path.join(directory, instance)):
                     instance = instance + '/'

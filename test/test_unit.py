@@ -1,10 +1,11 @@
 import unittest
 import os
+from getpass import getuser
 
 # import lshell specifics
 from lshell.shellcmd import ShellCmd
 from lshell.checkconfig import CheckConfig
-from lshell.utils import get_aliases
+from lshell.utils import get_aliases, updateprompt
 from lshell.variables import builtins_list
 from lshell import builtins
 
@@ -186,6 +187,37 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare
         return self.assertNotIn(';', userconf['forbidden'])
+
+    def test_22_prompt_short_0(self):
+        """ U22 | short_prompt = 0 should show dir compared to home dir """
+        expected = '%s:~/foo$ ' % getuser()
+        args = self.args + ['--prompt_short=0']
+        userconf = CheckConfig(args).returnconf()
+        currentpath = "%s/foo" % userconf['home_path']
+        prompt = updateprompt(currentpath, userconf)
+        # sort lists to compare
+        return self.assertEqual(prompt, expected)
+
+    def test_23_prompt_short_1(self):
+        """ U23 | short_prompt = 1 should show only current dir """
+        expected = '%s: foo$ ' % getuser()
+        args = self.args + ['--prompt_short=1']
+        userconf = CheckConfig(args).returnconf()
+        currentpath = "%s/foo" % userconf['home_path']
+        prompt = updateprompt(currentpath, userconf)
+        # sort lists to compare
+        return self.assertEqual(prompt, expected)
+
+    def test_24_prompt_short_2(self):
+        """ U24 | short_prompt = 2 should show full dir path """
+        expected = '%s: %s$ ' % (getuser(), os.getcwd())
+        args = self.args + ['--prompt_short=2']
+        userconf = CheckConfig(args).returnconf()
+        currentpath = "%s/foo" % userconf['home_path']
+        prompt = updateprompt(currentpath, userconf)
+        # sort lists to compare
+        return self.assertEqual(prompt, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

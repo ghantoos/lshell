@@ -118,11 +118,13 @@ def updateprompt(path, conf):
     promptbase = getpromptbase(conf)
 
     # update the prompt when directory is changed
-    if path is conf['home_path']:
+    if path == conf['home_path']:
         prompt = '%s:~$ ' % promptbase
     elif conf['prompt_short'] == 1:
         prompt = '%s: %s$ ' % (promptbase,
                                path.split('/')[-1])
+    elif conf['prompt_short'] == 2:
+        prompt = '%s: %s$ ' % (promptbase, os.getcwd())
     elif re.findall(conf['home_path'], path):
         prompt = '%s:~%s$ ' % (promptbase,
                                path.split(conf['home_path'])[1])

@@ -219,7 +219,19 @@ set the user's prompt format (default: username)
 .RE
 .TP
 .I prompt_short
-set sort prompt current directory update - set to 1 or 0
+set prompt style for current directory - 0, 1 or 2. Default is 0.
+.RS
+.BR \ \ \ \ 0
+-> will show the current directory as compared to home directory ~/current/dir
+.RE
+.RS
+.BR \ \ \ \ 1
+-> will only show the current directory name
+.RE
+.RS
+.BR \ \ \ \ 2
+-> will show the complete path to the current directory
+.RE
 .TP
 .I overssh
 list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, scp, \

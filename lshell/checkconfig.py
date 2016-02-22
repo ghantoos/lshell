@@ -697,7 +697,12 @@ class CheckConfig:
                     self.conf['ssh'] = utils.get_aliases(self.conf['ssh'],
                                                          self.conf['aliases'])
                     # if command is not "secure", exit
-                    if cli.check_secure(self.conf['ssh'], strict=1, ssh=1):
+                    ret_check_secure, self.conf = sec.check_secure(
+                        self.conf['ssh'],
+                        self.conf,
+                        strict=1,
+                        ssh=1)
+                    if ret_check_secure:
                         self.ssh_warn('char/command over SSH',
                                       self.conf['ssh'])
                     # else

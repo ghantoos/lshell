@@ -21,49 +21,45 @@ class TestFunctions(unittest.TestCase):
     def test_01_checksecure_doublequote(self):
         """ U01 | quoted text should not be forbidden """
         INPUT = 'ls -E "1|2" tmp/test'
-        return self.assertEqual(self.shell.check_secure(INPUT), 0)
+        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 0)
 
     def test_02_checksecure_simplequote(self):
         """ U02 | quoted text should not be forbidden """
         INPUT = "ls -E '1|2' tmp/test"
-        return self.assertEqual(self.shell.check_secure(INPUT), 0)
+        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 0)
 
     def test_03_checksecure_doublepipe(self):
         """ U03 | double pipes should be allowed, even if pipe is forbidden """
         args = self.args + ["--forbidden=['|']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "ls || ls"
-        return self.assertEqual(shell.check_secure(INPUT), 0)
+        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 0)
 
     def test_04_checksecure_forbiddenpipe(self):
         """ U04 | forbid pipe, should return 1 """
         args = self.args + ["--forbidden=['|']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "ls | ls"
-        return self.assertEqual(shell.check_secure(INPUT), 1)
+        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 1)
 
     def test_05_checksecure_forbiddenchar(self):
         """ U05 | forbid character, should return 1 """
         args = self.args + ["--forbidden=['l']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "ls"
-        return self.assertEqual(shell.check_secure(INPUT), 1)
+        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 1)
 
     def test_06_checksecure_sudo_command(self):
         """ U06 | quoted text should not be forbidden """
         INPUT = "sudo ls"
-        return self.assertEqual(self.shell.check_secure(INPUT), 1)
+        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
 
     def test_07_checksecure_notallowed_command(self):
         """ U07 | forbidden command, should return 1 """
         args = self.args + ["--allowed=['ls']"]
         userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
         INPUT = "ll"
-        return self.assertEqual(shell.check_secure(INPUT), 1)
+        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 1)
 
     def test_08_checkpath_notallowed_path(self):
         """ U08 | forbidden command, should return 1 """

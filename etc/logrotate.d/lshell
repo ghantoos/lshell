@@ -1,6 +1,7 @@
 # $Id: lshell,v 1.1 2010-03-02 00:05:58 ghantoos Exp $
 
 /var/log/lshell/*.log {
+    su nobody lshell
     rotate 12
     weekly
     compress

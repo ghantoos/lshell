@@ -20,6 +20,8 @@ http://sourceforge.net/projects/lshell/
     * Added export command in built-ins
     * Added WinSCP support. Thank you @faberge-eggs for this contribution!
     * Added tox testing. Thank you Tristan Cacqueray for your contribution!
+    * Correct logrotate configuration. Thank you Rune Schjellerup Philosof for
+      your patch suggestion.
     * Code cleanup
     (More information in the git commit log)
 

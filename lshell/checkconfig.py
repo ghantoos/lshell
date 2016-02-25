@@ -246,7 +246,10 @@ class CheckConfig:
                     # create log file if it does not exist, and set permissions
                     fp = open(logfile, 'a')
                     fp.close()
-                    os.chmod(logfile, 0o600)
+                    try:
+                        os.chmod(logfile, 0o600)
+                    except OSError:
+                        pass
                     # set logging handler
                     self.logfile = logging.FileHandler(logfile)
                     self.logfile.setFormatter(formatter)

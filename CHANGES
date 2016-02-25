@@ -8,11 +8,20 @@ Contact: ghantoos@ghantoos.org
 http://sourceforge.net/projects/lshell/
 #####################################
 
-=== v0.9.18 --/--/---- ===
+=== v0.9.18 24/02/2016 ===
     * Corrected exit codes of built-in commands
     * Added default support for sudo_noexec.so in LD_PRELOAD. This feature
       comes with a new variable 'allowed_shell_escape' to allow admins to
-      escape the new default behavior
+      escape the new default behavior. Thank you Luca Berra for this contribu-
+      tion!
+    * Added Python3 compatibility. Thank you Tristan Cacqueray for your help!
+    * Added restricted environement variables that cannot be updated by user.
+      Thank you Tristan Cacqueray for this contribution!
+    * Added export command in built-ins
+    * Added WinSCP support. Thank you @faberge-eggs for this contribution!
+    * Added tox testing. Thank you Tristan Cacqueray for your contribution!
+    * Code cleanup
+    (More information in the git commit log)
 
 === v0.9.17 14/08/2015 ===
     * Added include_dir directive to include split configuration files from

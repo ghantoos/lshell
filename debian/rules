@@ -2,13 +2,17 @@
 # -*- makefile -*-
 
 export DH_ALWAYS_EXCLUDE=COPYING:CHANGES
-export PYTHON=`which python`
+export PYTHON=`which python3`
 
 %:
-	dh $@ --with python2
+	dh $@ --with python3
 
 override_dh_auto_install:
 	$(PYTHON) setup.py install --root=$(CURDIR)/debian/lshell --install-layout=deb
 
 override_dh_installchangelogs:
 	dh_installchangelogs CHANGES
+
+override_dh_auto_clean:
+	$(PYTHON) setup.py clean -a
+	dh_auto_clean

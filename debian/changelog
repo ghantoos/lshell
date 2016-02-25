@@ -1,8 +1,26 @@
+lshell (0.9.18-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #668776)
+  * debian/control:
+    - Bumped Standards-Version to 3.9.7
+    - Now builds against Python3:
+      - Replaced X-Python-Version variable with X-Python3-Version, as lshell
+      is now compatible with Python >=3.4
+      - Modified ${python:Depends} to ${python3:Depends}
+      - Modified Build-Depends to use python3
+  * debian/rules:
+    - Build for Python3. Replaced --with-python2 with --with-python3
+    - Added dh_auto_clean override to remove all build files when cleaning
+  * debian/watch:
+    - Updated to point to github instead of deprecated sf.net repo
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Thu, 25 Feb 2016 11:10:59 -0500
+
 lshell (0.9.17-1) unstable; urgency=medium
 
   * New upstream release.
   * debian/control:
-    - Bumped Standards-Version to 3.9.4.
+    - Bumped Standards-Version to 3.9.6.
   * debian/lshell.docs:
     - Modified README to README.md.
   * Removed deprecated debian/pycompat.

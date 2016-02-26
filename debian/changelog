@@ -1,3 +1,12 @@
+lshell (0.9.18-2) unstable; urgency=medium
+
+  * debian/rules:
+    - Set build system to pybuild to resolve the FTBFS due to default build
+      system being for Python 2 (distutils)
+      See: https://lists.debian.org/debian-python/2014/03/msg00091.html
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Fri, 26 Feb 2016 18:27:56 -0500
+
 lshell (0.9.18-1) unstable; urgency=medium
 
   * New upstream release (Closes: #668776)

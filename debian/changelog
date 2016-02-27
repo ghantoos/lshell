@@ -1,3 +1,10 @@
+lshell (0.9.18-3) UNRELEASED; urgency=medium
+
+  * debian/watch:
+    - Corrected to work with lshell versioning on github.
+
+ -- Ignace Mouzannar <mouzannar@gmail.com>  Sat, 27 Feb 2016 12:29:25 -0500
+
 lshell (0.9.18-2) unstable; urgency=medium
 
   * debian/rules:

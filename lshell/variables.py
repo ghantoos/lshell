@@ -84,7 +84,7 @@ configparams = ['config=',
                 'scpforce=',
                 'history_size=',
                 'history_file=',
-                'path_noxec=',
+                'path_noexec=',
                 'allowed_shell_escape=',
                 'winscp=',
                 'include_dir=']

@@ -757,6 +757,10 @@ class CheckConfig:
         if 'path_noexec' in self.conf_raw:
             self.conf['path_noexec'] = self.myeval(
                 self.conf_raw['path_noexec'])
+            # if path_noexec is empty, disable LD_PRELOAD
+            # /!\ this feature should be used at the administrator's own risks!
+            if self.conf['path_noexec'] is '':
+                return
             if not os.path.exists(self.conf['path_noexec']):
                 self.log.critical(
                     "Fatal: 'path_noexec': %s No such file of directory"

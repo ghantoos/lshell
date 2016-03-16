@@ -214,6 +214,12 @@ class TestFunctions(unittest.TestCase):
         # sort lists to compare
         return self.assertEqual(prompt, expected)
 
+    def test_25_disable_ld_preload(self):
+        """ U25 | empty path_noexec should disable LD_PRELOAD """
+        args = self.args + ["--allowed=['echo','export']", "--path_noexec=''"]
+        userconf = CheckConfig(args).returnconf()
+        # verify that no alias was created containing LD_PRELOAD
+        return self.assertNotIn('echo', userconf['aliases'])
 
 if __name__ == "__main__":
     unittest.main()

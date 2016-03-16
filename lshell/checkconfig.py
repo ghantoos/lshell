@@ -757,7 +757,7 @@ class CheckConfig:
         if 'path_noexec' in self.conf_raw:
             self.conf['path_noexec'] = self.myeval(
                 self.conf_raw['path_noexec'])
-            if not os.path.exists(self.conf_raw['path_noexec']):
+            if not os.path.exists(self.conf['path_noexec']):
                 self.log.critical(
                     "Fatal: 'path_noexec': %s No such file of directory"
                     % (self.conf['path_noexec']))

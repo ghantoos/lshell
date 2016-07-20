@@ -180,8 +180,6 @@ class TestFunctions(unittest.TestCase):
         self.child.expect('%s:~\$' % self.user)
         result = self.child.before.decode('utf8').strip()
 
-        print(expected)
-        print(result)
         self.assertEqual(expected, result)
 
     def test_16_exitcode_with_separator_external_cmd(self):
@@ -356,6 +354,20 @@ class TestFunctions(unittest.TestCase):
             result = self.child.before.decode('utf8').strip()
         self.assertIn(expected, result)
 
+    def test_26_cmd_completion_dot_slash(self):
+        """ F26 | command completion: tab to list ./foo1 ./foo2 """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf '
+                                   '--allowed "+ [\'./foo1\', \'./foo2\']"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = u'./\x07foo\x07\r\nfoo1  foo2'
+        self.child.sendline('./\t\t\t')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.decode('utf8').strip()
+
+        self.assertEqual(expected, result)
 
 if __name__ == '__main__':
     unittest.main()

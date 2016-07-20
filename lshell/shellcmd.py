@@ -293,8 +293,10 @@ class ShellCmd(cmd.Cmd, object):
             stripped = len(origline) - len(line)
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
+            # complete with sudo allowed commands
             if line.split(' ')[0] == 'sudo' and len(line.split(' ')) <= 2:
                 compfunc = self.completesudo
+            # complete next argument with file or directory
             elif len(line.split(' ')) > 1 \
                     and line.split(' ')[0] in self.conf['allowed']:
                 compfunc = self.completechdir
@@ -307,8 +309,16 @@ class ShellCmd(cmd.Cmd, object):
                         compfunc = getattr(self, 'complete_' + cmd)
                     except AttributeError:
                         compfunc = self.completedefault
+                    # exception called when using './' completion
+                    except IndexError:
+                        compfunc = self.completenames
+                    # exception called when using './' completion
+                    except TypeError:
+                        compfunc = self.completenames
             else:
+                # call the lshell allowed commands completion
                 compfunc = self.completenames
+
             self.completion_matches = compfunc(text, line, begidx, endidx)
         try:
             return self.completion_matches[state]
@@ -324,16 +334,18 @@ class ShellCmd(cmd.Cmd, object):
         """
         self.stdout.write('')
 
-    def completenames(self, text, *ignored):
+    def completenames(self, text, line, *ignored):
         """ This method overrides the original completenames method to overload
         it's output with the command available in the 'allowed' variable
         This is useful when typing 'tab-tab' in the command prompt
         """
-        dotext = 'do_' + text
-        names = self.get_names()
-        for command in self.conf['allowed']:
-            names.append('do_' + command)
-        return [a[3:] for a in names if a.startswith(dotext)]
+        commands = self.conf['allowed']
+        commands.append('help')
+        if line.startswith('./'):
+            return [cmd[2:] for cmd in commands if cmd.startswith('./%s'
+                                                                  % text)]
+        else:
+            return [cmd for cmd in commands if cmd.startswith(text)]
 
     def completesudo(self, text, line, begidx, endidx):
         """ complete sudo command """

@@ -318,7 +318,7 @@ class CheckConfig:
                 key = item[0]
                 value = item[1]
                 # if string, then split
-                split = []
+                split = ['']
                 if isinstance(value, str):
                     split = re.split('([\+\-\s]+\[[^\]]+\])',
                                      value.replace(' ', ''))

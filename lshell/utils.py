@@ -89,8 +89,13 @@ def get_aliases(line, aliases):
 def exec_cmd(cmd):
     """ execute a command, locally catching the signals """
     try:
-        retcode = subprocess.call("%s" % cmd, shell=True)
+        proc = subprocess.Popen([cmd], shell=True)
+        proc.communicate()
+        retcode = proc.returncode
     except KeyboardInterrupt:
+        # force process to properly terminate (SIGTERM)
+        proc.terminate()
+        proc.communicate()
         # exit code for user terminated scripts is 130
         retcode = 130
 

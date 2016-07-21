@@ -442,7 +442,7 @@ class ShellCmd(cmd.Cmd, object):
             func()
         else:
             # Get list of allowed commands, remove duplicate 'help' then sort
-            list_tmp = list(dict.fromkeys(self.completenames('')).keys())
+            list_tmp = list(dict.fromkeys(self.completenames('', '')).keys())
             list_tmp.sort()
             self.columnize(list_tmp)
 

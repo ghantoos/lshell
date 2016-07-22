@@ -369,5 +369,21 @@ class TestFunctions(unittest.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_27_checksecure_awk(self):
+        """ F27 | checksecure awk script with /bin/bash """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf '
+                                   '--allowed "+ [\'awk\']"'
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = u'*** forbidden path: /bin/bash'
+        self.child.sendline('awk \'BEGIN {system("/bin/bash")}\'')
+        self.child.expect('%s:~\$' % self.user)
+        result = self.child.before.decode('utf8').split('\n')[1].strip()
+
+        self.assertEqual(expected, result)
+
+
 if __name__ == '__main__':
     unittest.main()

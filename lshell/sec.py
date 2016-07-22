@@ -158,6 +158,22 @@ def check_secure(line, conf, strict=None, ssh=None):
     # strip all spaces/tabs
     line = " ".join(line.split())
 
+    # init return code
+    returncode = 0
+
+    # This logic is kept crudely simple on purpose.
+    # At most we might match the same stanza twice
+    # (for e.g. "'a'", 'a') but the converse would
+    # require detecting single quotation stanzas
+    # nested within double quotes and vice versa
+    relist = re.findall(r'[^=]\"(.+)\"', line)
+    relist2 = re.findall(r'[^=]\'(.+)\'', line)
+    relist = relist + relist2
+    for item in relist:
+        if os.path.exists(item):
+            ret_check_path, conf = check_path(item, conf, strict=strict)
+            returncode += ret_check_path
+
     # ignore quoted text
     line = re.sub(r'\"(.+?)\"', '', line)
     line = re.sub(r'\'(.+?)\'', '', line)
@@ -189,7 +205,6 @@ def check_secure(line, conf, strict=None, ssh=None):
                                        ssh=ssh)
                 return ret, conf
 
-    returncode = 0
     # check if the line contains $(foo) executions, and check them
     executions = re.findall('\$\([^)]+[)]', line)
     for item in executions:

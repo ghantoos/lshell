@@ -156,7 +156,7 @@ def check_secure(line, conf, strict=None, ssh=None):
     oline = line
 
     # strip all spaces/tabs
-    line = " ".join(line.split())
+    line = line.strip()
 
     # init return code
     returncode = 0

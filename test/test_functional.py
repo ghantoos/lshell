@@ -384,6 +384,23 @@ class TestFunctions(unittest.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_28_catch_lnext_terminal_ctrl(self):
+        """ F25 | test ctrl-v ctrl-j then command, forbidden/security """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf '
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = u'*** forbidden syntax: echo\r'
+        self.child.send('echo')
+        self.child.sendcontrol('v')
+        self.child.sendcontrol('j')
+        self.child.sendline('bash')
+        self.child.expect('%s:~\$' % self.user)
+
+        result = self.child.before.decode('utf8').split('\n')
+
+        self.assertIn(expected, result)
 
 if __name__ == '__main__':
     unittest.main()

@@ -18,16 +18,6 @@ class TestFunctions(unittest.TestCase):
     userconf = CheckConfig(args).returnconf()
     shell = ShellCmd(userconf, args)
 
-    def test_01_checksecure_doublequote(self):
-        """ U01 | quoted text should not be forbidden """
-        INPUT = 'ls -E "1|2" tmp/test'
-        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 0)
-
-    def test_02_checksecure_simplequote(self):
-        """ U02 | quoted text should not be forbidden """
-        INPUT = "ls -E '1|2' tmp/test"
-        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 0)
-
     def test_03_checksecure_doublepipe(self):
         """ U03 | double pipes should be allowed, even if pipe is forbidden """
         args = self.args + ["--forbidden=['|']"]
@@ -220,6 +210,21 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         # verify that no alias was created containing LD_PRELOAD
         return self.assertNotIn('echo', userconf['aliases'])
+
+    def test_26_checksecure_quoted_command(self):
+        """ U26 | quoted command should be parsed """
+        INPUT = 'echo 1 && "bash"'
+        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
+
+    def test_27_checksecure_quoted_command(self):
+        """ U27 | quoted command should be parsed """
+        INPUT = '"bash" && echo 1'
+        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
+
+    def test_28_checksecure_quoted_command(self):
+        """ U28 | quoted command should be parsed """
+        INPUT = "echo'/1.sh'"
+        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
 
 if __name__ == "__main__":
     unittest.main()

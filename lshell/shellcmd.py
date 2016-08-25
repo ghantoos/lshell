@@ -427,19 +427,7 @@ class ShellCmd(cmd.Cmd, object):
         will be called (e.g. help_help(self) )
         """
         if arg:
-            try:
-                func = getattr(self, 'help_' + arg)
-            except AttributeError:
-                try:
-                    doc = getattr(self, 'do_' + arg).__doc__
-                    if doc:
-                        self.stdout.write("%s\n" % str(doc))
-                        return
-                except AttributeError:
-                    pass
-                self.stdout.write("%s\n" % str(self.nohelp % (arg,)))
-                return
-            func()
+            self.help_help()
         else:
             # Get list of allowed commands, remove duplicate 'help' then sort
             list_tmp = list(dict.fromkeys(self.completenames('', '')).keys())

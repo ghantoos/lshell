@@ -6,6 +6,6 @@ script:
   - tox
 env:
   - TOXENV=py27
-  - TOXENV=py34
+  - TOXENV=py35
   - TOXENV=pep8
   - TOXENV=pycomments

@@ -472,6 +472,7 @@ class CheckConfig:
                      'history_size',
                      'login_script',
                      'winscp',
+                     'disable_exit',
                      'quiet']:
             try:
                 if len(self.conf_raw[item]) == 0:

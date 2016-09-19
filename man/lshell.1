@@ -170,6 +170,10 @@ in the \'allowed\' variable.
 .I allowed_cmd_path
 a list of path; all executable files inside these path will be allowed
 .TP
+.I disable_exit
+disable user exit, this could be useful when lshell is spawned from another
+none-restricted shell (e.g. bash)
+.TP
 .I env_path
 update the environment variable $PATH of the user (optional)
 .TP

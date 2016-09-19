@@ -429,5 +429,21 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode('utf8').split('\n', 1)[1]
         self.assertEqual(expected, result)
 
+    def test_31_disable_exit(self):
+        """ F31 | test disabled exit command """
+        self.child = pexpect.spawn('%s/bin/lshell '
+                                   '--config %s/etc/lshell.conf '
+                                   '--disable_exit 1 '
+                                   % (TOPDIR, TOPDIR))
+        self.child.expect('%s:~\$' % self.user)
+
+        expected = u''
+        self.child.sendline('exit')
+        self.child.expect('%s:~\$' % self.user)
+
+        result = self.child.before.decode('utf8').split('\n')[1]
+
+        self.assertIn(expected, result)
+
 if __name__ == '__main__':
     unittest.main()

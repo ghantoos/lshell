@@ -750,6 +750,7 @@ class CheckConfig:
                         '/usr/local/lib/sudo_noexec.so',
                         '/usr/local/lib/sudo/sudo_noexec.so',
                         '/usr/local/libexec/sudo_noexec.so',
+                        '/usr/local/libexec/sudo/sudo_noexec.so',
                         '/usr/pkg/libexec/sudo_noexec.so',
                         '/lib64/sudo_noexec.so',
                         '/usr/lib64/sudo/sudo_noexec.so']

@@ -134,7 +134,7 @@ class CheckConfig:
         if not os.path.exists(file):
             self.stderr.write("Error: Config file doesn't exist\n")
             self.stderr.write(variables.usage)
-            sys.exit(0)
+            sys.exit(1)
         else:
             self.config = configparser.ConfigParser()
 
@@ -146,11 +146,11 @@ class CheckConfig:
         except (configparser.MissingSectionHeaderError,
                 configparser.ParsingError) as argument:
             self.stderr.write('ERR: %s\n' % argument)
-            sys.exit(0)
+            sys.exit(1)
 
         if not self.config.has_section('global'):
             self.stderr.write('Config file missing [global] section\n')
-            sys.exit(0)
+            sys.exit(1)
 
         for item in self.config.items('global'):
             if item[0] not in self.conf:
@@ -428,7 +428,7 @@ class CheckConfig:
                 self.log.critical('ERROR: Add it in the in the [%s] '
                                   'or [default] section of conf file.'
                                   % self.user)
-                sys.exit(0)
+                sys.exit(1)
 
     def get_config_user(self):
         """ Once all the checks above have passed, the configuration files
@@ -500,7 +500,7 @@ class CheckConfig:
             except TypeError:
                 self.log.critical('ERR: in the -%s- field. Check the'
                                   ' configuration file.' % item)
-                sys.exit(0)
+                sys.exit(1)
 
         self.conf['username'] = self.user
 
@@ -558,7 +558,7 @@ class CheckConfig:
         else:
             self.log.critical('ERR: home directory "%s" does not exist.'
                               % self.conf['home_path'])
-            sys.exit(0)
+            sys.exit(1)
 
         if 'history_file' in self.conf_raw:
             try:
@@ -633,12 +633,12 @@ class CheckConfig:
                 if 'sftp-server' in self.conf['ssh']:
                     if self.conf['sftp'] is 1:
                         self.log.error('SFTP connect')
-                        utils.exec_cmd(self.conf['ssh'])
+                        retcode = utils.exec_cmd(self.conf['ssh'])
                         self.log.error('SFTP disconnect')
-                        sys.exit(0)
+                        sys.exit(retcode)
                     else:
                         self.log.error('*** forbidden SFTP connection')
-                        sys.exit(0)
+                        sys.exit(1)
 
                 # initialize cli session
                 from lshell.shellcmd import ShellCmd
@@ -663,7 +663,7 @@ class CheckConfig:
                             else:
                                 self.log.error('SCP: download forbidden: "%s"'
                                                % self.conf['ssh'])
-                                sys.exit(0)
+                                sys.exit(1)
                         elif ' -t ' in self.conf['ssh']:
                             # case scp upload is allowed
                             if self.conf['scp_upload']:
@@ -686,10 +686,10 @@ class CheckConfig:
                             else:
                                 self.log.error('SCP: upload forbidden: "%s"'
                                                % self.conf['ssh'])
-                                sys.exit(0)
-                        utils.exec_cmd(self.conf['ssh'])
+                                sys.exit(1)
+                        retcode = utils.exec_cmd(self.conf['ssh'])
                         self.log.error('SCP disconnect')
-                        sys.exit(0)
+                        sys.exit(retcode)
                     else:
                         self.ssh_warn('SCP connection',
                                       self.conf['ssh'],
@@ -714,10 +714,11 @@ class CheckConfig:
                     # if command is "help"
                     if self.conf['ssh'] == "help":
                         cli.do_help(None)
+                        retcode = 0
                     else:
-                        utils.exec_cmd(self.conf['ssh'])
+                        retcode = utils.exec_cmd(self.conf['ssh'])
                     self.log.error('Exited')
-                    sys.exit(0)
+                    sys.exit(retcode)
 
                 # else warn and log
                 else:
@@ -736,7 +737,7 @@ class CheckConfig:
             self.log.critical('*** forbidden %s: "%s"' % (message, command))
         self.stderr.write('This incident has been reported.\n')
         self.log.error('Exited')
-        sys.exit(0)
+        sys.exit(1)
 
     def set_noexec(self):
         """ This method checks the existence of the sudo_noexec library.

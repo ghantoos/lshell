@@ -394,7 +394,7 @@ class ShellCmd(cmd.Cmd, object):
         """ This method overrides the original onecmd method, to put the cmd,
         arg and line variables in class global variables: self.g_cmd,
         self.g_arg and self.g_line.
-        Thos variables are then used by the __getattr__ method
+        Those variables are then used by the __getattr__ method
         """
         cmd, arg, line = self.parseline(line)
         self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line]
@@ -453,7 +453,7 @@ class ShellCmd(cmd.Cmd, object):
 
 
 class LshellTimeOut(Exception):
-    """ Custum exception used for timer timeout
+    """ Custom exception used for timer timeout
     """
 
     def __init__(self, value="Timed Out"):

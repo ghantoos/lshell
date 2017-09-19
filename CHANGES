@@ -280,7 +280,7 @@ http://sourceforge.net/projects/lshell/
     * Added a default profile used when a parameter is not set for a user
 
 === 06/05/2008 ===
-    * Added an shell script usefull to install and manage lshell users
+    * Added an shell script useful to install and manage lshell users
 
 === 08/04/2008 ===
     * Added evironment path (env_path) update support

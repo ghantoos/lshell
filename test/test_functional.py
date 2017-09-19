@@ -445,5 +445,6 @@ class TestFunctions(unittest.TestCase):
 
         self.assertIn(expected, result)
 
+
 if __name__ == '__main__':
     unittest.main()

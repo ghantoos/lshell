@@ -106,6 +106,6 @@ Contact
 ----------------
 If you want to contribute to this project, please do not hesitate. Open an issue and, if possible, send a pull request.
 
-Please use github for all requests: https://ghantoos/lshell/issues
+Please use github for all requests: https://github.com/ghantoos/lshell/issues
 
 Cheers

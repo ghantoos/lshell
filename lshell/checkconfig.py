@@ -37,6 +37,7 @@ import glob
 from lshell import utils
 from lshell import variables
 from lshell import sec
+from lshell import builtins
 
 
 class CheckConfig:
@@ -126,6 +127,18 @@ class CheckConfig:
             env_vars = self.conf['env_vars']
             for key in env_vars.keys():
                 os.environ[key] = str(env_vars[key])
+
+        # Check paths to files that contain env vars
+        if 'env_vars_path' in self.conf:
+            for file_path in self.conf['env_vars_path']:
+                if not os.path.exists(file_path):
+                    self.stderr.write('WARN: env_vars_path %s not found. \n' % file_path)
+                    continue
+
+                with open(file_path) as env_vars:
+                    for env_var in env_vars.readlines():
+                        if env_var.split(" ", 1)[0] == 'export':
+                            builtins.export(env_var)
 
     def check_file(self, file):
         """ This method checks the existence of the given configuration
@@ -458,6 +471,7 @@ class CheckConfig:
                      'sudo_commands',
                      'warning_counter',
                      'env_vars',
+                     'env_vars_path',
                      'timer',
                      'scp',
                      'scp_upload',
@@ -483,7 +497,8 @@ class CheckConfig:
                 if item in ['allowed',
                             'allowed_shell_escape',
                             'overssh',
-                            'sudo_commands']:
+                            'sudo_commands',
+                            'env_vars_path']:
                     self.conf[item] = []
                 elif item in ['history_size']:
                     self.conf[item] = -1

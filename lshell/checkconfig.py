@@ -138,7 +138,7 @@ class CheckConfig:
                 with open(file_path) as env_vars:
                     for env_var in env_vars.readlines():
                         if env_var.split(" ", 1)[0] == 'export':
-                            builtins.export(env_var)
+                            builtins.export(env_var.strip())
 
     def check_file(self, file):
         """ This method checks the existence of the given configuration

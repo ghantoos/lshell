@@ -226,5 +226,6 @@ class TestFunctions(unittest.TestCase):
         INPUT = "echo'/1.sh'"
         return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
 
+
 if __name__ == "__main__":
     unittest.main()

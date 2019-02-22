@@ -3,9 +3,9 @@ lshell - limited shell  [![Build Status](https://travis-ci.org/ghantoos/lshell.s
 
 lshell is a shell coded in Python, that lets you restrict a user's environment to limited sets of commands, choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing restriction, and more. 
 
-Note: all the below information (and more) can be found in the manpage - ```man -l man/lshell.1``` or ```man lshell```)
+Note: all the following information (and more) can be found in the manpage - ```man -l man/lshell.1``` or ```man lshell```)
 
-Installation:
+Installation
 ----------------
 
     1. Install from source
@@ -17,9 +17,10 @@ Installation:
             apt-get install lshell
     3.  On RHEL (or derivatives)
             yum install lshell
+            dnf install lshell for Fedora and future versions of RHEL
 
 
-Configuration:
+Configuration
 ------------------------
 
 lshell.conf presents a template configuration file. See etc/lshell.conf or man file for more information.
@@ -39,9 +40,9 @@ For example User 'foo' and user 'bar' both belong to the 'users' UNIX group:
 
 - User 'foo': 
        - must be able to access /usr and /var but not /usr/local
-       - user all command in his PATH but 'su'
+       - user all command in their PATH but 'su'
        - has a warning counter set to 5
-       - has his home path set to '/home/users'
+       - has their home path set to '/home/users'
 
 - User 'bar':
        - must be able to access /etc and /usr but not /usr/local
@@ -84,22 +85,23 @@ In this case, my configuration file will look something like this:
     # CONFIGURATION END
 
 
-Usage:
+Usage
 --------------
 
 To launch lshell, just execute lshell specifying the location of your configuration file:
 
     lshell --config /path/to/configuration/file
 
-In order to log a user, you will have to add him to the lshell group:
+In order to log a user, you will have to add them to the lshell group:
 
     usermod -aG lshell username
 
-In order to configure a user account to use lshell by default, you must: (you might need to insure that lshell is listed in /etc/shells)
+In order to configure a user account to use lshell by default, you must: 
 
     chsh -s /usr/bin/lshell user_name
+(You might need to insure that lshell is listed in /etc/shells)
 
-After this, whichever method is used by the user to log into his account, he will end up using the limited shell you configured for him!
+After this, whichever method is used by the user to log into their account, they will end up using the limited shell you configured for them!
 
 
 Contact

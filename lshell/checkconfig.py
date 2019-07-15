@@ -473,7 +473,8 @@ class CheckConfig:
                      'login_script',
                      'winscp',
                      'disable_exit',
-                     'quiet']:
+                     'quiet',
+                     'env_path_before_os_path']:
             try:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""
@@ -575,7 +576,11 @@ class CheckConfig:
             self.conf['history_file'] = "%s/%s" % (self.conf['home_path'],
                                                    self.conf['history_file'])
 
-        os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
+        # add env_path at the beginning of the PATH env variable if specified
+        if self.conf['env_path_before_os_path'] is 1:
+            os.environ['PATH'] = self.conf['env_path'] + os.environ['PATH']
+        else:
+            os.environ['PATH'] = os.environ['PATH'] + self.conf['env_path']
 
         # append default commands to allowed list
         self.conf['allowed'] += list(set(variables.builtins_list) -

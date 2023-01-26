@@ -631,7 +631,7 @@ class CheckConfig:
 
                 # check if sftp is requested and allowed
                 if 'sftp-server' in self.conf['ssh']:
-                    if self.conf['sftp'] is 1:
+                    if self.conf['sftp'] == 1:
                         self.log.error('SFTP connect')
                         retcode = utils.exec_cmd(self.conf['ssh'])
                         self.log.error('SFTP disconnect')
@@ -653,7 +653,7 @@ class CheckConfig:
 
                 # check if scp is requested and allowed
                 if self.conf['ssh'].startswith('scp '):
-                    if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']:
+                    if self.conf['scp'] == 1 or 'scp' in self.conf['overssh']:
                         if ' -f ' in self.conf['ssh']:
                             # case scp download is allowed
                             if self.conf['scp_download']:
@@ -762,7 +762,7 @@ class CheckConfig:
                 self.conf_raw['path_noexec'])
             # if path_noexec is empty, disable LD_PRELOAD
             # /!\ this feature should be used at the administrator's own risks!
-            if self.conf['path_noexec'] is '':
+            if self.conf['path_noexec'] == '':
                 return
             if not os.path.exists(self.conf['path_noexec']):
                 self.log.critical(

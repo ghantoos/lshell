@@ -47,15 +47,15 @@ class CheckConfig:
                  stdin=None, stdout=None, stderr=None):
         """ Force the calling of the methods below
         """
-        if stdin is None:
+        if stdin == None:
             self.stdin = sys.stdin
         else:
             self.stdin = stdin
-        if stdout is None:
+        if stdout == None:
             self.stdout = sys.stdout
         else:
             self.stdout = stdout
-        if stderr is None:
+        if stderr == None:
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
@@ -341,7 +341,7 @@ class CheckConfig:
                             # remove double slashes
                             liste[0] = liste[0].replace("//", "/")
                             self.conf_raw.update({key: str(liste)})
-                        elif stuff and type(eval(stuff)) is list:
+                        elif stuff and type(eval(stuff)) == list:
                             self.conf_raw.update({key: stuff})
                 # case allowed is set to 'all'
                 elif key == 'allowed' and split[0] == "'all'":
@@ -550,7 +550,7 @@ class CheckConfig:
 
         if os.path.isdir(self.conf['home_path']):
             # change dir to home when initially loading the configuration
-            if self.refresh is None:
+            if self.refresh == None:
                 os.chdir(self.conf['home_path'])
             # if reloading the configuration, do not change directory
             else:
@@ -631,7 +631,7 @@ class CheckConfig:
 
                 # check if sftp is requested and allowed
                 if 'sftp-server' in self.conf['ssh']:
-                    if self.conf['sftp'] is 1:
+                    if self.conf['sftp'] == 1:
                         self.log.error('SFTP connect')
                         retcode = utils.exec_cmd(self.conf['ssh'])
                         self.log.error('SFTP disconnect')
@@ -653,7 +653,7 @@ class CheckConfig:
 
                 # check if scp is requested and allowed
                 if self.conf['ssh'].startswith('scp '):
-                    if self.conf['scp'] is 1 or 'scp' in self.conf['overssh']:
+                    if self.conf['scp'] == 1 or 'scp' in self.conf['overssh']:
                         if ' -f ' in self.conf['ssh']:
                             # case scp download is allowed
                             if self.conf['scp_download']:
@@ -762,7 +762,7 @@ class CheckConfig:
                 self.conf_raw['path_noexec'])
             # if path_noexec is empty, disable LD_PRELOAD
             # /!\ this feature should be used at the administrator's own risks!
-            if self.conf['path_noexec'] is '':
+            if self.conf['path_noexec'] == '':
                 return
             if not os.path.exists(self.conf['path_noexec']):
                 self.log.critical(

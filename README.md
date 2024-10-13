@@ -15,7 +15,9 @@ Installation
             python setup.py install --no-compile --install-data=/usr/{pkg,local}/
     2. On Debian (or derivatives)
             apt-get install lshell
-    3.  On RHEL (or derivatives)
+    3. On FreeBSD (or derivatives)
+            pkg install lshell
+    4. On RHEL (or derivatives)
             yum install lshell
             dnf install lshell for Fedora and future versions of RHEL
 

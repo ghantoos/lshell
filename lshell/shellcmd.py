@@ -428,19 +428,11 @@ class ShellCmd(cmd.Cmd, object):
         Of course, it doesn't override the help function: any help_* method
         will be called (e.g. help_help(self) )
         """
-        if arg:
-            self.help_help()
-        else:
-            # Get list of allowed commands, remove duplicate 'help' then sort
-            list_tmp = list(dict.fromkeys(self.completenames("", "")).keys())
-            list_tmp.sort()
-            self.columnize(list_tmp)
 
-    def help_help(self):
-        """Print Help on Help"""
-        self.stdout.write(
-            "Help! Help! Help! Help! " "Please contact your system's administrator.\n"
-        )
+        # Get list of allowed commands, remove duplicate 'help' then sort
+        list_tmp = list(dict.fromkeys(self.completenames("", "")).keys())
+        list_tmp.sort()
+        self.columnize(list_tmp)
 
     def mytimer(self, timeout):
         """This function is kicks you out the the lshell after

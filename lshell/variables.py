@@ -95,7 +95,7 @@ configparams = [
     "include_dir=",
 ]
 
-builtins_list = ["cd", "clear", "exit", "export", "history", "lpath", "lsudo"]
+builtins_list = ["cd", "clear", "exit", "export", "history", "lpath", "lsudo", "help"]
 
 FORBIDDEN_ENVIRON = (
     "LD_AOUT_LIBRARY_PATH",

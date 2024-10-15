@@ -239,9 +239,9 @@ def check_secure(line, conf, strict=None, ssh=None):
         lines.append(line[start:len(line)])
         # fmt: on
 
-    # remove trailing parenthesis
-    line = re.sub(r"\)$", "", line)
     for separate_line in lines:
+        # remove trailing parenthesis
+        separate_line = re.sub(r"\)$", "", separate_line)
         separate_line = " ".join(separate_line.split())
         splitcmd = separate_line.strip().split(" ")
         command = splitcmd[0]
@@ -272,4 +272,5 @@ def check_secure(line, conf, strict=None, ssh=None):
         if command not in conf["allowed"] and command:
             ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
             return ret, conf
+
     return 0, conf

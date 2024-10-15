@@ -651,7 +651,7 @@ class CheckConfig:
                 if "sftp-server" in self.conf["ssh"]:
                     if self.conf["sftp"] == 1:
                         self.log.error("SFTP connect")
-                        retcode = utils.exec_cmd(self.conf["ssh"])
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"])
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
                     else:
@@ -702,7 +702,7 @@ class CheckConfig:
                                     'SCP: upload forbidden: "%s"' % self.conf["ssh"]
                                 )
                                 sys.exit(1)
-                        retcode = utils.exec_cmd(self.conf["ssh"])
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
                         self.log.error("SCP disconnect")
                         sys.exit(retcode)
                     else:
@@ -727,7 +727,7 @@ class CheckConfig:
                         cli.do_help(None)
                         retcode = 0
                     else:
-                        retcode = utils.exec_cmd(self.conf["ssh"])
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
                     self.log.error("Exited")
                     sys.exit(retcode)
 

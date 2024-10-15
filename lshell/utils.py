@@ -26,6 +26,7 @@ from getpass import getuser
 
 # import lshell specifics
 from lshell import variables
+from lshell import builtins
 
 
 def usage():
@@ -82,6 +83,45 @@ def get_aliases(line, aliases):
         # remove all remaining double char
         line = line.replace("%s%s" % (char, char), "%s" % char)
     return line
+
+
+def cmd_parse_execute(command_line, shell_context=None):
+    """Parse and execute a shell command line"""
+    # Split command line by shell grammar: '&&', '||', and ';;'
+    cmd_split = re.split(r"(;;|&&|\|\|)", command_line)
+
+    # Initialize a variable to track whether the previous command succeeded or failed
+    previous_retcode = 0
+
+    # Iterate over commands and operators
+    for i in range(0, len(cmd_split), 2):
+        command = cmd_split[i].strip()
+        operator = cmd_split[i - 1].strip() if i > 0 else None
+
+        # Only execute commands based on the previous operator and return code
+        if operator == "&&" and previous_retcode != 0:
+            continue
+        elif operator == "||" and previous_retcode == 0:
+            continue
+
+        # Get the executable command
+        executable = re.split(r"\s", command)[0]
+
+        # Check if command is in built-ins list or execute it via exec_cmd
+        if executable in variables.builtins_list:
+            if executable == "help":
+                shell_context.do_help(command)
+            elif executable == "exit":
+                shell_context.do_exit(command)
+            else:
+                retcode = getattr(builtins, executable)(shell_context.conf)
+        else:
+            retcode = exec_cmd(command)
+
+        # Update the previous return code
+        previous_retcode = retcode
+
+    return retcode
 
 
 def exec_cmd(cmd):

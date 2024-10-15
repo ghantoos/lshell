@@ -109,11 +109,7 @@ class ShellCmd(cmd.Cmd, object):
             self.log = self.conf["logpath"]
 
         if self.g_cmd in ["quit", "exit", "EOF"]:
-            self.log.error("Exited")
-            if self.g_cmd == "EOF":
-                self.stdout.write("\n")
-            if self.conf["disable_exit"] != 1:
-                sys.exit(0)
+            self.do_exit()
 
         # check that commands/chars present in line are allowed/secure
         ret_check_secure, self.conf = sec.check_secure(
@@ -171,7 +167,9 @@ class ShellCmd(cmd.Cmd, object):
                     self.retcode, self.conf = builtins.cd(directory, self.conf)
 
                     if self.retcode == 0:
-                        self.retcode = utils.exec_cmd(command)
+                        cmd_split = re.split(r";|&&|&|\|\||\|", command)
+                        for command in cmd_split:
+                            self.retcode = utils.cmd_parse_execute(command, self)
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
@@ -198,7 +196,7 @@ class ShellCmd(cmd.Cmd, object):
                 self.retcode, self.conf = builtins.cd(directory, self.conf)
 
             else:
-                self.retcode = utils.exec_cmd(self.g_line)
+                self.retcode = utils.cmd_parse_execute(self.g_line, self)
 
         elif self.g_cmd not in ["", "?", "help", None]:
             self.log.warn('INFO: unknown syntax -> "%s"' % self.g_line)
@@ -236,7 +234,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write("%s\n" % self.intro)
             if self.conf["login_script"]:
-                utils.exec_cmd(self.conf["login_script"])
+                utils.cmd_parse_execute(self.conf["login_script"], self)
             stop = None
             while not stop:
                 if self.cmdqueue:
@@ -345,7 +343,6 @@ class ShellCmd(cmd.Cmd, object):
         This is useful when typing 'tab-tab' in the command prompt
         """
         commands = self.conf["allowed"]
-        commands.append("help")
         if line.startswith("./"):
             return [cmd[2:] for cmd in commands if cmd.startswith("./%s" % text)]
         else:
@@ -421,7 +418,7 @@ class ShellCmd(cmd.Cmd, object):
         if self.lastcmd:
             return 0
 
-    def do_help(self, arg):
+    def do_help(self, arg=None):
         """This method overrides the original do_help method.
         Instead of printing out the that are documented or not, it returns the
         list of allowed commands when '?' or 'help' is entered.
@@ -433,6 +430,14 @@ class ShellCmd(cmd.Cmd, object):
         list_tmp = list(dict.fromkeys(self.completenames("", "")).keys())
         list_tmp.sort()
         self.columnize(list_tmp)
+
+    def do_exit(self, arg=None):
+        """This method overrides the original do_exit method."""
+        self.log.error("Exited")
+        if self.g_cmd == "EOF":
+            self.stdout.write("\n")
+        if self.conf["disable_exit"] != 1:
+            sys.exit(0)
 
     def mytimer(self, timeout):
         """This function is kicks you out the the lshell after

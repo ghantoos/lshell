@@ -17,9 +17,9 @@ class TestFunctions(unittest.TestCase):
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
         self.child = pexpect.spawn(
-            "%s/bin/lshell " "--config %s/etc/lshell.conf --strict 1" % (TOPDIR, TOPDIR)
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1"
         )
-        self.child.expect("%s:~\\$" % self.user)
+        self.child.expect(f"{self.user}:~\\$")
 
     def tearDown(self):
         self.child.close()
@@ -469,3 +469,113 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n")[1]
 
         self.assertIn(expected, result)
+
+    def test_31_security_echo_freedom_and_help(self):
+        """F31 | test help, then echo FREEDOM! && help () sh && help"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        # Step 1: Enter `help` command
+        expected_help_output = (
+            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        )
+        self.child.sendline("help")
+        self.child.expect(f"{self.user}:~\\$")
+        help_output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
+
+        self.assertEqual(expected_help_output, help_output)
+
+        # Step 2: Enter `echo FREEDOM! && help () sh && help`
+        expected_output = "FREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        self.child.sendline("echo FREEDOM! && help () sh && help")
+        self.child.expect(f"{self.user}:~\\$")
+
+        result = self.child.before.decode("utf8").strip().split("\n", 1)[1].strip()
+
+        # Verify the combined output
+        self.assertEqual(expected_output, result)
+
+    def test_31_security_echo_freedom_and_cd(self):
+        """F32 | test echo FREEDOM! && cd () bash && cd ~/"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        # Step 1: Enter `help` command
+        expected_help_output = (
+            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        )
+        self.child.sendline("help")
+        self.child.expect(f"{self.user}:~\\$")
+        help_output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
+
+        self.assertEqual(expected_help_output, help_output)
+
+        # Step 2: Enter `echo FREEDOM! && help () sh && help`
+        expected_output = "FREEDOM!\r\nlshell: () bash: No such file or directory"
+        self.child.sendline("echo FREEDOM! && cd () bash && cd ~/")
+        self.child.expect(f"{self.user}:~\\$")
+
+        result = self.child.before.decode("utf8").strip().split("\n", 1)[1].strip()
+
+        # Verify the combined output
+        self.assertEqual(expected_output, result)
+
+    def test_32_ls_non_existing_directory_and_echo(self):
+        """Test: ls non_existing_directory && echo nothing"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline("ls non_existing_directory && echo nothing")
+        self.child.expect(f"{self.user}:~\\$")
+
+        output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
+        # Since ls fails, echo nothing shouldn't run
+        self.assertNotIn("nothing", output)
+
+    def test_33_ls_and_echo_ok(self):
+        """Test: ls && echo OK"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline("ls && echo OK")
+        self.child.expect(f"{self.user}:~\\$")
+
+        output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
+        # ls succeeds, echo OK should run
+        self.assertIn("OK", output)
+
+    def test_34_ls_non_existing_directory_or_echo_ok(self):
+        """Test: ls non_existing_directory || echo OK"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline("ls non_existing_directory || echo OK")
+        self.child.expect(f"{self.user}:~\\$")
+
+        output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
+        # ls fails, echo OK should run
+        self.assertIn("OK", output)
+
+    def test_35_ls_or_echo_nothing(self):
+        """Test: ls || echo nothing"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline("ls || echo nothing")
+        self.child.expect(f"{self.user}:~\\$")
+
+        output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
+        # ls succeeds, echo nothing should not run
+        self.assertNotIn("nothing", output)

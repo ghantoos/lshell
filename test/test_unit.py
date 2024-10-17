@@ -10,11 +10,11 @@ from lshell.variables import builtins_list
 from lshell import builtins
 from lshell import sec
 
-TOPDIR = "%s/../" % os.path.dirname(os.path.realpath(__file__))
+TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 
 
 class TestFunctions(unittest.TestCase):
-    args = ["--config=%s/etc/lshell.conf" % TOPDIR, "--quiet=1"]
+    args = [f"--config={TOPDIR}/etc/lshell.conf", "--quiet=1"]
     userconf = CheckConfig(args).returnconf()
     shell = ShellCmd(userconf, args)
 
@@ -74,7 +74,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_11_checkconfig_configoverwrite(self):
         """U12 | forbid ';', then check_secure should return 1"""
-        args = ["--config=%s/etc/lshell.conf" % TOPDIR, "--strict=123"]
+        args = [f"--config={TOPDIR}/etc/lshell.conf", "--strict=123"]
         userconf = CheckConfig(args).returnconf()
         return self.assertEqual(userconf["strict"], 123)
 
@@ -116,7 +116,7 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare
         return self.assertEqual(
-            userconf["aliases"]["echo"], "LD_PRELOAD=%s echo" % userconf["path_noexec"]
+            userconf["aliases"]["echo"], f"LD_PRELOAD={userconf['path_noexec']} echo"
         )
 
     def test_16_allowed_ld_preload_builtin(self):
@@ -173,30 +173,30 @@ class TestFunctions(unittest.TestCase):
 
     def test_22_prompt_short_0(self):
         """U22 | short_prompt = 0 should show dir compared to home dir"""
-        expected = "%s:~/foo$ " % getuser()
+        expected = f"{getuser()}:~/foo$ "
         args = self.args + ["--prompt_short=0"]
         userconf = CheckConfig(args).returnconf()
-        currentpath = "%s/foo" % userconf["home_path"]
+        currentpath = f"{userconf['home_path']}/foo"
         prompt = updateprompt(currentpath, userconf)
         # sort lists to compare
         return self.assertEqual(prompt, expected)
 
     def test_23_prompt_short_1(self):
         """U23 | short_prompt = 1 should show only current dir"""
-        expected = "%s: foo$ " % getuser()
+        expected = f"{getuser()}: foo$ "
         args = self.args + ["--prompt_short=1"]
         userconf = CheckConfig(args).returnconf()
-        currentpath = "%s/foo" % userconf["home_path"]
+        currentpath = f"{userconf['home_path']}/foo"
         prompt = updateprompt(currentpath, userconf)
         # sort lists to compare
         return self.assertEqual(prompt, expected)
 
     def test_24_prompt_short_2(self):
         """U24 | short_prompt = 2 should show full dir path"""
-        expected = "%s: %s$ " % (getuser(), os.getcwd())
+        expected = f"{getuser()}: {os.getcwd()}$ "
         args = self.args + ["--prompt_short=2"]
         userconf = CheckConfig(args).returnconf()
-        currentpath = "%s/foo" % userconf["home_path"]
+        currentpath = f"{userconf['home_path']}/foo"
         prompt = updateprompt(currentpath, userconf)
         # sort lists to compare
         return self.assertEqual(prompt, expected)

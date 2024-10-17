@@ -132,13 +132,13 @@ class ShellCmd(cmd.Cmd, object):
             if self.conf["winscp"] and re.search(
                 "WinSCP: this is end-of-file", self.g_line
             ):
-                utils.exec_cmd('echo "WinSCP: this is end-of-file: %s"' % self.retcode)
+                utils.exec_cmd(f'echo "WinSCP: this is end-of-file: {self.retcode}"')
             return object.__getattribute__(self, attr)
         if self.g_cmd in self.conf["allowed"]:
             if self.conf["timer"] > 0:
                 self.mytimer(0)
-            self.g_arg = re.sub("^~$|^~/", "%s/" % self.conf["home_path"], self.g_arg)
-            self.g_arg = re.sub(" ~/", " %s/" % self.conf["home_path"], self.g_arg)
+            self.g_arg = re.sub("^~$|^~/", f"{self.conf['home_path']}/", self.g_arg)
+            self.g_arg = re.sub(" ~/", f" {self.conf['home_path']}/", self.g_arg)
             # replace previous command exit code
             # in case multiple commands (using separators), only replace first
             # command. Regex replaces all occurrences of $?, before ;,&,|
@@ -146,12 +146,12 @@ class ShellCmd(cmd.Cmd, object):
                 p = re.compile(r"(\s|^)(\$\?)([\s|$]?[;&|].*)")
             else:
                 p = re.compile(r"(\s|^)(\$\?)(\s|$)")
-            self.g_line = p.sub(r" %s \3" % self.retcode, self.g_line)
+            self.g_line = p.sub(rf" {self.retcode} \3", self.g_line)
 
             if type(self.conf["aliases"]) is dict:
                 self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])
 
-            self.log.info('CMD: "%s"' % self.g_line)
+            self.log.info(f'CMD: "{self.g_line}"')
 
             if self.g_cmd == "cd":
                 # split cd <dir> and rest of command
@@ -188,7 +188,7 @@ class ShellCmd(cmd.Cmd, object):
             elif self.g_cmd == "export":
                 self.retcode, var = builtins.export(self.g_line)
                 if self.retcode == 1:
-                    self.log.critical("** forbidden environment variable '%s'" % var)
+                    self.log.critical(f"** forbidden environment variable '{var}'")
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]
@@ -199,8 +199,8 @@ class ShellCmd(cmd.Cmd, object):
                 self.retcode = utils.cmd_parse_execute(self.g_line, self)
 
         elif self.g_cmd not in ["", "?", "help", None]:
-            self.log.warn('INFO: unknown syntax -> "%s"' % self.g_line)
-            self.stderr.write("*** unknown syntax: %s\n" % self.g_cmd)
+            self.log.warn(f'INFO: unknown syntax -> "{self.g_line}"')
+            self.stderr.write(f"*** unknown syntax: {self.g_cmd}\n")
         self.g_cmd, self.g_arg, self.g_line = ["", "", ""]
         if self.conf["timer"] > 0:
             self.mytimer(self.conf["timer"])
@@ -232,7 +232,7 @@ class ShellCmd(cmd.Cmd, object):
             readline.parse_and_bind(self.completekey + ": complete")
         try:
             if self.intro and isinstance(self.intro, str):
-                self.stdout.write("%s\n" % self.intro)
+                self.stdout.write(f"{self.intro}\n")
             if self.conf["login_script"]:
                 utils.cmd_parse_execute(self.conf["login_script"], self)
             stop = None
@@ -242,11 +242,7 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     if self.use_rawinput:
                         try:
-                            # raw_input renamed as input in py3
-                            try:
-                                line = raw_input(self.conf["promptprint"])
-                            except NameError:
-                                line = input(self.conf["promptprint"])
+                            line = input(self.conf["promptprint"])
                         except EOFError:
                             line = "EOF"
                         except KeyboardInterrupt:
@@ -278,8 +274,7 @@ class ShellCmd(cmd.Cmd, object):
                 readline.write_history_file(self.conf["history_file"])
             except IOError:
                 self.log.error(
-                    "WARN: couldn't write history "
-                    "to file %s\n" % self.conf["history_file"]
+                    f"WARN: couldn't write history to file {self.conf['history_file']}\n"
                 )
 
     def complete(self, text, state):
@@ -344,7 +339,7 @@ class ShellCmd(cmd.Cmd, object):
         """
         commands = self.conf["allowed"]
         if line.startswith("./"):
-            return [cmd[2:] for cmd in commands if cmd.startswith("./%s" % text)]
+            return [cmd[2:] for cmd in commands if cmd.startswith(f"./{text}")]
         else:
             return [cmd for cmd in commands if cmd.startswith(text)]
 

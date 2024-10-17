@@ -41,15 +41,12 @@ configfile = conf_prefix + "/etc/lshell.conf"
 history_file = ".lhistory"
 
 # help text
-usage = (
-    """Usage: lshell [OPTIONS]
-  --config <file>   : Config file location (default %s)
+usage = f"""Usage: lshell [OPTIONS]
+  --config <file>   : Config file location (default {configfile})
   --<param> <value> : where <param> is *any* config file parameter
   -h, --help        : Show this help message
   --version         : Show version
 """
-    % configfile
-)
 
 # Intro Text
 intro = """You are in a limited shell.

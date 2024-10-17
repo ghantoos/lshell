@@ -36,14 +36,14 @@ def lpath(conf):
         lpath_allowed.sort()
         for path in lpath_allowed:
             if path:
-                sys.stdout.write(" %s\n" % path[:-2])
+                sys.stdout.write(f" {path[:-2]}\n")
     if conf["path"][1]:
         sys.stdout.write("Denied:\n")
         lpath_denied = conf["path"][1].split("|")
         lpath_denied.sort()
         for path in lpath_denied:
             if path:
-                sys.stdout.write(" %s\n" % path[:-2])
+                sys.stdout.write(f" {path[:-2]}\n")
     return 0
 
 
@@ -52,7 +52,7 @@ def lsudo(conf):
     if "sudo_commands" in conf and len(conf["sudo_commands"]) > 0:
         sys.stdout.write("Allowed sudo commands:\n")
         for command in conf["sudo_commands"]:
-            sys.stdout.write(" - %s\n" % command)
+            sys.stdout.write(f" - {command}\n")
         return 0
     else:
         sys.stdout.write("No sudo commands allowed\n")
@@ -65,14 +65,12 @@ def history(conf, log):
         try:
             readline.write_history_file(conf["history_file"])
         except IOError:
-            log.error(
-                "WARN: couldn't write history " "to file %s\n" % conf["history_file"]
-            )
+            log.error(f"WARN: couldn't write history to file {conf['history_file']}\n")
             return 1
         f = open(conf["history_file"], "r")
         i = 1
         for item in f.readlines():
-            sys.stdout.write("%d:  %s" % (i, item))
+            sys.stdout.write(f"{i}:  {item}")
             i += 1
     except (OSError, IOError, FileNotFoundError) as e:  # Catch specific exceptions
         log.critical(f"** Unable to read the history file: {e}")
@@ -130,7 +128,7 @@ def cd(directory, conf):
             os.chdir(os.path.realpath(directory))
             conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
         except OSError as excp:
-            sys.stdout.write("lshell: %s: %s\n" % (directory, excp.strerror))
+            sys.stdout.write(f"lshell: {directory}: {excp.strerror}\n")
             return excp.errno, conf
     else:
         os.chdir(conf["home_path"])

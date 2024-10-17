@@ -37,7 +37,7 @@ def usage():
 
 def version():
     """Prints the version"""
-    sys.stderr.write("lshell-%s - Limited Shell\n" % variables.__version__)
+    sys.stderr.write(f"lshell-{variables.__version__} - Limited Shell\n")
     sys.exit(0)
 
 
@@ -59,8 +59,8 @@ def get_aliases(line, aliases):
 
     for item in aliases.keys():
         escaped_item = re.escape(item)
-        reg1 = r"(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)(.*)" % escaped_item
-        reg2 = r"(^|;|&&|\|\||\|)\s*%s([ ;&\|]+|$)" % escaped_item
+        reg1 = rf"(^|;|&&|\|\||\|)\s*{escaped_item}([ ;&\|]+|$)(.*)"
+        reg2 = rf"(^|;|&&|\|\||\|)\s*{escaped_item}([ ;&\|]+|$)"
 
         # in case alias begins with the same command
         # (this is until i find a proper regex solution..)
@@ -70,7 +70,7 @@ def get_aliases(line, aliases):
             (before, after, rest) = re.findall(reg1, line)[0]
             linesave = line
 
-            line = re.sub(reg2, "%s %s%s" % (before, aliaskey, after), line, 1)
+            line = re.sub(reg2, f"{before} {aliaskey}{after}", line, 1)
 
             # if line does not change after sub, exit loop
             if linesave == line:
@@ -81,7 +81,7 @@ def get_aliases(line, aliases):
 
     for char in [";"]:
         # remove all remaining double char
-        line = line.replace("%s%s" % (char, char), "%s" % char)
+        line = line.replace(f"{char}{char}", f"{char}")
     return line
 
 
@@ -105,7 +105,10 @@ def cmd_parse_execute(command_line, shell_context=None):
             continue
 
         # Get the executable command
-        executable = re.split(r"\s", command)[0]
+        try:
+            executable, argument = re.split(r"\s+", command, maxsplit=1)
+        except ValueError:
+            executable, argument = command, ""
 
         # Check if command is in built-ins list or execute it via exec_cmd
         if executable in variables.builtins_list:
@@ -113,6 +116,10 @@ def cmd_parse_execute(command_line, shell_context=None):
                 shell_context.do_help(command)
             elif executable == "exit":
                 shell_context.do_exit(command)
+            elif executable == "history":
+                builtins.history(shell_context.conf, shell_context.log)
+            elif executable == "cd":
+                retcode = builtins.cd(argument, shell_context.conf)
             else:
                 retcode = getattr(builtins, executable)(shell_context.conf)
         else:
@@ -160,14 +167,14 @@ def updateprompt(path, conf):
 
     # update the prompt when directory is changed
     if path == conf["home_path"]:
-        prompt = "%s:~$ " % promptbase
+        prompt = f"{promptbase}:~$ "
     elif conf["prompt_short"] == 1:
-        prompt = "%s: %s$ " % (promptbase, path.split("/")[-1])
+        prompt = f"{promptbase}: {path.split('/')[-1]}$ "
     elif conf["prompt_short"] == 2:
-        prompt = "%s: %s$ " % (promptbase, os.getcwd())
+        prompt = f"{promptbase}: {os.getcwd()}$ "
     elif re.findall(conf["home_path"], path):
-        prompt = "%s:~%s$ " % (promptbase, path.split(conf["home_path"])[1])
+        prompt = f"{promptbase}:~{path.split(conf['home_path'])[1]}$ "
     else:
-        prompt = "%s:%s$ " % (promptbase, path)
+        prompt = f"{promptbase}:{path}$ "
 
     return prompt

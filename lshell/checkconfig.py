@@ -89,7 +89,7 @@ class CheckConfig:
                 conf["configfile"] = os.path.realpath(value)
             if option in ["--log"]:
                 conf["logpath"] = os.path.realpath(value)
-            if "%s=" % option[2:] in variables.configparams:
+            if f"{option[2:]}=" in variables.configparams:
                 conf[option[2:]] = value
             if option in ["-c"]:
                 conf["ssh"] = value
@@ -138,7 +138,7 @@ class CheckConfig:
             configparser.MissingSectionHeaderError,
             configparser.ParsingError,
         ) as argument:
-            self.stderr.write("ERR: %s\n" % argument)
+            self.stderr.write(f"ERR: {argument}\n")
             sys.exit(1)
 
         if not self.config.has_section("global"):
@@ -168,7 +168,7 @@ class CheckConfig:
         else:
             logname = "lshell"
 
-        logger = logging.getLogger("%s.%s" % (logname, self.conf["config_mtime"]))
+        logger = logging.getLogger(f"{logname}.{self.conf['config_mtime']}")
 
         # close any logger handler/filters if exists
         # this is useful if configuration is reloaded
@@ -266,7 +266,7 @@ class CheckConfig:
         if "include_dir" in self.conf:
             import glob
 
-            self.conf["include_dir_conf"] = glob.glob("%s*" % self.conf["include_dir"])
+            self.conf["include_dir_conf"] = glob.glob(f"{self.conf['include_dir']}*")
             self.config.read(self.conf["include_dir_conf"])
 
         self.user = getuser()
@@ -376,9 +376,7 @@ class CheckConfig:
                     if item in liste:
                         liste.remove(item)
                     else:
-                        self.log.error(
-                            "CONF: -['%s'] ignored in '%s' list." % (item, key)
-                        )
+                        self.log.error(f"CONF: -['{item}'] ignored in '{key}' list.")
         return {key: str(liste)}
 
     def expand_all(self):
@@ -414,7 +412,7 @@ class CheckConfig:
                     if os.access(os.path.join(directory, item), os.X_OK):
                         expanded_all.append(item)
             else:
-                self.log.error('CONF: PATH entry "%s" does not exist' % directory)
+                self.log.error(f'CONF: PATH entry "{directory}" does not exist')
 
         return str(expanded_all)
 
@@ -424,7 +422,7 @@ class CheckConfig:
             evaluated = eval(value)
             return evaluated
         except SyntaxError:
-            self.log.critical("CONF: Incomplete %s field in configuration file" % info)
+            self.log.critical(f"CONF: Incomplete {info} field in configuration file")
             sys.exit(1)
 
     def check_user_integrity(self):
@@ -434,10 +432,9 @@ class CheckConfig:
         """
         for item in variables.required_config:
             if item not in self.conf_raw.keys():
-                self.log.critical("ERROR: Missing parameter '%s'" % item)
+                self.log.critical(f"ERROR: Missing parameter '{item}'")
                 self.log.critical(
-                    "ERROR: Add it in the in the [%s] "
-                    "or [default] section of conf file." % self.user
+                    f"ERROR: Add it in the in the [{self.user}] or [default] section of conf file."
                 )
                 sys.exit(1)
 
@@ -514,7 +511,7 @@ class CheckConfig:
                     self.conf[item] = 0
             except TypeError:
                 self.log.critical(
-                    "ERR: in the -%s- field. Check the" " configuration file." % item
+                    f"ERR: in the -{item}- field. Check the configuration file."
                 )
                 sys.exit(1)
 
@@ -552,8 +549,7 @@ class CheckConfig:
                     self.conf["scpforce"] = self.conf_raw["scpforce"]
                 else:
                     self.log.error(
-                        "CONF: scpforce no such directory: %s"
-                        % self.conf_raw["scpforce"]
+                        f"CONF: scpforce no such directory: {self.conf_raw['scpforce']}"
                     )
             except TypeError:
                 self.log.error("CONF: scpforce must be a string!")
@@ -572,7 +568,7 @@ class CheckConfig:
                 pass
         else:
             self.log.critical(
-                'ERR: home directory "%s" does not exist.' % self.conf["home_path"]
+                f'ERR: home directory "{self.conf["home_path"]}" does not exist.'
             )
             sys.exit(1)
 
@@ -582,16 +578,13 @@ class CheckConfig:
                     self.conf_raw["history_file"].replace("%u", self.conf["username"])
                 )
             except (KeyError, SyntaxError, TypeError, NameError):
-                self.log.error(
-                    "CONF: history file error: %s" % self.conf["history_file"]
-                )
+                self.log.error(f"CONF: history file error: {self.conf['history_file']}")
         else:
             self.conf["history_file"] = variables.history_file
 
         if not self.conf["history_file"].startswith("/"):
-            self.conf["history_file"] = "%s/%s" % (
-                self.conf["home_path"],
-                self.conf["history_file"],
+            self.conf["history_file"] = (
+                f"{self.conf['home_path']}/{self.conf['history_file']}"
             )
 
         os.environ["PATH"] = os.environ["PATH"] + self.conf["env_path"]
@@ -607,7 +600,7 @@ class CheckConfig:
         if self.conf["allowed_cmd_path"]:
             for path in self.conf["allowed_cmd_path"]:
                 # add path to PATH env variable
-                os.environ["PATH"] += ":%s" % path
+                os.environ["PATH"] += f":{path}"
                 # find executable file, and add them to allowed commands
                 for item in os.listdir(path):
                     cmd = os.path.join(path, item)
@@ -674,11 +667,11 @@ class CheckConfig:
                         if " -f " in self.conf["ssh"]:
                             # case scp download is allowed
                             if self.conf["scp_download"]:
-                                self.log.error('SCP: GET "%s"' % self.conf["ssh"])
+                                self.log.error(f'SCP: GET "{self.conf["ssh"]}"')
                             # case scp download is forbidden
                             else:
                                 self.log.error(
-                                    'SCP: download forbidden: "%s"' % self.conf["ssh"]
+                                    f'SCP: download forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
                         elif " -t " in self.conf["ssh"]:
@@ -690,16 +683,16 @@ class CheckConfig:
                                     forcedpath = os.path.realpath(self.conf["scpforce"])
                                     if scppath != forcedpath:
                                         self.log.error(
-                                            "SCP: forced SCP " "directory: %s" % scppath
+                                            f"SCP: forced SCP directory: {scppath}"
                                         )
                                         cmdsplit.pop(-1)
                                         cmdsplit.append(forcedpath)
                                         self.conf["ssh"] = string.join(cmdsplit)
-                                self.log.error('SCP: PUT "%s"' % self.conf["ssh"])
+                                self.log.error(f'SCP: PUT "{self.conf["ssh"]}"')
                             # case scp upload is forbidden
                             else:
                                 self.log.error(
-                                    'SCP: upload forbidden: "%s"' % self.conf["ssh"]
+                                    f'SCP: upload forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
                         retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
@@ -721,7 +714,7 @@ class CheckConfig:
                     if ret_check_secure:
                         self.ssh_warn("char/command over SSH", self.conf["ssh"])
                     # else
-                    self.log.error('Over SSH: "%s"' % self.conf["ssh"])
+                    self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
                     # if command is "help"
                     if self.conf["ssh"] == "help":
                         cli.do_help(None)
@@ -742,10 +735,10 @@ class CheckConfig:
     def ssh_warn(self, message, command="", key=""):
         """log and warn if forbidden action over SSH"""
         if key == "scp":
-            self.log.critical("*** forbidden %s" % message)
-            self.log.error("*** SCP command: %s" % command)
+            self.log.critical(f"*** forbidden {message}")
+            self.log.error(f"*** SCP command: {command}")
         else:
-            self.log.critical('*** forbidden %s: "%s"' % (message, command))
+            self.log.critical(f'*** forbidden {message}: "{command}"')
         self.stderr.write("This incident has been reported.\n")
         self.log.error("Exited")
         sys.exit(1)
@@ -777,8 +770,7 @@ class CheckConfig:
                 return
             if not os.path.exists(self.conf["path_noexec"]):
                 self.log.critical(
-                    "Fatal: 'path_noexec': %s No such file of directory"
-                    % (self.conf["path_noexec"])
+                    f"Fatal: 'path_noexec': {self.conf['path_noexec']} No such file or directory"
                 )
                 sys.exit(2)
         else:
@@ -805,10 +797,9 @@ class CheckConfig:
                 # add an alias to all the commands, prepending with LD_PRELOAD=
                 # except for built-in commands
                 if cmd not in variables.builtins_list:
-                    self.conf["aliases"][cmd] = "LD_PRELOAD=%s %s" % (
-                        self.conf["path_noexec"],
-                        cmd,
-                    )
+                    self.conf["aliases"][
+                        cmd
+                    ] = f"LD_PRELOAD={self.conf['path_noexec']} {cmd}"
         else:
             # if sudo_noexec.so file is not found,  write error in log file,
             # but don't exit tp  prevent strict dependency on sudo noexec lib

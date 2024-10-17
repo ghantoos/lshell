@@ -41,15 +41,15 @@ class CheckConfig:
 
     def __init__(self, args, refresh=None, stdin=None, stdout=None, stderr=None):
         """Force the calling of the methods below"""
-        if stdin is None:
+        if stdin == None:
             self.stdin = sys.stdin
         else:
             self.stdin = stdin
-        if stdout is None:
+        if stdout == None:
             self.stdout = sys.stdout
         else:
             self.stdout = stdout
-        if stderr is None:
+        if stderr == None:
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
@@ -334,7 +334,7 @@ class CheckConfig:
                             # remove double slashes
                             liste[0] = liste[0].replace("//", "/")
                             self.conf_raw.update({key: str(liste)})
-                        elif stuff and type(eval(stuff)) is list:
+                        elif stuff and type(eval(stuff)) == list:
                             self.conf_raw.update({key: stuff})
                 # case allowed is set to 'all'
                 elif key == "allowed" and split[0] == "'all'":
@@ -561,7 +561,7 @@ class CheckConfig:
 
         if os.path.isdir(self.conf["home_path"]):
             # change dir to home when initially loading the configuration
-            if self.refresh is None:
+            if self.refresh == None:
                 os.chdir(self.conf["home_path"])
             # if reloading the configuration, do not change directory
             else:

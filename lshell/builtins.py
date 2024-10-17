@@ -29,33 +29,30 @@ from lshell import utils
 
 
 def lpath(conf):
-    """ lists allowed and forbidden path
-    """
-    if conf['path'][0]:
+    """lists allowed and forbidden path"""
+    if conf["path"][0]:
         sys.stdout.write("Allowed:\n")
-        lpath_allowed = conf['path'][0].split('|')
+        lpath_allowed = conf["path"][0].split("|")
         lpath_allowed.sort()
         for path in lpath_allowed:
             if path:
-                sys.stdout.write(" %s\n" % path[:-2])
-    if conf['path'][1]:
+                sys.stdout.write(f" {path[:-2]}\n")
+    if conf["path"][1]:
         sys.stdout.write("Denied:\n")
-        lpath_denied = conf['path'][1].split('|')
+        lpath_denied = conf["path"][1].split("|")
         lpath_denied.sort()
         for path in lpath_denied:
             if path:
-                sys.stdout.write(" %s\n" % path[:-2])
+                sys.stdout.write(f" {path[:-2]}\n")
     return 0
 
 
 def lsudo(conf):
-    """ lists allowed sudo commands
-    """
-    if 'sudo_commands' in conf \
-       and len(conf['sudo_commands']) > 0:
+    """lists allowed sudo commands"""
+    if "sudo_commands" in conf and len(conf["sudo_commands"]) > 0:
         sys.stdout.write("Allowed sudo commands:\n")
-        for command in conf['sudo_commands']:
-            sys.stdout.write(" - %s\n" % command)
+        for command in conf["sudo_commands"]:
+            sys.stdout.write(f" - {command}\n")
         return 0
     else:
         sys.stdout.write("No sudo commands allowed\n")
@@ -63,34 +60,32 @@ def lsudo(conf):
 
 
 def history(conf, log):
-    """ print the commands history
-    """
+    """print the commands history"""
     try:
         try:
-            readline.write_history_file(conf['history_file'])
+            readline.write_history_file(conf["history_file"])
         except IOError:
-            log.error('WARN: couldn\'t write history '
-                      'to file %s\n' % conf['history_file'])
+            log.error(f"WARN: couldn't write history to file {conf['history_file']}\n")
             return 1
-        f = open(conf['history_file'], 'r')
+        f = open(conf["history_file"], "r")
         i = 1
         for item in f.readlines():
-            sys.stdout.write("%d:  %s" % (i, item))
+            sys.stdout.write(f"{i}:  {item}")
             i += 1
-    except:
-        log.critical('** Unable to read the history file.')
+    except (OSError, IOError, FileNotFoundError) as e:  # Catch specific exceptions
+        log.critical(f"** Unable to read the history file: {e}")
         return 1
     return 0
 
 
 def export(args):
-    """ export environment variables """
+    """export environment variables"""
     # if command contains at least 1 space
-    if args.count(' '):
+    if args.count(" "):
         env = args.split(" ", 1)[1]
         # if it contains the equal sign, consider only the first one
-        if env.count('='):
-            var, value = env.split(' ')[0].split('=')[0:2]
+        if env.count("="):
+            var, value = env.split(" ")[0].split("=")[0:2]
             # disallow dangerous variable
             if var in variables.FORBIDDEN_ENVIRON:
                 return 1, var
@@ -99,8 +94,7 @@ def export(args):
 
 
 def cd(directory, conf):
-    """ implementation of the "cd" command
-    """
+    """implementation of the "cd" command"""
     # expand user's ~
     directory = os.path.expanduser(directory)
 
@@ -109,7 +103,7 @@ def cd(directory, conf):
 
     if len(directory) >= 1:
         # add wildcard completion support to cd
-        if directory.find('*'):
+        if directory.find("*"):
             # get all files and directories matching wildcard
             wildall = glob.glob(directory)
             wilddir = []
@@ -123,22 +117,21 @@ def cd(directory, conf):
             if len(wilddir) >= 1:
                 directory = wilddir[0]
         # go previous directory
-        if directory == '-':
-            directory = conf['oldpwd']
+        if directory == "-":
+            directory = conf["oldpwd"]
 
         # store current directory in oldpwd variable
-        conf['oldpwd'] = os.getcwd()
+        conf["oldpwd"] = os.getcwd()
 
         # change directory
         try:
             os.chdir(os.path.realpath(directory))
-            conf['promptprint'] = utils.updateprompt(os.getcwd(), conf)
+            conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
         except OSError as excp:
-            sys.stdout.write("lshell: %s: %s\n" % (directory,
-                                                   excp.strerror))
+            sys.stdout.write(f"lshell: {directory}: {excp.strerror}\n")
             return excp.errno, conf
     else:
-        os.chdir(conf['home_path'])
-        conf['promptprint'] = utils.updateprompt(os.getcwd(), conf)
+        os.chdir(conf["home_path"])
+        conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
 
     return 0, conf

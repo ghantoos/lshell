@@ -1,8 +1,0 @@
-bandit
-coverage
-flake8
-nose
-pexpect
-nose-timer
-pylint
-pyenchant

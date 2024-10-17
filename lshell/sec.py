@@ -27,88 +27,86 @@ from lshell import utils
 
 
 def warn_count(messagetype, command, conf, strict=None, ssh=None):
-    """ Update the warning_counter, log and display a warning to the user
-    """
+    """Update the warning_counter, log and display a warning to the user"""
 
-    log = conf['logpath']
+    log = conf["logpath"]
     if not ssh:
         if strict:
-            conf['warning_counter'] -= 1
-            if conf['warning_counter'] < 0:
-                log.critical('*** forbidden %s -> "%s"'
-                             % (messagetype, command))
-                log.critical('*** Kicked out')
+            conf["warning_counter"] -= 1
+            if conf["warning_counter"] < 0:
+                log.critical(f'*** forbidden {messagetype} -> "{command}"')
+                log.critical("*** Kicked out")
                 sys.exit(1)
             else:
-                log.critical('*** forbidden %s -> "%s"'
-                             % (messagetype, command))
-                sys.stderr.write('*** You have %s warning(s) left,'
-                                 ' before getting kicked out.\n'
-                                 % conf['warning_counter'])
-                log.error('*** User warned, counter: %s'
-                          % conf['warning_counter'])
-                sys.stderr.write('This incident has been reported.\n')
+                log.critical(f'*** forbidden {messagetype} -> "{command}"')
+                sys.stderr.write(
+                    f"*** You have {conf['warning_counter']} warning(s) left,"
+                    " before getting kicked out.\n"
+                )
+                log.error(f"*** User warned, counter: {conf['warning_counter']}")
+                sys.stderr.write("This incident has been reported.\n")
         else:
-            if not conf['quiet']:
-                log.critical('*** forbidden %s: %s'
-                             % (messagetype, command))
+            if not conf["quiet"]:
+                log.critical(f"*** forbidden {messagetype}: {command}")
 
     # if you are here, means that you did something wrong. Return 1.
     return 1, conf
 
 
 def check_path(line, conf, completion=None, ssh=None, strict=None):
-    """ Check if a path is entered in the line. If so, it checks if user
+    """Check if a path is entered in the line. If so, it checks if user
     are allowed to see this path. If user is not allowed, it calls
     warn_count. In case of completion, it only returns 0 or 1.
     """
-    allowed_path_re = str(conf['path'][0])
-    denied_path_re = str(conf['path'][1][:-1])
+    allowed_path_re = str(conf["path"][0])
+    denied_path_re = str(conf["path"][1][:-1])
 
     # split line depending on the operators
-    sep = re.compile(r'\ |;|\||&')
+    sep = re.compile(r"\ |;|\||&")
     line = line.strip()
     line = sep.split(line)
 
     for item in line:
         # remove potential quotes or back-ticks
-        item = re.sub(r'^["\'`]|["\'`]$', '', item)
+        item = re.sub(r'^["\'`]|["\'`]$', "", item)
 
         # remove potential $(), ${}, ``
-        item = re.sub(r'^\$[\(\{]|[\)\}]$', '', item)
+        item = re.sub(r"^\$[\(\{]|[\)\}]$", "", item)
 
         # if item has been converted to something other than a string
         # or an int, reconvert it to a string
-        if type(item) not in ['str', 'int']:
+        if type(item) not in ["str", "int"]:
             item = str(item)
         # replace "~" with home path
         item = os.path.expanduser(item)
 
         # expand shell wildcards using "echo"
         # i know, this a bit nasty...
-        if re.findall('\$|\*|\?', item):
+        if re.findall(r"\$|\*|\?", item):
             # remove quotes if available
-            item = re.sub("\"|\'", "", item)
+            item = re.sub("\"|'", "", item)
             import subprocess
-            p = subprocess.Popen("`which echo` %s" % item,
-                                 shell=True,
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
+
+            p = subprocess.Popen(
+                f"`which echo` {item}",
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             cout = p.stdout
 
             try:
-                item = cout.readlines()[0].decode('utf8').split(' ')[0]
+                item = cout.readlines()[0].decode("utf8").split(" ")[0]
                 item = item.strip()
                 item = os.path.expandvars(item)
             except IndexError:
-                conf['logpath'].critical('*** Internal error: command not '
-                                         'executed')
+                conf["logpath"].critical("*** Internal error: command not " "executed")
                 return 1, conf
 
         tomatch = os.path.realpath(item)
-        if os.path.isdir(tomatch) and tomatch[-1] != '/':
-            tomatch += '/'
+        if os.path.isdir(tomatch) and tomatch[-1] != "/":
+            tomatch += "/"
         match_allowed = re.findall(allowed_path_re, tomatch)
         if denied_path_re:
             match_denied = re.findall(denied_path_re, tomatch)
@@ -120,23 +118,14 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
         # case completion: return 1
         if not match_allowed or match_denied:
             if not completion:
-                ret, conf = warn_count('path',
-                                       tomatch,
-                                       conf,
-                                       strict=strict,
-                                       ssh=ssh)
+                ret, conf = warn_count("path", tomatch, conf, strict=strict, ssh=ssh)
             return 1, conf
 
     if not completion:
-        if not re.findall(allowed_path_re, os.getcwd() + '/'):
-            ret, conf = warn_count('path',
-                                   tomatch,
-                                   conf,
-                                   strict=strict,
-                                   ssh=ssh)
-            os.chdir(conf['home_path'])
-            conf['promptprint'] = utils.updateprompt(os.getcwd(),
-                                                     conf)
+        if not re.findall(allowed_path_re, os.getcwd() + "/"):
+            ret, conf = warn_count("path", tomatch, conf, strict=strict, ssh=ssh)
+            os.chdir(conf["home_path"])
+            conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
             return 1, conf
     return 0, conf
 
@@ -166,8 +155,8 @@ def check_secure(line, conf, strict=None, ssh=None):
     # (for e.g. "'a'", 'a') but the converse would
     # require detecting single quotation stanzas
     # nested within double quotes and vice versa
-    relist = re.findall(r'[^=]\"(.+)\"', line)
-    relist2 = re.findall(r'[^=]\'(.+)\'', line)
+    relist = re.findall(r"[^=]\"(.+)\"", line)
+    relist2 = re.findall(r"[^=]\'(.+)\'", line)
     relist = relist + relist2
     for item in relist:
         if os.path.exists(item):
@@ -175,74 +164,54 @@ def check_secure(line, conf, strict=None, ssh=None):
             returncode += ret_check_path
 
     # parse command line for control characters, and warn user
-    if re.findall(r'[\x01-\x1F\x7F]', oline):
-        ret, conf = warn_count('control char',
-                               oline,
-                               conf,
-                               strict=strict,
-                               ssh=ssh)
+    if re.findall(r"[\x01-\x1F\x7F]", oline):
+        ret, conf = warn_count("control char", oline, conf, strict=strict, ssh=ssh)
         return ret, conf
 
-    for item in conf['forbidden']:
+    for item in conf["forbidden"]:
         # allow '&&' and '||' even if singles are forbidden
-        if item in ['&', '|']:
-            if re.findall("[^\%s]\%s[^\%s]" % (item, item, item), line):
-                ret, conf = warn_count('syntax',
-                                       oline,
-                                       conf,
-                                       strict=strict,
-                                       ssh=ssh)
+        if item in ["&", "|"]:
+            if re.findall(rf"[^\{item}]\{item}[^\{item}]", line):
+                ret, conf = warn_count("syntax", oline, conf, strict=strict, ssh=ssh)
                 return ret, conf
         else:
             if item in line:
-                ret, conf = warn_count('syntax',
-                                       oline,
-                                       conf,
-                                       strict=strict,
-                                       ssh=ssh)
+                ret, conf = warn_count("syntax", oline, conf, strict=strict, ssh=ssh)
                 return ret, conf
 
     # check if the line contains $(foo) executions, and check them
-    executions = re.findall('\$\([^)]+[)]', line)
+    executions = re.findall(r"\$\([^)]+[)]", line)
     for item in executions:
         # recurse on check_path
-        ret_check_path, conf = check_path(item[2:-1].strip(),
-                                          conf,
-                                          strict=strict)
+        ret_check_path, conf = check_path(item[2:-1].strip(), conf, strict=strict)
         returncode += ret_check_path
 
         # recurse on check_secure
-        ret_check_secure, conf = check_secure(item[2:-1].strip(),
-                                              conf,
-                                              strict=strict)
+        ret_check_secure, conf = check_secure(item[2:-1].strip(), conf, strict=strict)
         returncode += ret_check_secure
 
     # check for executions using back quotes '`'
-    executions = re.findall('\`[^`]+[`]', line)
+    executions = re.findall(r"\`[^`]+[`]", line)
     for item in executions:
-        ret_check_secure, conf = check_secure(item[1:-1].strip(),
-                                              conf,
-                                              strict=strict)
+        ret_check_secure, conf = check_secure(item[1:-1].strip(), conf, strict=strict)
         returncode += ret_check_secure
 
     # check if the line contains ${foo=bar}, and check them
-    curly = re.findall('\$\{[^}]+[}]', line)
+    curly = re.findall(r"\$\{[^}]+[}]", line)
     for item in curly:
         # split to get variable only, and remove last character "}"
-        if re.findall(r'=|\+|\?|\-', item):
-            variable = re.split('=|\+|\?|\-', item, 1)
+        if re.findall(r"=|\+|\?|\-", item):
+            variable = re.split(r"=|\+|\?|\-", item, 1)
         else:
             variable = item
-        ret_check_path, conf = check_path(variable[1][:-1],
-                                          conf,
-                                          strict=strict)
+        ret_check_path, conf = check_path(variable[1][:-1], conf, strict=strict)
         returncode += ret_check_path
 
     # if unknown commands where found, return 1 and don't execute the line
     if returncode > 0:
         return 1, conf
     # in case the $(foo) or `foo` command passed the above tests
-    elif line.startswith('$(') or line.startswith('`'):
+    elif line.startswith("$(") or line.startswith("`"):
         return 0, conf
 
     # in case ';', '|' or '&' are not forbidden, check if in line
@@ -266,13 +235,15 @@ def check_secure(line, conf, strict=None, ssh=None):
 
     # append remaining command line
     if start != len(line):
+        # fmt: off
         lines.append(line[start:len(line)])
+        # fmt: on
 
-    # remove trailing parenthesis
-    line = re.sub('\)$', '', line)
     for separate_line in lines:
+        # remove trailing parenthesis
+        separate_line = re.sub(r"\)$", "", separate_line)
         separate_line = " ".join(separate_line.split())
-        splitcmd = separate_line.strip().split(' ')
+        splitcmd = separate_line.strip().split(" ")
         command = splitcmd[0]
         if len(splitcmd) > 1:
             cmdargs = splitcmd
@@ -280,31 +251,26 @@ def check_secure(line, conf, strict=None, ssh=None):
             cmdargs = None
 
         # in case of a sudo command, check in sudo_commands list if allowed
-        if command == 'sudo':
-            if type(cmdargs) == list:
+        if command == "sudo":
+            if type(cmdargs) is list:
                 # allow the -u (user) flag
-                if cmdargs[1] == '-u' and cmdargs:
+                if cmdargs[1] == "-u" and cmdargs:
                     sudocmd = cmdargs[3]
                 else:
                     sudocmd = cmdargs[1]
-                if sudocmd not in conf['sudo_commands'] and cmdargs:
-                    ret, conf = warn_count('sudo command',
-                                           oline,
-                                           conf,
-                                           strict=strict,
-                                           ssh=ssh)
+                if sudocmd not in conf["sudo_commands"] and cmdargs:
+                    ret, conf = warn_count(
+                        "sudo command", oline, conf, strict=strict, ssh=ssh
+                    )
                     return ret, conf
 
         # if over SSH, replaced allowed list with the one of overssh
         if ssh:
-            conf['allowed'] = conf['overssh']
+            conf["allowed"] = conf["overssh"]
 
         # for all other commands check in allowed list
-        if command not in conf['allowed'] and command:
-            ret, conf = warn_count('command',
-                                   command,
-                                   conf,
-                                   strict=strict,
-                                   ssh=ssh)
+        if command not in conf["allowed"] and command:
+            ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
             return ret, conf
+
     return 0, conf

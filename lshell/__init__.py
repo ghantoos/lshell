@@ -1,7 +1,7 @@
 #
 #  Limited command Shell (lshell)
 #
-#  Copyright (C) 2008-2013 Ignace Mouzannar (ghantoos) <ghantoos@ghantoos.org>
+#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
 #
 #  This file is part of lshell
 #

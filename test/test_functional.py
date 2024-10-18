@@ -3,6 +3,7 @@ import pexpect
 import os
 import subprocess
 from getpass import getuser
+import tempfile
 
 # import lshell specifics
 from lshell import utils
@@ -579,3 +580,48 @@ class TestFunctions(unittest.TestCase):
         output = self.child.before.decode("utf8").split("\n", 1)[1].strip()
         # ls succeeds, echo nothing should not run
         self.assertNotIn("nothing", output)
+
+    def test_36_env_vars_file_not_found(self):
+        """Test missing environment variable file"""
+        missing_file_path = "/path/to/missing/file"
+
+        # Inject the environment variable file path
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --env_vars_files \"['{missing_file_path}']\""
+        )
+
+        # Expect the prompt after shell startup
+        self.child.expect(f"{self.user}:~\\$")
+
+        # Simulate what happens when the environment variable file is missing
+        expected = f"ERROR: Unable to read environment file: {missing_file_path}\r\nYou are in a limited shell.\r\nType '?' or 'help' to get the list of allowed commands\r\n"
+
+        # Check the error message in the output
+        self.assertIn(expected, self.child.before.decode("utf8"))
+
+    def test_37_load_env_vars_from_file(self):
+        """Test loading environment variables from file"""
+
+        # Create a temporary file to store environment variables
+        with tempfile.NamedTemporaryFile(
+            mode="w", delete=False, dir="/tmp"
+        ) as temp_env_file:
+            temp_env_file.write("export bar=helloworld\n")
+            temp_env_file.flush()  # Ensure data is written to disk
+            temp_env_file_path = temp_env_file.name
+
+        # Set the temp env file path in the config
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --env_vars_files \"['{temp_env_file_path}']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        # Test if the environment variable was loaded
+        self.child.sendline("echo $bar")
+        self.child.expect(f"{self.user}:~\\$")
+
+        result = self.child.before.decode("utf8").strip().split("\n", 1)[1].strip()
+        self.assertEqual(result, "helloworld")
+
+        # Cleanup the temporary file
+        os.remove(temp_env_file_path)

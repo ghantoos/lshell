@@ -89,6 +89,11 @@ def export(args):
             # disallow dangerous variable
             if var in variables.FORBIDDEN_ENVIRON:
                 return 1, var
+            # Strip the quotes from the value if it begins and ends with quotes (single or double)
+            if (value.startswith('"') and value.endswith('"')) or (
+                value.startswith("'") and value.endswith("'")
+            ):
+                value = value[1:-1]
             os.environ.update({var: value})
     return 0, None
 

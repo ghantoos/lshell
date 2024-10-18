@@ -34,6 +34,7 @@ import glob
 from lshell import utils
 from lshell import variables
 from lshell import sec
+from lshell import builtins
 
 
 class CheckConfig:
@@ -118,6 +119,20 @@ class CheckConfig:
             env_vars = self.conf["env_vars"]
             for key in env_vars.keys():
                 os.environ[key] = str(env_vars[key])
+
+        # Check paths to files that contain env vars
+        if "env_vars_files" in self.conf:
+            for envfile in self.conf["env_vars_files"]:
+                file_path = os.path.expandvars(envfile)
+                try:
+                    with open(file_path) as env_vars:
+                        for env_var in env_vars.readlines():
+                            if env_var.split(" ", 1)[0] == "export":
+                                builtins.export(env_var.strip())
+                except (OSError, IOError):
+                    self.stderr.write(
+                        f"ERROR: Unable to read environment file: {file_path}\n"
+                    )
 
     def check_file(self, file):
         """This method checks the existence of the given configuration
@@ -467,6 +482,7 @@ class CheckConfig:
             "sudo_commands",
             "warning_counter",
             "env_vars",
+            "env_vars_files",
             "timer",
             "scp",
             "scp_upload",
@@ -495,6 +511,7 @@ class CheckConfig:
                     "allowed_shell_escape",
                     "overssh",
                     "sudo_commands",
+                    "env_vars_files",
                 ]:
                     self.conf[item] = []
                 elif item in ["history_size"]:

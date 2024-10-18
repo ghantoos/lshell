@@ -76,6 +76,7 @@ configparams = [
     "env_path=",
     "allowed_cmd_path=",
     "env_vars=",
+    "env_vars_files=",
     "scp=",
     "scp_upload=",
     "scp_download=",

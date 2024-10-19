@@ -19,6 +19,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+import os
 
 __version__ = "0.9.19"
 
@@ -29,11 +30,15 @@ required_config = ["allowed", "forbidden", "warning_counter"]
 # on *Linux sys.exec_prefix = '/usr' and default path must be in '/etc'
 # on *BSD sys.exec_prefix = '/usr/{pkg,local}/' and default path
 # is '/usr/{pkg,local}/etc'
+lshell_path = os.path.abspath(__file__).split("/lib/")[0]
 if sys.exec_prefix != "/usr":
     # for *BSD
     conf_prefix = sys.exec_prefix
+elif lshell_path == "/home/ghantoos/.local":
+    # for *Linux user install
+    conf_prefix = lshell_path
 else:
-    # for *Linux
+    # for *Linux system-wide install
     conf_prefix = ""
 configfile = conf_prefix + "/etc/lshell.conf"
 

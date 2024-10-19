@@ -5,8 +5,18 @@
 # $Id: CHANGES,v 1.65 2010-10-26 22:39:36 ghantoos Exp $
 
 Contact: ghantoos@ghantoos.org
-http://sourceforge.net/projects/lshell/
+https://github.com/ghantoos/lshell
 #####################################
+
+=== v0.10 17/10/2024 ===
+    * Fixed security issues CVE-2016-6902, CVE-2016-6903
+      - https://nvd.nist.gov/vuln/detail/CVE-2016-6902
+      - https://nvd.nist.gov/vuln/detail/CVE-2016-6903
+    * Fixed parser to better support operators like || and &&
+    * Added support for ctrl-z: lshell no longer runs in the background when ctrl-z is used
+    * Added env_vars_files feature: enables adding environment variables in a file and loading it at login
+    * Improved Python3 compatibility & general code refresh
+    * Removed the help_help() function
 
 === v0.9.18 24/02/2016 ===
     * Corrected exit codes of built-in commands

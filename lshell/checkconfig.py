@@ -59,6 +59,7 @@ class CheckConfig:
         self.conf = {}
         self.conf, self.arguments = self.getoptions(args, self.conf)
         configfile = self.conf["configfile"]
+        self.check_config_file_exists(configfile)
         self.conf["config_mtime"] = self.get_config_mtime(configfile)
         self.check_file(configfile)
         self.get_global()
@@ -69,6 +70,13 @@ class CheckConfig:
         self.check_env()
         self.check_scp_sftp()
         self.set_noexec()
+
+    def check_config_file_exists(self, configfile):
+        """Check if the configuration file exists, else exit with error"""
+        if not os.path.exists(configfile):
+            self.stderr.write("Error: Config file doesn't exist\n")
+            self.stderr.write(variables.usage)
+            sys.exit(1)
 
     def getoptions(self, arguments, conf):
         """This method checks the usage. lshell.py must be called with a

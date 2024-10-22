@@ -632,8 +632,20 @@ class TestFunctions(unittest.TestCase):
 
         template_path = f"{TOPDIR}/test/template.lsh"
         test_script_path = f"{TOPDIR}/test/test.lsh"
+        wrapper_path = f"{TOPDIR}/bin/lshell_wrapper"
 
-        # Copy template.lsh to test.lsh
+        # Step 1: Create the wrapper script
+        with open(wrapper_path, "w") as wrapper:
+            wrapper.write(
+                f"""#!/bin/bash
+exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "$@"
+"""
+            )
+
+        # Make the wrapper executable
+        os.chmod(wrapper_path, 0o755)
+
+        # Step 2: Copy template.lsh to test.lsh and replace the shebang
         shutil.copy(template_path, test_script_path)
 
         # Replace the placeholder in the shebang
@@ -681,8 +693,8 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         with open(wrapper_path, "w") as wrapper:
             wrapper.write(
                 f"""#!/bin/bash
-    exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 "$@"
-    """
+exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 "$@"
+"""
             )
 
         # Make the wrapper executable

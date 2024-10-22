@@ -651,7 +651,7 @@ exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "$@"
         # Replace the placeholder in the shebang
         with open(test_script_path, "r+") as f:
             content = f.read()
-            content = content.replace("#!SHEBANG", f"#!{TOPDIR}/bin/lshell")
+            content = content.replace("#!SHEBANG", f"#!{wrapper_path}")
             f.seek(0)
             f.write(content)
             f.truncate()

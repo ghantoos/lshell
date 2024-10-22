@@ -2,4 +2,3 @@ configparser
 logging
 readline
 pexpect
-unittest

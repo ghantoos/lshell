@@ -42,15 +42,15 @@ class CheckConfig:
 
     def __init__(self, args, refresh=None, stdin=None, stdout=None, stderr=None):
         """Force the calling of the methods below"""
-        if stdin == None:
+        if stdin is None:
             self.stdin = sys.stdin
         else:
             self.stdin = stdin
-        if stdout == None:
+        if stdout is None:
             self.stdout = sys.stdout
         else:
             self.stdout = stdout
-        if stderr == None:
+        if stderr is None:
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
@@ -598,7 +598,7 @@ class CheckConfig:
 
         if os.path.isdir(self.conf["home_path"]):
             # change dir to home when initially loading the configuration
-            if self.refresh == None:
+            if self.refresh is None:
                 os.chdir(self.conf["home_path"])
             # if reloading the configuration, do not change directory
             else:
@@ -803,9 +803,7 @@ class CheckConfig:
             self.conf["path_noexec"] = self.myeval(self.conf_raw["path_noexec"])
             # if path_noexec is empty, disable LD_PRELOAD
             # /!\ this feature should be used at the administrator's own risks!
-
             if self.conf["path_noexec"] == "":
-
                 return
             if not os.path.exists(self.conf["path_noexec"]):
                 self.log.critical(

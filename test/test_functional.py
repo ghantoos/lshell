@@ -632,14 +632,26 @@ class TestFunctions(unittest.TestCase):
 
         template_path = f"{TOPDIR}/test/template.lsh"
         test_script_path = f"{TOPDIR}/test/test.lsh"
+        wrapper_path = f"{TOPDIR}/bin/lshell_wrapper"
 
-        # Copy template.lsh to test.lsh
+        # Step 1: Create the wrapper script
+        with open(wrapper_path, "w") as wrapper:
+            wrapper.write(
+                f"""#!/bin/bash
+exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "$@"
+"""
+            )
+
+        # Make the wrapper executable
+        os.chmod(wrapper_path, 0o755)
+
+        # Step 2: Copy template.lsh to test.lsh and replace the shebang
         shutil.copy(template_path, test_script_path)
 
         # Replace the placeholder in the shebang
         with open(test_script_path, "r+") as f:
             content = f.read()
-            content = content.replace("#!SHEBANG", f"#!{TOPDIR}/bin/lshell")
+            content = content.replace("#!SHEBANG", f"#!{wrapper_path}")
             f.seek(0)
             f.write(content)
             f.truncate()
@@ -648,7 +660,7 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(f"{test_script_path}")
 
         # Expected output
-        expected_output = f"""test\r
+        expected_output = """test\r
 *** forbidden command: dig\r
 *** forbidden path: /tmp/\r
 FREEDOM\r
@@ -681,8 +693,8 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         with open(wrapper_path, "w") as wrapper:
             wrapper.write(
                 f"""#!/bin/bash
-    exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 "$@"
-    """
+exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 "$@"
+"""
             )
 
         # Make the wrapper executable
@@ -702,7 +714,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.child = pexpect.spawn(f"{test_script_path}")
 
         # Expected output
-        expected_output = f"""test\r
+        expected_output = """test\r
 *** forbidden command -> "dig"\r
 *** You have 1 warning(s) left, before getting kicked out.\r
 This incident has been reported.\r

@@ -1,0 +1,4 @@
+configparser
+logging
+readline
+pexpect

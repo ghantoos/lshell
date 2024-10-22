@@ -648,7 +648,7 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(f"{test_script_path}")
 
         # Expected output
-        expected_output = f"""test\r
+        expected_output = """test\r
 *** forbidden command: dig\r
 *** forbidden path: /tmp/\r
 FREEDOM\r
@@ -702,7 +702,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.child = pexpect.spawn(f"{test_script_path}")
 
         # Expected output
-        expected_output = f"""test\r
+        expected_output = """test\r
 *** forbidden command -> "dig"\r
 *** You have 1 warning(s) left, before getting kicked out.\r
 This incident has been reported.\r

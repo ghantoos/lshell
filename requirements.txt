@@ -1,0 +1,6 @@
+configparser
+getpass
+logging
+readline
+pexpect
+unittest

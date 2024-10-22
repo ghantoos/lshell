@@ -64,6 +64,7 @@ class CheckConfig:
         self.check_file(configfile)
         self.get_global()
         self.check_log()
+        self.check_script()
         self.get_config()
         self.check_user_integrity()
         self.get_config_user()
@@ -77,6 +78,17 @@ class CheckConfig:
             self.stderr.write("Error: Config file doesn't exist\n")
             self.stderr.write(variables.usage)
             sys.exit(1)
+
+    def check_script(self):
+        # Check if lshell is invoked with the correct binary and script extension
+        if sys.argv[0].endswith("bin/lshell") and sys.argv[-1].endswith(".lsh"):
+            script_path = os.path.realpath(sys.argv[-1])
+            self.log.debug(f"Detected script mode: {script_path}")
+            if not os.path.isfile(script_path):
+                self.log.error(f"Script file not found: {script_path}")
+                sys.exit(1)
+            else:
+                self.conf["script"] = script_path
 
     def getoptions(self, arguments, conf):
         """This method checks the usage. lshell.py must be called with a

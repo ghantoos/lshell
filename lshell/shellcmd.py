@@ -206,11 +206,27 @@ class ShellCmd(cmd.Cmd, object):
             self.mytimer(self.conf["timer"])
         return object.__getattribute__(self, attr)
 
+    def run_script_mode(self, script):
+        """Process commands from a script."""
+        with open(script, "r") as script_file:
+            for line in script_file:
+                line = line.strip()
+                if line:
+                    line = self.precmd(line)
+                    stop = self.onecmd(line)
+                    stop = self.postcmd(stop, line)
+                    if stop:
+                        sys.exit(1)
+
     def cmdloop(self, intro=None):
         """Repeatedly issue a prompt, accept input, parse an initial prefix
         off the received input, and dispatch to action methods, passing them
         the remainder of the line as argument.
         """
+
+        if self.conf.get("script"):
+            self.run_script_mode(self.conf["script"])
+            return
 
         self.preloop()
         if self.use_rawinput and self.completekey:

@@ -1,0 +1,7 @@
+#!SHEBANG
+
+echo "test"
+dig google.com
+ls /tmp
+echo FREEDOM && help () sh && help
+cd /

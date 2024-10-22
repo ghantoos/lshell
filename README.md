@@ -1,13 +1,9 @@
-lshell - limited shell
-======================
+# lshell - limited shell
 
 lshell is a shell coded in Python, that lets you restrict a user's environment to limited sets of commands, choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing restriction, and more. 
 
-More information can be found in the manpage: `man -l man/lshell.1` or `man lshell`.
 
-
-Installation
--------------
+## Installation
 
 Install from source (tested on Debian/Linux), locally without root privileges:
 
@@ -22,15 +18,28 @@ Uninstall:
 pip uninstall lshell
 ```
 
-Usage
-------
-
+## Usage
+### Via binary
 To launch lshell, just execute lshell specifying the location of your configuration file:
 
 ```
 lshell --config /path/to/configuration/file
 ```
 
+### Using `lshell` in Scripts
+
+You can use `lshell` directly within a script by specifying the lshell path in the shebang. Ensure your script has a `.lsh` extension to indicate it is for lshell, and make sure to include the shebang `#!/usr/bin/lshell` at the top of your script.
+
+For example:
+
+```
+#!/usr/bin/lshell
+echo "test"
+```
+
+
+## Configuration
+### User shell configuration
 In order to log a user, you will have to add them to the lshell group:
 
 ```
@@ -43,12 +52,9 @@ In order to configure a user account to use lshell by default, you must:
 chsh -s /usr/bin/lshell user_name
 ```
 
-(You might need to ensure that lshell is listed in /etc/shells)
+You might need to ensure that lshell is listed in /etc/shells.
 
-After logging in, users will be restricted to the lshell environment.
-
-Configuration
---------------
+### lshell.conf
 
 lshell.conf presents a template configuration file. See etc/lshell.conf or man file for more information.
 
@@ -110,9 +116,13 @@ In this case, my configuration file will look something like this:
     scpforce        : '/home/bar/uploads/'
     # CONFIGURATION END
 
+## More information
 
-Contributions
---------------
+More information can be found in the manpage: `man -l man/lshell.1` or `man lshell`.
+
+
+## Contributions
+
 To contribute, open an issue or send a pull request.
 
 Please use github for all requests: https://github.com/ghantoos/lshell/issues

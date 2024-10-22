@@ -11,8 +11,10 @@ lshell \- Limited Shell
 [\fIOPTIONS\fR]
 
 .SH DESCRIPTION
-\fBlshell\fR provides a limited shell configured per user.
-The configuration is done quite simply using a configuration file.
+\fBlshell\fR provides a limited shell configured per user. The configuration is done 
+quite simply using a configuration file. You can also use lshell within scripts by 
+adding the appropriate shebang (#!/usr/bin/lshell) to your script file.
+
 Coupled with ssh's 
 .I authorized_keys 
 or with
@@ -346,6 +348,22 @@ lshell options are loaded from the configuration file
 .RS
 This will override the default options specified for configuration and/or log \
 file
+.RE
+.TP
+.B $ ./test_script.lsh
+.RS
+If you include lshell in a script with the \fBshebang (e.g. #!/usr/bin/lshell)\fR and use the \fB`.lsh` extension\fR:
+.sp
+.nf
+.ft 3
+#!/usr/bin/lshell
+echo "Hello World!"
+.fi
+.ft
+
+Ensure the script has a \fB.lsh\fR extension to indicate it is intended for lshell.
+
+This allows for limited shell commands to be executed within the script while maintaining restrictions.
 .RE
 
 .SH USE CASE

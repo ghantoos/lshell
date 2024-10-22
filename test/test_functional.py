@@ -4,6 +4,7 @@ import os
 import subprocess
 from getpass import getuser
 import tempfile
+import shutil
 
 # import lshell specifics
 from lshell import utils
@@ -625,3 +626,107 @@ class TestFunctions(unittest.TestCase):
 
         # Cleanup the temporary file
         os.remove(temp_env_file_path)
+
+    def test_38_script_execution_with_template(self):
+        """Test executing script after modifying shebang and clean up afterward"""
+
+        template_path = f"{TOPDIR}/test/template.lsh"
+        test_script_path = f"{TOPDIR}/test/test.lsh"
+
+        # Copy template.lsh to test.lsh
+        shutil.copy(template_path, test_script_path)
+
+        # Replace the placeholder in the shebang
+        with open(test_script_path, "r+") as f:
+            content = f.read()
+            content = content.replace("#!SHEBANG", f"#!{TOPDIR}/bin/lshell")
+            f.seek(0)
+            f.write(content)
+            f.truncate()
+
+        # Spawn a child process to run the test.lsh script using pexpect
+        self.child = pexpect.spawn(f"{test_script_path}")
+
+        # Expected output
+        expected_output = f"""test\r
+*** forbidden command: dig\r
+*** forbidden path: /tmp/\r
+FREEDOM\r
+cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
+cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
+*** forbidden path: /"""
+
+        # Set maxDiff to None to see the full diff
+        self.maxDiff = None
+
+        # Wait for the script to finish executing
+        self.child.expect(pexpect.EOF)
+
+        # Capture the output and compare with expected output
+        result = self.child.before.decode("utf8").strip()
+        self.assertEqual(result, expected_output)
+
+        # Cleanup: remove the test script after the test
+        if os.path.exists(test_script_path):
+            os.remove(test_script_path)
+
+    def test_39_script_execution_with_template_strict(self):
+        """Test executing script after modifying shebang and clean up afterward"""
+
+        template_path = f"{TOPDIR}/test/template.lsh"
+        test_script_path = f"{TOPDIR}/test/test.lsh"
+        wrapper_path = f"{TOPDIR}/bin/lshell_wrapper"
+
+        # Step 1: Create the wrapper script
+        with open(wrapper_path, "w") as wrapper:
+            wrapper.write(
+                f"""#!/bin/bash
+    exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 "$@"
+    """
+            )
+
+        # Make the wrapper executable
+        os.chmod(wrapper_path, 0o755)
+
+        # Step 2: Copy template.lsh to test.lsh and replace the shebang
+        shutil.copy(template_path, test_script_path)
+
+        with open(test_script_path, "r+") as f:
+            content = f.read()
+            content = content.replace("#!SHEBANG", f"#!{wrapper_path}")
+            f.seek(0)
+            f.write(content)
+            f.truncate()
+
+        # Step 3: Spawn a child process to run the test.lsh script using pexpect
+        self.child = pexpect.spawn(f"{test_script_path}")
+
+        # Expected output
+        expected_output = f"""test\r
+*** forbidden command -> "dig"\r
+*** You have 1 warning(s) left, before getting kicked out.\r
+This incident has been reported.\r
+*** forbidden path -> "/tmp/"\r
+*** You have 0 warning(s) left, before getting kicked out.\r
+This incident has been reported.\r
+FREEDOM\r
+cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
+cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
+*** forbidden path -> "/"\r
+*** Kicked out"""
+
+        # Step 4: Set maxDiff to None to see the full diff
+        self.maxDiff = None
+
+        # Wait for the script to finish executing
+        self.child.expect(pexpect.EOF)
+
+        # Capture the output and compare with expected output
+        result = self.child.before.decode("utf8").strip()
+        self.assertEqual(result, expected_output)
+
+        # Step 5: Cleanup: remove the test script and wrapper after the test
+        if os.path.exists(test_script_path):
+            os.remove(test_script_path)
+        if os.path.exists(wrapper_path):
+            os.remove(wrapper_path)

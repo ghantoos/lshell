@@ -13,10 +13,10 @@ from lshell import variables
 from lshell import builtincmd
 
 
-def usage():
+def usage(exitcode=1):
     """Prints the usage"""
-    sys.stderr.write(variables.usage)
-    sys.exit(0)
+    sys.stderr.write(variables.USAGE)
+    sys.exit(exitcode)
 
 
 def version():
@@ -71,8 +71,7 @@ def cmd_parse_execute(command_line, shell_context=None):
     # Split command line by shell grammar: '&&', '||', and ';;'
     cmd_split = re.split(r"(;;|&&|\|\|)", command_line)
 
-    # Initialize a variable to track whether the previous command succeeded or failed
-    previous_retcode = 0
+    retcode = 0  # Initialize return code
 
     # Iterate over commands and operators
     for i in range(0, len(cmd_split), 2):
@@ -80,9 +79,9 @@ def cmd_parse_execute(command_line, shell_context=None):
         operator = cmd_split[i - 1].strip() if i > 0 else None
 
         # Only execute commands based on the previous operator and return code
-        if operator == "&&" and previous_retcode != 0:
+        if operator == "&&" and retcode != 0:
             continue
-        elif operator == "||" and previous_retcode == 0:
+        elif operator == "||" and retcode == 0:
             continue
 
         # Get the executable command
@@ -105,9 +104,6 @@ def cmd_parse_execute(command_line, shell_context=None):
                 retcode = getattr(builtincmd, executable)(shell_context.conf)
         else:
             retcode = exec_cmd(command)
-
-        # Update the previous return code
-        previous_retcode = retcode
 
     return retcode
 

@@ -28,7 +28,7 @@ configfile = CONF_PREFIX + "/etc/lshell.conf"
 HISTORY_FILE = ".lhistory"
 
 # help text
-usage = f"""Usage: lshell [OPTIONS]
+USAGE = f"""Usage: lshell [OPTIONS]
   --config <file>   : Config file location (default {configfile})
   --<param> <value> : where <param> is *any* config file parameter
   -h, --help        : Show this help message

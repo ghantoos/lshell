@@ -384,6 +384,8 @@ class TestFunctions(unittest.TestCase):
                 expected = "foo"
             elif result.startswith("^C"):
                 expected = "^C"
+            else:
+                expected = "unknown"
         except IndexError:
             # outputs u' ^C' on Debian
             expected = "^C"

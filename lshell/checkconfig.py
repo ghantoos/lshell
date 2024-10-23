@@ -57,8 +57,7 @@ class CheckConfig:
         """Check if the configuration file exists, else exit with error"""
         if not os.path.exists(configfile):
             self.stderr.write("Error: Config file doesn't exist\n")
-            self.stderr.write(variables.usage)
-            sys.exit(1)
+            utils.usage()
 
     def check_script(self):
         """Check if lshell is invoked with the correct binary and script extension"""
@@ -96,7 +95,7 @@ class CheckConfig:
             if option in ["-c"]:
                 conf["ssh"] = value
             if option in ["-h", "--help"]:
-                utils.usage()
+                utils.usage(exitcode=0)
             if option in ["--version"]:
                 utils.version()
 
@@ -141,8 +140,7 @@ class CheckConfig:
         """
         if not os.path.exists(file):
             self.stderr.write("Error: Config file doesn't exist\n")
-            self.stderr.write(variables.usage)
-            sys.exit(1)
+            utils.usage()
         else:
             self.config = configparser.ConfigParser()
 

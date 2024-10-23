@@ -1,22 +1,4 @@
-#
-#  Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" This module contains the built-in commands of lshell """
 
 import glob
 import sys
@@ -54,9 +36,9 @@ def lsudo(conf):
         for command in conf["sudo_commands"]:
             sys.stdout.write(f" - {command}\n")
         return 0
-    else:
-        sys.stdout.write("No sudo commands allowed\n")
-        return 1
+
+    sys.stdout.write("No sudo commands allowed\n")
+    return 1
 
 
 def history(conf, log):
@@ -67,11 +49,11 @@ def history(conf, log):
         except IOError:
             log.error(f"WARN: couldn't write history to file {conf['history_file']}\n")
             return 1
-        f = open(conf["history_file"], "r")
-        i = 1
-        for item in f.readlines():
-            sys.stdout.write(f"{i}:  {item}")
-            i += 1
+        with open(conf["history_file"], "r", encoding="utf-8") as f:
+            i = 1
+            for item in f.readlines():
+                sys.stdout.write(f"{i}:  {item}")
+                i += 1
     except (OSError, IOError, FileNotFoundError) as e:  # Catch specific exceptions
         log.critical(f"** Unable to read the history file: {e}")
         return 1

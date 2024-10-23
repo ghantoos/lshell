@@ -1,22 +1,8 @@
-#
-#  Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" This module contains the main class of lshell, it is the class that is
+responsible for the command line interface. It inherits from the cmd.Cmd class
+from the Python standard library. It offers the default methods to add
+security checks, logging, etc.
+"""
 
 import cmd
 import sys
@@ -26,8 +12,9 @@ import signal
 import readline
 
 # import lshell specifics
+from lshell.checkconfig import CheckConfig
 from lshell import utils
-from lshell import builtins
+from lshell import builtincmd
 from lshell import sec
 
 
@@ -100,8 +87,6 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
-            from lshell.checkconfig import CheckConfig
-
             self.conf = CheckConfig(
                 ["--config", self.conf["configfile"]], refresh=1
             ).returnconf()
@@ -148,7 +133,7 @@ class ShellCmd(cmd.Cmd, object):
                 p = re.compile(r"(\s|^)(\$\?)(\s|$)")
             self.g_line = p.sub(rf" {self.retcode} \3", self.g_line)
 
-            if type(self.conf["aliases"]) is dict:
+            if isinstance(self.conf["aliases"], dict):
                 self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])
 
             self.log.info(f'CMD: "{self.g_line}"')
@@ -164,7 +149,7 @@ class ShellCmd(cmd.Cmd, object):
                     directory = directory.split("cd", 1)[1].strip()
                     # change directory then, if success, execute the rest of
                     # the cmd line
-                    self.retcode, self.conf = builtins.cd(directory, self.conf)
+                    self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
                     if self.retcode == 0:
                         cmd_split = re.split(r";|&&|&|\|\||\|", command)
@@ -173,27 +158,27 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
-                    self.retcode, self.conf = builtins.cd(directory, self.conf)
+                    self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
             # built-in lpath function: list all allowed path
             elif self.g_cmd == "lpath":
-                self.retcode = builtins.lpath(self.conf)
+                self.retcode = builtincmd.lpath(self.conf)
             # built-in lsudo function: list all allowed sudo commands
             elif self.g_cmd == "lsudo":
-                self.retcode = builtins.lsudo(self.conf)
+                self.retcode = builtincmd.lsudo(self.conf)
             # built-in history function: print command history
             elif self.g_cmd == "history":
-                self.retcode = builtins.history(self.conf, self.log)
+                self.retcode = builtincmd.history(self.conf, self.log)
             # built-in export function
             elif self.g_cmd == "export":
-                self.retcode, var = builtins.export(self.g_line)
+                self.retcode, var = builtincmd.export(self.g_line)
                 if self.retcode == 1:
                     self.log.critical(f"** forbidden environment variable '{var}'")
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]
                 directory = " ".join(self.g_line.split()[1:])
-                self.retcode, self.conf = builtins.cd(directory, self.conf)
+                self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
             else:
                 self.retcode = utils.cmd_parse_execute(self.g_line, self)
@@ -268,7 +253,7 @@ class ShellCmd(cmd.Cmd, object):
                         self.stdout.write(self.conf["promptprint"])
                         self.stdout.flush()
                         line = self.stdin.readline()
-                        if not len(line):
+                        if not line:
                             line = "EOF"
                         else:
                             # chop \n
@@ -315,7 +300,7 @@ class ShellCmd(cmd.Cmd, object):
             ):
                 compfunc = self.completechdir
             elif begidx > 0:
-                cmd, args, foo = self.parseline(line)
+                cmd, args, _ = self.parseline(line)
                 if cmd == "":
                     compfunc = self.completedefault
                 else:

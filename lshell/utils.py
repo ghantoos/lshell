@@ -1,32 +1,16 @@
-#
-#    Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" Utils for lshell """
 
 import re
 import subprocess
 import os
 import sys
+import random
+import string
 from getpass import getuser
 
 # import lshell specifics
 from lshell import variables
-from lshell import builtins
+from lshell import builtincmd
 
 
 def usage():
@@ -43,9 +27,6 @@ def version():
 
 def random_string(length):
     """generate a random string"""
-    import random
-    import string
-
     randstring = ""
     for char in range(length):
         char = random.choice(string.ascii_letters + string.digits)
@@ -117,11 +98,11 @@ def cmd_parse_execute(command_line, shell_context=None):
             elif executable == "exit":
                 shell_context.do_exit(command)
             elif executable == "history":
-                builtins.history(shell_context.conf, shell_context.log)
+                builtincmd.history(shell_context.conf, shell_context.log)
             elif executable == "cd":
-                retcode = builtins.cd(argument, shell_context.conf)
+                retcode = builtincmd.cd(argument, shell_context.conf)
             else:
-                retcode = getattr(builtins, executable)(shell_context.conf)
+                retcode = getattr(builtincmd, executable)(shell_context.conf)
         else:
             retcode = exec_cmd(command)
 

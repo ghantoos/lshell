@@ -1,22 +1,4 @@
-#
-#  Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" This module contains the checkconfig class of lshell """
 
 import sys
 import os
@@ -29,12 +11,14 @@ import logging
 import grp
 import time
 import glob
+from logging.handlers import SysLogHandler
 
 # import lshell specifics
+from lshell.shellcmd import ShellCmd
 from lshell import utils
 from lshell import variables
 from lshell import sec
-from lshell import builtins
+from lshell.builtincmd import export
 
 
 class CheckConfig:
@@ -80,7 +64,7 @@ class CheckConfig:
             sys.exit(1)
 
     def check_script(self):
-        # Check if lshell is invoked with the correct binary and script extension
+        """Check if lshell is invoked with the correct binary and script extension"""
         if sys.argv[0].endswith("bin/lshell") and sys.argv[-1].endswith(".lsh"):
             script_path = os.path.realpath(sys.argv[-1])
             self.log.debug(f"Detected script mode: {script_path}")
@@ -145,10 +129,10 @@ class CheckConfig:
             for envfile in self.conf["env_vars_files"]:
                 file_path = os.path.expandvars(envfile)
                 try:
-                    with open(file_path) as env_vars:
+                    with open(file_path, encoding="utf-8") as env_vars:
                         for env_var in env_vars.readlines():
                             if env_var.split(" ", 1)[0] == "export":
-                                builtins.export(env_var.strip())
+                                export(env_var.strip())
                 except (OSError, IOError):
                     self.stderr.write(
                         f"ERROR: Unable to read environment file: {file_path}\n"
@@ -195,11 +179,12 @@ class CheckConfig:
         }
 
         # create logger for lshell application
-        if "syslogname" in self.conf:
+        if self.conf.get("syslogname"):
             try:
-                logname = eval(self.conf["syslogname"])
+                logname = str(self.conf["syslogname"])
             except (SyntaxError, NameError, TypeError):
-                logname = self.conf["syslogname"]
+                sys.stderr.write("ERR: syslogname must be a string\n")
+                sys.exit(1)
         else:
             logname = "lshell"
 
@@ -209,15 +194,15 @@ class CheckConfig:
         # this is useful if configuration is reloaded
         for loghandler in logger.handlers:
             try:
-                logging.shutdown(logger.handlers)
+                logging.shutdown(loghandler)
             except TypeError:
                 pass
         for logfilter in logger.filters:
             logger.removeFilter(logfilter)
 
-        formatter = logging.Formatter("%%(asctime)s (%s): %%(message)s" % getuser())
+        formatter = logging.Formatter(f"%(asctime)s ({getuser()}): %(message)s")
         syslogformatter = logging.Formatter(
-            "%s[%s]: %s: %%(message)s" % (logname, os.getpid(), getuser())
+            f"{logname}[{os.getpid()}]: {getuser()}: %(message)s"
         )
 
         logger.setLevel(logging.DEBUG)
@@ -241,17 +226,18 @@ class CheckConfig:
             self.conf["loglevel"] = 0
 
         # read logfilename is exists, and set logfilename
-        if "logfilename" in self.conf:
+        if self.conf.get("logfilename"):
             try:
-                logfilename = eval(self.conf["logfilename"])
+                logfilename = str(self.conf["logfilename"])
             except (SyntaxError, NameError, TypeError):
-                logfilename = self.conf["logfilename"]
+                sys.stderr.write("ERR: logfilename must be a string\n")
+                sys.exit(1)
             currentime = time.localtime()
-            logfilename = logfilename.replace("%y", "%s" % currentime[0])
-            logfilename = logfilename.replace("%m", "%02d" % currentime[1])
-            logfilename = logfilename.replace("%d", "%02d" % currentime[2])
+            logfilename = logfilename.replace("%y", f"{currentime[0]}")
+            logfilename = logfilename.replace("%m", f"{currentime[1]:02d}")
+            logfilename = logfilename.replace("%d", f"{currentime[2]:02d}")
             logfilename = logfilename.replace(
-                "%h", "%02d%02d" % (currentime[3], currentime[4])
+                "%h", f"{currentime[3]:02d}{currentime[4]:02d}"
             )
             logfilename = logfilename.replace("%u", getuser())
         else:
@@ -260,8 +246,6 @@ class CheckConfig:
         if self.conf["loglevel"] > 0:
             try:
                 if logfilename == "syslog":
-                    from logging.handlers import SysLogHandler
-
                     syslog = SysLogHandler(address="/dev/log")
                     syslog.setFormatter(syslogformatter)
                     syslog.setLevel(self.levels[self.conf["loglevel"]])
@@ -270,8 +254,8 @@ class CheckConfig:
                     # if log file is writable add new log file handler
                     logfile = os.path.join(self.conf["logpath"], logfilename + ".log")
                     # create log file if it does not exist, and set permissions
-                    fp = open(logfile, "a")
-                    fp.close()
+                    with open(logfile, "a", encoding="utf-8"):
+                        pass
                     try:
                         os.chmod(logfile, 0o600)
                     except OSError:
@@ -299,8 +283,6 @@ class CheckConfig:
 
         # list the include_dir directory and read configuration files
         if "include_dir" in self.conf:
-            import glob
-
             self.conf["include_dir_conf"] = glob.glob(f"{self.conf['include_dir']}*")
             self.config.read(self.conf["include_dir_conf"])
 
@@ -369,7 +351,7 @@ class CheckConfig:
                             # remove double slashes
                             liste[0] = liste[0].replace("//", "/")
                             self.conf_raw.update({key: str(liste)})
-                        elif stuff and type(eval(stuff)) == list:
+                        elif stuff and isinstance(eval(stuff), list):
                             self.conf_raw.update({key: stuff})
                 # case allowed is set to 'all'
                 elif key == "allowed" and split[0] == "'all'":
@@ -466,7 +448,7 @@ class CheckConfig:
         In case fields are missing, the user is notified and exited from lshell
         """
         for item in variables.required_config:
-            if item not in self.conf_raw.keys():
+            if item not in self.conf_raw:
                 self.log.critical(f"ERROR: Missing parameter '{item}'")
                 self.log.critical(
                     f"ERROR: Add it in the in the [{self.user}] or [default] section of conf file."
@@ -594,7 +576,7 @@ class CheckConfig:
         if "intro" in self.conf_raw:
             self.conf["intro"] = self.myeval(self.conf_raw["intro"])
         else:
-            self.conf["intro"] = variables.intro
+            self.conf["intro"] = variables.INTRO
 
         if os.path.isdir(self.conf["home_path"]):
             # change dir to home when initially loading the configuration
@@ -617,7 +599,7 @@ class CheckConfig:
             except (KeyError, SyntaxError, TypeError, NameError):
                 self.log.error(f"CONF: history file error: {self.conf['history_file']}")
         else:
-            self.conf["history_file"] = variables.history_file
+            self.conf["history_file"] = variables.HISTORY_FILE
 
         if not self.conf["history_file"].startswith("/"):
             self.conf["history_file"] = (
@@ -689,8 +671,6 @@ class CheckConfig:
                         sys.exit(1)
 
                 # initialize cli session
-                from lshell.shellcmd import ShellCmd
-
                 cli = ShellCmd(self.conf, None, None, None, None, self.conf["ssh"])
                 ret_check_path, self.conf = sec.check_path(
                     self.conf["ssh"], self.conf, ssh=1
@@ -724,7 +704,7 @@ class CheckConfig:
                                         )
                                         cmdsplit.pop(-1)
                                         cmdsplit.append(forcedpath)
-                                        self.conf["ssh"] = string.join(cmdsplit)
+                                        self.conf["ssh"] = " ".join(cmdsplit)
                                 self.log.error(f'SCP: PUT "{self.conf["ssh"]}"')
                             # case scp upload is forbidden
                             else:

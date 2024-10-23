@@ -93,6 +93,8 @@ class ShellCmd(cmd.Cmd, object):
             self.conf["promptprint"] = utils.updateprompt(os.getcwd(), self.conf)
             self.log = self.conf["logpath"]
 
+        self.check_scp_sftp()
+
         if self.g_cmd in ["quit", "exit", "EOF"]:
             self.do_exit()
 
@@ -190,6 +192,115 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf["timer"] > 0:
             self.mytimer(self.conf["timer"])
         return object.__getattribute__(self, attr)
+
+    def check_scp_sftp(self):
+        """This method checks if the user is trying to SCP a file onto the
+        server. If this is the case, it checks if the user is allowed to use
+        SCP or not, and    acts as requested. : )
+        """
+
+        if "ssh" in self.conf:
+            if "SSH_CLIENT" in os.environ and "SSH_TTY" not in os.environ:
+                # check if sftp is requested and allowed
+                if "sftp-server" in self.conf["ssh"]:
+                    if self.conf["sftp"] == 1:
+                        self.log.error("SFTP connect")
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"])
+                        self.log.error("SFTP disconnect")
+                        sys.exit(retcode)
+                    else:
+                        self.log.error("*** forbidden SFTP connection")
+                        sys.exit(1)
+
+                # initialize cli session
+                cli = ShellCmd(self.conf, None, None, None, None, self.conf["ssh"])
+                ret_check_path, self.conf = sec.check_path(
+                    self.conf["ssh"], self.conf, ssh=1
+                )
+                if ret_check_path == 1:
+                    self.ssh_warn("path over SSH", self.conf["ssh"])
+
+                # check if scp is requested and allowed
+                if self.conf["ssh"].startswith("scp "):
+                    if self.conf["scp"] == 1 or "scp" in self.conf["overssh"]:
+                        if " -f " in self.conf["ssh"]:
+                            # case scp download is allowed
+                            if self.conf["scp_download"]:
+                                self.log.error(f'SCP: GET "{self.conf["ssh"]}"')
+                            # case scp download is forbidden
+                            else:
+                                self.log.error(
+                                    f'SCP: download forbidden: "{self.conf["ssh"]}"'
+                                )
+                                sys.exit(1)
+                        elif " -t " in self.conf["ssh"]:
+                            # case scp upload is allowed
+                            if self.conf["scp_upload"]:
+                                if "scpforce" in self.conf:
+                                    cmdsplit = self.conf["ssh"].split(" ")
+                                    scppath = os.path.realpath(cmdsplit[-1])
+                                    forcedpath = os.path.realpath(self.conf["scpforce"])
+                                    if scppath != forcedpath:
+                                        self.log.error(
+                                            f"SCP: forced SCP directory: {scppath}"
+                                        )
+                                        cmdsplit.pop(-1)
+                                        cmdsplit.append(forcedpath)
+                                        self.conf["ssh"] = " ".join(cmdsplit)
+                                self.log.error(f'SCP: PUT "{self.conf["ssh"]}"')
+                            # case scp upload is forbidden
+                            else:
+                                self.log.error(
+                                    f'SCP: upload forbidden: "{self.conf["ssh"]}"'
+                                )
+                                sys.exit(1)
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
+                        self.log.error("SCP disconnect")
+                        sys.exit(retcode)
+                    else:
+                        self.ssh_warn("SCP connection", self.conf["ssh"], "scp")
+
+                # check if command is in allowed overssh commands
+                elif self.conf["ssh"]:
+                    # replace aliases
+                    self.conf["ssh"] = utils.get_aliases(
+                        self.conf["ssh"], self.conf["aliases"]
+                    )
+                    # if command is not "secure", exit
+                    ret_check_secure, self.conf = sec.check_secure(
+                        self.conf["ssh"], self.conf, strict=1, ssh=1
+                    )
+                    if ret_check_secure:
+                        self.ssh_warn("char/command over SSH", self.conf["ssh"])
+                    # else
+                    self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
+                    # if command is "help"
+                    if self.conf["ssh"] == "help":
+                        cli.do_help(None)
+                        retcode = 0
+                    else:
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
+                    self.log.error("Exited")
+                    sys.exit(retcode)
+
+                # else warn and log
+                else:
+                    self.ssh_warn("command over SSH", self.conf["ssh"])
+
+            else:
+                # case of shell escapes
+                self.ssh_warn("shell escape", self.conf["ssh"])
+
+    def ssh_warn(self, message, command="", key=""):
+        """log and warn if forbidden action over SSH"""
+        if key == "scp":
+            self.log.critical(f"*** forbidden {message}")
+            self.log.error(f"*** SCP command: {command}")
+        else:
+            self.log.critical(f'*** forbidden {message}: "{command}"')
+        sys.stderr.write("This incident has been reported.\n")
+        self.log.error("Exited")
+        sys.exit(1)
 
     def run_script_mode(self, script):
         """Process commands from a script."""

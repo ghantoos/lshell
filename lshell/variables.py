@@ -1,22 +1,4 @@
-#
-#  Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" This file contains all the variables used in lshell """
 
 import sys
 import os
@@ -33,20 +15,20 @@ required_config = ["allowed", "forbidden", "warning_counter"]
 lshell_path = os.path.abspath(__file__).split("/lib/")[0]
 if sys.exec_prefix != "/usr":
     # for *BSD
-    conf_prefix = sys.exec_prefix
+    CONF_PREFIX = sys.exec_prefix
 elif lshell_path == "/home/ghantoos/.local":
     # for *Linux user install
-    conf_prefix = lshell_path
+    CONF_PREFIX = lshell_path
 else:
     # for *Linux system-wide install
-    conf_prefix = ""
-configfile = conf_prefix + "/etc/lshell.conf"
+    CONF_PREFIX = ""
+configfile = CONF_PREFIX + "/etc/lshell.conf"
 
 # history file
-history_file = ".lhistory"
+HISTORY_FILE = ".lhistory"
 
 # help text
-usage = f"""Usage: lshell [OPTIONS]
+USAGE = f"""Usage: lshell [OPTIONS]
   --config <file>   : Config file location (default {configfile})
   --<param> <value> : where <param> is *any* config file parameter
   -h, --help        : Show this help message
@@ -54,8 +36,9 @@ usage = f"""Usage: lshell [OPTIONS]
 """
 
 # Intro Text
-intro = """You are in a limited shell.
+INTRO = """You are in a limited shell.
 Type '?' or 'help' to get the list of allowed commands"""
+
 # configuration parameters
 configparams = [
     "config=",

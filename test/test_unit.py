@@ -1,5 +1,7 @@
-import unittest
+""" Unit tests for lshell """
+
 import os
+import unittest
 from getpass import getuser
 
 # import lshell specifics
@@ -7,70 +9,73 @@ from lshell.shellcmd import ShellCmd
 from lshell.checkconfig import CheckConfig
 from lshell.utils import get_aliases, updateprompt
 from lshell.variables import builtins_list
-from lshell import builtins
+from lshell import builtincmd
 from lshell import sec
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 
 
 class TestFunctions(unittest.TestCase):
+    """Unit tests for lshell"""
+
     args = [f"--config={TOPDIR}/etc/lshell.conf", "--quiet=1"]
     userconf = CheckConfig(args).returnconf()
-    shell = ShellCmd(userconf, args)
 
     def test_03_checksecure_doublepipe(self):
         """U03 | double pipes should be allowed, even if pipe is forbidden"""
         args = self.args + ["--forbidden=['|']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "ls || ls"
-        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 0)
+        input_command = "ls || ls"
+        return self.assertEqual(sec.check_secure(input_command, userconf)[0], 0)
 
     def test_04_checksecure_forbiddenpipe(self):
         """U04 | forbid pipe, should return 1"""
         args = self.args + ["--forbidden=['|']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "ls | ls"
-        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 1)
+        input_command = "ls | ls"
+        return self.assertEqual(sec.check_secure(input_command, userconf)[0], 1)
 
     def test_05_checksecure_forbiddenchar(self):
         """U05 | forbid character, should return 1"""
         args = self.args + ["--forbidden=['l']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "ls"
-        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 1)
+        input_command = "ls"
+        return self.assertEqual(sec.check_secure(input_command, userconf)[0], 1)
 
     def test_06_checksecure_sudo_command(self):
         """U06 | quoted text should not be forbidden"""
-        INPUT = "sudo ls"
-        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
+        input_command = "sudo ls"
+        return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
     def test_07_checksecure_notallowed_command(self):
         """U07 | forbidden command, should return 1"""
         args = self.args + ["--allowed=['ls']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "ll"
-        return self.assertEqual(sec.check_secure(INPUT, userconf)[0], 1)
+        input_command = "ll"
+        return self.assertEqual(sec.check_secure(input_command, userconf)[0], 1)
 
     def test_08_checkpath_notallowed_path(self):
         """U08 | forbidden command, should return 1"""
         args = self.args + ["--path=['/home', '/var']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "cd /tmp"
-        return self.assertEqual(sec.check_path(INPUT, userconf)[0], 1)
+        input_command = "cd /tmp"
+        return self.assertEqual(sec.check_path(input_command, userconf)[0], 1)
 
     def test_09_checkpath_notallowed_path_completion(self):
         """U09 | forbidden command, should return 1"""
         args = self.args + ["--path=['/home', '/var']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "cd /tmp/"
-        return self.assertEqual(sec.check_path(INPUT, userconf, completion=1)[0], 1)
+        input_command = "cd /tmp/"
+        return self.assertEqual(
+            sec.check_path(input_command, userconf, completion=1)[0], 1
+        )
 
     def test_10_checkpath_dollarparenthesis(self):
         """U10 | when $() is allowed, return 0 if path allowed"""
         args = self.args + ["--forbidden=[';', '&', '|','`','>','<', '${']"]
         userconf = CheckConfig(args).returnconf()
-        INPUT = "echo $(echo aze)"
-        return self.assertEqual(sec.check_path(INPUT, userconf)[0], 0)
+        input_command = "echo $(echo aze)"
+        return self.assertEqual(sec.check_path(input_command, userconf)[0], 0)
 
     def test_11_checkconfig_configoverwrite(self):
         """U12 | forbid ';', then check_secure should return 1"""
@@ -81,20 +86,22 @@ class TestFunctions(unittest.TestCase):
     def test_12_overssh(self):
         """U12 | command over ssh"""
         args = self.args + ["--overssh=['exit']", "-c exit"]
+        userconf = CheckConfig(args).returnconf()
+        shell = ShellCmd(userconf, args)
         os.environ["SSH_CLIENT"] = "8.8.8.8 36000 22"
         if "SSH_TTY" in os.environ:
             os.environ.pop("SSH_TTY")
         with self.assertRaises(SystemExit) as cm:
-            CheckConfig(args).returnconf()
+            shell.check_scp_sftp()
         return self.assertEqual(cm.exception.code, 0)
 
     def test_13_multiple_aliases_with_separator(self):
         """U13 | multiple aliases using &&, || and ; separators"""
         # enable &, | and ; characters
         aliases = {"foo": "foo -l", "bar": "open"}
-        INPUT = "foo; fooo  ;bar&&foo  &&   foo | bar||bar   ||     foo"
+        input_command = "foo; fooo  ;bar&&foo  &&   foo | bar||bar   ||     foo"
         return self.assertEqual(
-            get_aliases(INPUT, aliases),
+            get_aliases(input_command, aliases),
             " foo -l; fooo  ; open&& foo -l  " "&& foo -l | open|| open   || foo -l",
         )
 
@@ -138,16 +145,16 @@ class TestFunctions(unittest.TestCase):
 
     def test_18_forbidden_environment(self):
         """U18 | unsafe environment are forbidden"""
-        INPUT = "export LD_PRELOAD=/lib64/ld-2.21.so"
-        args = INPUT
-        retcode = builtins.export(args)[0]
+        input_command = "export LD_PRELOAD=/lib64/ld-2.21.so"
+        args = input_command
+        retcode = builtincmd.export(args)[0]
         return self.assertEqual(retcode, 1)
 
     def test_19_allowed_environment(self):
         """U19 | other environment are accepted"""
-        INPUT = "export MY_PROJECT_VERSION=43"
-        args = INPUT
-        retcode = builtins.export(args)[0]
+        input_command = "export MY_PROJECT_VERSION=43"
+        args = input_command
+        retcode = builtincmd.export(args)[0]
         return self.assertEqual(retcode, 0)
 
     def test_20_winscp_allowed_commands(self):
@@ -210,15 +217,15 @@ class TestFunctions(unittest.TestCase):
 
     def test_26_checksecure_quoted_command(self):
         """U26 | quoted command should be parsed"""
-        INPUT = 'echo 1 && "bash"'
-        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
+        input_command = 'echo 1 && "bash"'
+        return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
     def test_27_checksecure_quoted_command(self):
         """U27 | quoted command should be parsed"""
-        INPUT = '"bash" && echo 1'
-        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
+        input_command = '"bash" && echo 1'
+        return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
     def test_28_checksecure_quoted_command(self):
         """U28 | quoted command should be parsed"""
-        INPUT = "echo'/1.sh'"
-        return self.assertEqual(sec.check_secure(INPUT, self.userconf)[0], 1)
+        input_command = "echo'/1.sh'"
+        return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)

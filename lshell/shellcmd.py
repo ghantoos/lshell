@@ -1,22 +1,8 @@
-#
-#  Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" This module contains the main class of lshell, it is the class that is
+responsible for the command line interface. It inherits from the cmd.Cmd class
+from the Python standard library. It offers the default methods to add
+security checks, logging, etc.
+"""
 
 import cmd
 import sys
@@ -26,8 +12,9 @@ import signal
 import readline
 
 # import lshell specifics
+from lshell.checkconfig import CheckConfig
 from lshell import utils
-from lshell import builtins
+from lshell import builtincmd
 from lshell import sec
 
 
@@ -100,13 +87,13 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
-            from lshell.checkconfig import CheckConfig
-
             self.conf = CheckConfig(
                 ["--config", self.conf["configfile"]], refresh=1
             ).returnconf()
             self.conf["promptprint"] = utils.updateprompt(os.getcwd(), self.conf)
             self.log = self.conf["logpath"]
+
+        self.check_scp_sftp()
 
         if self.g_cmd in ["quit", "exit", "EOF"]:
             self.do_exit()
@@ -148,7 +135,7 @@ class ShellCmd(cmd.Cmd, object):
                 p = re.compile(r"(\s|^)(\$\?)(\s|$)")
             self.g_line = p.sub(rf" {self.retcode} \3", self.g_line)
 
-            if type(self.conf["aliases"]) is dict:
+            if isinstance(self.conf["aliases"], dict):
                 self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])
 
             self.log.info(f'CMD: "{self.g_line}"')
@@ -164,7 +151,7 @@ class ShellCmd(cmd.Cmd, object):
                     directory = directory.split("cd", 1)[1].strip()
                     # change directory then, if success, execute the rest of
                     # the cmd line
-                    self.retcode, self.conf = builtins.cd(directory, self.conf)
+                    self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
                     if self.retcode == 0:
                         cmd_split = re.split(r";|&&|&|\|\||\|", command)
@@ -173,27 +160,27 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
-                    self.retcode, self.conf = builtins.cd(directory, self.conf)
+                    self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
             # built-in lpath function: list all allowed path
             elif self.g_cmd == "lpath":
-                self.retcode = builtins.lpath(self.conf)
+                self.retcode = builtincmd.lpath(self.conf)
             # built-in lsudo function: list all allowed sudo commands
             elif self.g_cmd == "lsudo":
-                self.retcode = builtins.lsudo(self.conf)
+                self.retcode = builtincmd.lsudo(self.conf)
             # built-in history function: print command history
             elif self.g_cmd == "history":
-                self.retcode = builtins.history(self.conf, self.log)
+                self.retcode = builtincmd.history(self.conf, self.log)
             # built-in export function
             elif self.g_cmd == "export":
-                self.retcode, var = builtins.export(self.g_line)
+                self.retcode, var = builtincmd.export(self.g_line)
                 if self.retcode == 1:
                     self.log.critical(f"** forbidden environment variable '{var}'")
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]
                 directory = " ".join(self.g_line.split()[1:])
-                self.retcode, self.conf = builtins.cd(directory, self.conf)
+                self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
             else:
                 self.retcode = utils.cmd_parse_execute(self.g_line, self)
@@ -205,6 +192,115 @@ class ShellCmd(cmd.Cmd, object):
         if self.conf["timer"] > 0:
             self.mytimer(self.conf["timer"])
         return object.__getattribute__(self, attr)
+
+    def check_scp_sftp(self):
+        """This method checks if the user is trying to SCP a file onto the
+        server. If this is the case, it checks if the user is allowed to use
+        SCP or not, and    acts as requested. : )
+        """
+
+        if "ssh" in self.conf:
+            if "SSH_CLIENT" in os.environ and "SSH_TTY" not in os.environ:
+                # check if sftp is requested and allowed
+                if "sftp-server" in self.conf["ssh"]:
+                    if self.conf["sftp"] == 1:
+                        self.log.error("SFTP connect")
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"])
+                        self.log.error("SFTP disconnect")
+                        sys.exit(retcode)
+                    else:
+                        self.log.error("*** forbidden SFTP connection")
+                        sys.exit(1)
+
+                # initialize cli session
+                cli = ShellCmd(self.conf, None, None, None, None, self.conf["ssh"])
+                ret_check_path, self.conf = sec.check_path(
+                    self.conf["ssh"], self.conf, ssh=1
+                )
+                if ret_check_path == 1:
+                    self.ssh_warn("path over SSH", self.conf["ssh"])
+
+                # check if scp is requested and allowed
+                if self.conf["ssh"].startswith("scp "):
+                    if self.conf["scp"] == 1 or "scp" in self.conf["overssh"]:
+                        if " -f " in self.conf["ssh"]:
+                            # case scp download is allowed
+                            if self.conf["scp_download"]:
+                                self.log.error(f'SCP: GET "{self.conf["ssh"]}"')
+                            # case scp download is forbidden
+                            else:
+                                self.log.error(
+                                    f'SCP: download forbidden: "{self.conf["ssh"]}"'
+                                )
+                                sys.exit(1)
+                        elif " -t " in self.conf["ssh"]:
+                            # case scp upload is allowed
+                            if self.conf["scp_upload"]:
+                                if "scpforce" in self.conf:
+                                    cmdsplit = self.conf["ssh"].split(" ")
+                                    scppath = os.path.realpath(cmdsplit[-1])
+                                    forcedpath = os.path.realpath(self.conf["scpforce"])
+                                    if scppath != forcedpath:
+                                        self.log.error(
+                                            f"SCP: forced SCP directory: {scppath}"
+                                        )
+                                        cmdsplit.pop(-1)
+                                        cmdsplit.append(forcedpath)
+                                        self.conf["ssh"] = " ".join(cmdsplit)
+                                self.log.error(f'SCP: PUT "{self.conf["ssh"]}"')
+                            # case scp upload is forbidden
+                            else:
+                                self.log.error(
+                                    f'SCP: upload forbidden: "{self.conf["ssh"]}"'
+                                )
+                                sys.exit(1)
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
+                        self.log.error("SCP disconnect")
+                        sys.exit(retcode)
+                    else:
+                        self.ssh_warn("SCP connection", self.conf["ssh"], "scp")
+
+                # check if command is in allowed overssh commands
+                elif self.conf["ssh"]:
+                    # replace aliases
+                    self.conf["ssh"] = utils.get_aliases(
+                        self.conf["ssh"], self.conf["aliases"]
+                    )
+                    # if command is not "secure", exit
+                    ret_check_secure, self.conf = sec.check_secure(
+                        self.conf["ssh"], self.conf, strict=1, ssh=1
+                    )
+                    if ret_check_secure:
+                        self.ssh_warn("char/command over SSH", self.conf["ssh"])
+                    # else
+                    self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
+                    # if command is "help"
+                    if self.conf["ssh"] == "help":
+                        cli.do_help(None)
+                        retcode = 0
+                    else:
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
+                    self.log.error("Exited")
+                    sys.exit(retcode)
+
+                # else warn and log
+                else:
+                    self.ssh_warn("command over SSH", self.conf["ssh"])
+
+            else:
+                # case of shell escapes
+                self.ssh_warn("shell escape", self.conf["ssh"])
+
+    def ssh_warn(self, message, command="", key=""):
+        """log and warn if forbidden action over SSH"""
+        if key == "scp":
+            self.log.critical(f"*** forbidden {message}")
+            self.log.error(f"*** SCP command: {command}")
+        else:
+            self.log.critical(f'*** forbidden {message}: "{command}"')
+        sys.stderr.write("This incident has been reported.\n")
+        self.log.error("Exited")
+        sys.exit(1)
 
     def run_script_mode(self, script):
         """Process commands from a script."""
@@ -268,7 +364,7 @@ class ShellCmd(cmd.Cmd, object):
                         self.stdout.write(self.conf["promptprint"])
                         self.stdout.flush()
                         line = self.stdin.readline()
-                        if not len(line):
+                        if not line:
                             line = "EOF"
                         else:
                             # chop \n
@@ -315,7 +411,7 @@ class ShellCmd(cmd.Cmd, object):
             ):
                 compfunc = self.completechdir
             elif begidx > 0:
-                cmd, args, foo = self.parseline(line)
+                cmd, args, _ = self.parseline(line)
                 if cmd == "":
                     compfunc = self.completedefault
                 else:

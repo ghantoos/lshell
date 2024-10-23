@@ -1,10 +1,12 @@
-import unittest
-import pexpect
+"""Functional tests for lshell"""
+
 import os
+import unittest
 import subprocess
 from getpass import getuser
 import tempfile
 import shutil
+import pexpect
 
 # import lshell specifics
 from lshell import utils
@@ -13,6 +15,7 @@ TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 class TestFunctions(unittest.TestCase):
+    """Functional tests for lshell"""
 
     user = getuser()
 
@@ -43,7 +46,7 @@ class TestFunctions(unittest.TestCase):
         cout = p.stdout
         expected = cout.read(-1)
         self.child.sendline("ls")
-        self.child.expect("%s:~\\$" % self.user)
+        self.child.expect(f"{self.user}:~\\$")
         output = self.child.before.decode("utf8").split("ls\r", 1)[1]
         self.assertEqual(len(expected.strip().split()), len(output.strip().split()))
 
@@ -361,7 +364,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n")[1].strip()
         self.assertEqual(expected, result)
 
-    def test_25_KeyboardInterrupt(self):
+    def test_25_keyboard_interrupt(self):
         """F25 | test cat(1) with KeyboardInterrupt, should not exit"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
@@ -381,6 +384,8 @@ class TestFunctions(unittest.TestCase):
                 expected = "foo"
             elif result.startswith("^C"):
                 expected = "^C"
+            else:
+                expected = "unknown"
         except IndexError:
             # outputs u' ^C' on Debian
             expected = "^C"
@@ -490,7 +495,10 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected_help_output, help_output)
 
         # Step 2: Enter `echo FREEDOM! && help () sh && help`
-        expected_output = "FREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        expected_output = (
+            "FREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\n"
+            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        )
         self.child.sendline("echo FREEDOM! && help () sh && help")
         self.child.expect(f"{self.user}:~\\$")
 
@@ -588,14 +596,19 @@ class TestFunctions(unittest.TestCase):
 
         # Inject the environment variable file path
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --env_vars_files \"['{missing_file_path}']\""
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"--env_vars_files \"['{missing_file_path}']\""
         )
 
         # Expect the prompt after shell startup
         self.child.expect(f"{self.user}:~\\$")
 
         # Simulate what happens when the environment variable file is missing
-        expected = f"ERROR: Unable to read environment file: {missing_file_path}\r\nYou are in a limited shell.\r\nType '?' or 'help' to get the list of allowed commands\r\n"
+        expected = (
+            f"ERROR: Unable to read environment file: {missing_file_path}\r\n"
+            "You are in a limited shell.\r\n"
+            "Type '?' or 'help' to get the list of allowed commands\r\n"
+        )
 
         # Check the error message in the output
         self.assertIn(expected, self.child.before.decode("utf8"))
@@ -613,7 +626,8 @@ class TestFunctions(unittest.TestCase):
 
         # Set the temp env file path in the config
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --env_vars_files \"['{temp_env_file_path}']\""
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"--env_vars_files \"['{temp_env_file_path}']\""
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -667,9 +681,6 @@ FREEDOM\r
 cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 *** forbidden path: /"""
-
-        # Set maxDiff to None to see the full diff
-        self.maxDiff = None
 
         # Wait for the script to finish executing
         self.child.expect(pexpect.EOF)
@@ -726,9 +737,6 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 *** forbidden path -> "/"\r
 *** Kicked out"""
-
-        # Step 4: Set maxDiff to None to see the full diff
-        self.maxDiff = None
 
         # Wait for the script to finish executing
         self.child.expect(pexpect.EOF)

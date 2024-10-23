@@ -1,26 +1,12 @@
-#
-#  Limited command Shell (lshell)
-#
-#  Copyright (C) 2008-2024 Ignace Mouzannar <ghantoos@ghantoos.org>
-#
-#  This file is part of lshell
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" This module is used to check the security of the commands entered by the
+user. It checks if the command is allowed, if the path is allowed, if the
+command contains forbidden characters, etc.
+"""
 
 import sys
 import re
 import os
+import subprocess
 
 # import lshell specifics
 from lshell import utils
@@ -85,7 +71,6 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
         if re.findall(r"\$|\*|\?", item):
             # remove quotes if available
             item = re.sub("\"|'", "", item)
-            import subprocess
 
             p = subprocess.Popen(
                 f"`which echo` {item}",
@@ -252,7 +237,7 @@ def check_secure(line, conf, strict=None, ssh=None):
 
         # in case of a sudo command, check in sudo_commands list if allowed
         if command == "sudo":
-            if type(cmdargs) is list:
+            if isinstance(cmdargs, list):
                 # allow the -u (user) flag
                 if cmdargs[1] == "-u" and cmdargs:
                     sudocmd = cmdargs[3]

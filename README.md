@@ -1,28 +1,49 @@
-# lshell - limited shell
+# lshell
 
-lshell is a shell coded in Python, that lets you restrict a user's environment to limited sets of commands, choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing restriction, and more. 
+lshell is a limited shell coded in Python, that lets you restrict a user's environment to limited sets of commands, choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing restriction, and more.
 
 
 ## Installation
 
-Install from source (tested on Debian/Linux), locally without root privileges:
+### Install via pip
+
+To install `limited-shell` directly via `pip`, use the following command:
+
+```bash
+pip install limited-shell
+```
+
+This will install limited-shell from PyPI along with all its dependencies.
+
+To uninstall, you can run:
+
+```bash
+pip uninstall limited-shell
+```
+
+### Build from source and install locally
+
+If you'd like to build and install limited-shell from the source code (useful if you're making modifications or testing new features), you can follow these steps:
 
 ```
-python setup.py sdist bdist_wheel
+python3 -m pip install build --user
+python3 -m build
 pip install . --break-system-packages
-sudo cp etc/lshell.conf /etc/
 ```
 
-Uninstall:
-```
-pip uninstall lshell
+### Uninstall lshell
+
+To uninstall, you can run:
+
+```bash
+pip uninstall limited-shell
 ```
 
 ## Usage
 ### Via binary
 To launch lshell, just execute lshell specifying the location of your configuration file:
 
-```
+```bash
 lshell --config /path/to/configuration/file
 ```
 
@@ -32,7 +53,7 @@ You can use `lshell` directly within a script by specifying the lshell path in t
 
 For example:
 
-```
+```bash
 #!/usr/bin/lshell
 echo "test"
 ```
@@ -42,13 +63,13 @@ echo "test"
 ### User shell configuration
 In order to log a user, you will have to add them to the lshell group:
 
-```
+```bash
 usermod -aG lshell username
 ```
 
 In order to configure a user account to use lshell by default, you must: 
 
-```
+```bash
 chsh -s /usr/bin/lshell user_name
 ```
 

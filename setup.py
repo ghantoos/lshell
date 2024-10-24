@@ -35,7 +35,7 @@ class CustomInstallCommand(install):
 if __name__ == "__main__":
 
     setup(
-        name="pylshell",
+        name="lshell",
         version=__version__,
         description="Limited Shell",
         long_description="""Limited Shell (lshell) lets you restrict the \

@@ -53,7 +53,7 @@ if __name__ == "__main__":
         platforms=["UNIX"],
         scripts=["bin/lshell"],
         package_dir={"lshell": "lshell"},
-        packages=find_packages(),
+        packages=find_packages(exclude=["test", "test.*"]),
         include_package_data=True,
         data_files=[
             ("share/doc/lshell", ["README.md", "COPYING", "CHANGES", "SECURITY.md"]),

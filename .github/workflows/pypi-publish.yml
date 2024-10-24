@@ -35,7 +35,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/limitedshell
+      url: https://test.pypi.org/p/limited-shell
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing

@@ -35,12 +35,14 @@ class CustomInstallCommand(install):
 if __name__ == "__main__":
 
     setup(
-        name="limitedshell",
+        name="limited-shell",
         version=__version__,
-        description="Limited Shell",
-        long_description="""Limited Shell (lshell) lets you restrict the \
-environment of any user. It provides an easily configurable shell: just \
-choose a list of allowed commands for every limited account.""",
+        description="lshell - Limited Shell",
+        long_description="""lshell lets you restrict the environment of any user. 
+It provides an easily configurable shell: just choose a list of allowed commands 
+for every limited account. This tool is particularly useful for system administrators 
+who need to provide restricted shell access to users. It ensures that users can only 
+execute a predefined set of commands, enhancing the security of the system.""",
         long_description_content_type="text/markdown",
         author="Ignace Mouzannar",
         author_email="ghantoos@ghantoos.org",

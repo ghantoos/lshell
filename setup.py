@@ -56,6 +56,8 @@ if __name__ == "__main__":
         packages=find_packages(exclude=["test", "test.*"]),
         include_package_data=True,
         data_files=[
+            ("etc", ["etc/lshell.conf"]),
+            ("etc/logrotate.d", ["etc/logrotate.d/lshell"]),
             ("share/doc/lshell", ["README.md", "COPYING", "CHANGES", "SECURITY.md"]),
             ("share/man/man1/", ["man/lshell.1"]),
         ],

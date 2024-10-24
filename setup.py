@@ -61,7 +61,7 @@ choose a list of allowed commands for every limited account.""",
         classifiers=[
             "Development Status :: 5 - Production/Stable",
             "Environment :: Console",
-            "Intended Audience :: Advanced End Users",
+            "Intended Audience :: Information Technology",
             "Intended Audience :: System Administrators",
             "License :: OSI Approved :: GNU General Public License v3",
             "Operating System :: POSIX",

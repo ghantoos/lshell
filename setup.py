@@ -34,13 +34,14 @@ class CustomInstallCommand(install):
 
 if __name__ == "__main__":
 
+    with open("README.md", "r") as f:
+        long_description = f.read()
+
     setup(
-        name="lshell",
+        name="limited-shell",
         version=__version__,
-        description="Limited Shell",
-        long_description="""Limited Shell (lshell) lets you restrict the \
-environment of any user. It provides an easily configurable shell: just \
-choose a list of allowed commands for every limited account.""",
+        description="lshell - Limited Shell",
+        long_description=long_description,
         long_description_content_type="text/markdown",
         author="Ignace Mouzannar",
         author_email="ghantoos@ghantoos.org",
@@ -48,26 +49,30 @@ choose a list of allowed commands for every limited account.""",
         maintainer_email="ghantoos@ghantoos.org",
         keywords=["limited", "shell", "security", "python"],
         url="https://github.com/ghantoos/lshell",
-        license="GPL",
+        license="GPL-3",
         platforms=["UNIX"],
         scripts=["bin/lshell"],
         package_dir={"lshell": "lshell"},
-        packages=find_packages(),
+        packages=find_packages(exclude=["test", "test.*"]),
         include_package_data=True,
         data_files=[
+            ("etc", ["etc/lshell.conf"]),
+            ("etc/logrotate.d", ["etc/logrotate.d/lshell"]),
             ("share/doc/lshell", ["README.md", "COPYING", "CHANGES", "SECURITY.md"]),
             ("share/man/man1/", ["man/lshell.1"]),
         ],
         classifiers=[
             "Development Status :: 5 - Production/Stable",
             "Environment :: Console",
-            "Intended Audience :: Advanced End Users",
+            "Intended Audience :: Information Technology",
             "Intended Audience :: System Administrators",
-            "License :: OSI Approved :: GNU General Public License v3",
+            "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
             "Operating System :: POSIX",
             "Programming Language :: Python :: 3",
             "Topic :: Security",
             "Topic :: System :: Shells",
+            "Topic :: System :: System Shells",
+            "Topic :: System :: Systems Administration",
             "Topic :: Terminals",
         ],
         python_requires=">=3.6",

@@ -35,7 +35,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/lshell
+      url: https://test.pypi.org/p/pylshell/
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing

@@ -34,15 +34,14 @@ class CustomInstallCommand(install):
 
 if __name__ == "__main__":
 
+    with open("README.md", "r") as f:
+        long_description = f.read()
+
     setup(
         name="limited-shell",
         version=__version__,
         description="lshell - Limited Shell",
-        long_description="""lshell lets you restrict the environment of any user. 
-It provides an easily configurable shell: just choose a list of allowed commands 
-for every limited account. This tool is particularly useful for system administrators 
-who need to provide restricted shell access to users. It ensures that users can only 
-execute a predefined set of commands, enhancing the security of the system.""",
+        long_description=long_description,
         long_description_content_type="text/markdown",
         author="Ignace Mouzannar",
         author_email="ghantoos@ghantoos.org",
@@ -50,7 +49,7 @@ execute a predefined set of commands, enhancing the security of the system.""",
         maintainer_email="ghantoos@ghantoos.org",
         keywords=["limited", "shell", "security", "python"],
         url="https://github.com/ghantoos/lshell",
-        license="GPL",
+        license="GPL-3",
         platforms=["UNIX"],
         scripts=["bin/lshell"],
         package_dir={"lshell": "lshell"},

@@ -49,6 +49,10 @@ if __name__ == "__main__":
         maintainer_email="ghantoos@ghantoos.org",
         keywords=["limited", "shell", "security", "python"],
         url="https://github.com/ghantoos/lshell",
+        project_urls={
+            "GitHub": "https://github.com/ghantoos/lshell",
+            "Changelog": "https://github.com/ghantoos/lshell/blob/master/CHANGELOG.md",
+        },
         license="GPL-3",
         platforms=["UNIX"],
         scripts=["bin/lshell"],

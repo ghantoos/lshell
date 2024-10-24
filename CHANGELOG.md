@@ -8,6 +8,11 @@ Contact: ghantoos@ghantoos.org
 https://github.com/ghantoos/lshell
 #####################################
 
+=== v0.10.1 24/10/2024 ===
+    * Add the ability to write and execute a lshell script (#!/usr/bin/lshell)
+    * Added Pypi package
+    * Code cleanup and testing
+
 === v0.10 17/10/2024 ===
     * Fixed security issues CVE-2016-6902, CVE-2016-6903
       - https://nvd.nist.gov/vuln/detail/CVE-2016-6902

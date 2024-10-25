@@ -1,6 +1,6 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/:limited-shell)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/python-app.yml)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/pylint.yml)
+![GitHub Actions: pytest](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/python-app.yml)
+![GitHub Actions: pylint](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/pylint.yml)
 
 # lshell
 

@@ -601,7 +601,17 @@ class CheckConfig:
                 f"{self.conf['home_path']}/{self.conf['history_file']}"
             )
 
-        os.environ["PATH"] = os.environ["PATH"] + self.conf["env_path"]
+        if self.conf["env_path"]:
+            new_path = f"{self.conf['env_path']}:{os.environ['PATH']}"
+
+            # Check if the new path is valid
+            if all(
+                c in string.ascii_letters + string.digits + "/:-_." for c in new_path
+            ) and not new_path.startswith(":"):
+                os.environ["PATH"] = new_path
+            else:
+                print(f"CONF: env_path must be a valid $PATH: {self.conf['env_path']}")
+                sys.exit(1)
 
         # append default commands to allowed list
         self.conf["allowed"] += list(set(variables.builtins_list) - set(["export"]))

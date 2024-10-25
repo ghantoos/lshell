@@ -3,6 +3,10 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.10.2 24/10/2024
+- Make env_path have precedence over the OS path ($env_path:$PATH)
+- Test auto-release via Pypi
+
 ### v0.10.1 24/10/2024
 - Add the ability to write and execute a lshell script (`#!/usr/bin/lshell`)
 - Added Pypi package

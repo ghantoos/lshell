@@ -3,6 +3,7 @@
 import os
 import unittest
 from getpass import getuser
+from unittest.mock import patch
 
 # import lshell specifics
 from lshell.shellcmd import ShellCmd
@@ -229,3 +230,60 @@ class TestFunctions(unittest.TestCase):
         """U28 | quoted command should be parsed"""
         input_command = "echo'/1.sh'"
         return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
+
+    def test_29_env_path_updates_path_variable(self):
+        """Test that --env_path updates the PATH environment variable."""
+        # store the original $PATH
+        original_path = os.environ["PATH"]
+
+        # Simulate passing the --env_path argument
+        random_path = "/usr/random:/this_is_a_test"
+        args = self.args + [
+            f"--env_path='{random_path}'",
+        ]
+        CheckConfig(args).returnconf()
+
+        # Verify that the $PATH has been updated correctly
+        expected_path = f"{random_path}:{original_path}"
+
+        # Assuming CheckConfig sets the environment variable
+        self.assertEqual(os.environ["PATH"], expected_path)
+
+        # Reset the PATH environment variable
+        os.environ["PATH"] = original_path
+
+    @patch("sys.exit")  # Mock sys.exit to prevent exiting the test on failure
+    def test_invalid_new_path(self, mock_exit):
+        """Test that an invalid new PATH triggers an error and sys.exit."""
+        original_path = os.environ["PATH"]
+        random_path = "/usr/random:/invalid$path"
+        args = self.args + [
+            f"--env_path='{random_path}'",
+        ]
+
+        # Simulate passing the --env_path argument
+        CheckConfig(args).returnconf()
+
+        # Check that sys.exit was called due to invalid path
+        mock_exit.assert_called_once_with(1)
+
+        # The PATH should not have been changed
+        self.assertEqual(os.environ["PATH"], original_path)
+
+    @patch("sys.exit")
+    def test_new_path_starts_with_colon(self, mock_exit):
+        """Test that a new PATH starting with a colon triggers an error."""
+        original_path = os.environ["PATH"]
+        random_path = ":/usr/random:/this_is_a_test"
+        args = self.args + [
+            f"--env_path='{random_path}'",
+        ]
+
+        # Simulate passing the --env_path argument
+        CheckConfig(args).returnconf()
+
+        # Check that sys.exit was called due to invalid path
+        mock_exit.assert_called_once()
+
+        # The PATH should not have been changed
+        self.assertEqual(os.environ["PATH"], original_path)

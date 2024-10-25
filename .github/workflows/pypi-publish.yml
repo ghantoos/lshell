@@ -55,14 +55,14 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && github.ref == 'refs/tags/master'
     needs:
     - build
     runs-on: ubuntu-latest
 
     environment:
       name: pypi
-      url: https://pypi.org/p/lshell  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/limited-shell
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 

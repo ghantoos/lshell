@@ -1,3 +1,7 @@
+![PyPI - Version](https://img.shields.io/pypi/v/:limited-shell)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/python-app.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/pylint.yml)
+
 # lshell
 
 lshell is a limited shell coded in Python, that lets you restrict a user's environment to limited sets of commands, choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing restriction, and more.

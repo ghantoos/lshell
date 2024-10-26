@@ -229,32 +229,41 @@ def check_secure(line, conf, strict=None, ssh=None):
         separate_line = re.sub(r"\)$", "", separate_line)
         separate_line = " ".join(separate_line.split())
         splitcmd = separate_line.strip().split(" ")
+
+        # Extract the command and its arguments
         command = splitcmd[0]
-        if len(splitcmd) > 1:
-            cmdargs = splitcmd
-        else:
-            cmdargs = None
+        command_args_list = splitcmd[1:]
+        command_args_string = " ".join(command_args_list)
+        full_command = f"{command} {command_args_string}".strip()
 
         # in case of a sudo command, check in sudo_commands list if allowed
-        if command == "sudo":
-            if isinstance(cmdargs, list):
-                # allow the -u (user) flag
-                if cmdargs[1] == "-u" and cmdargs:
-                    sudocmd = cmdargs[3]
-                else:
-                    sudocmd = cmdargs[1]
-                if sudocmd not in conf["sudo_commands"] and cmdargs:
-                    ret, conf = warn_count(
-                        "sudo command", oline, conf, strict=strict, ssh=ssh
-                    )
-                    return ret, conf
+        if command == "sudo" and command_args_list:
+            # allow the -u (user) flag
+            if command_args_list[0] == "-u" and command_args_list:
+                sudocmd = command_args_list[2]
+            else:
+                sudocmd = command_args_list[0]
+            if sudocmd not in conf["sudo_commands"] and command_args_list:
+                ret, conf = warn_count(
+                    "sudo command", oline, conf, strict=strict, ssh=ssh
+                )
+                return ret, conf
 
         # if over SSH, replaced allowed list with the one of overssh
         if ssh:
             conf["allowed"] = conf["overssh"]
 
-        # for all other commands check in allowed list
-        if command not in conf["allowed"] and command:
+        # # for all other commands check in allowed list
+        # if command not in conf["allowed"] and command:
+        #     ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
+        #     return ret, conf
+
+        # Check if the full command (with arguments) or just the command is allowed
+        if (
+            full_command not in conf["allowed"]
+            and command not in conf["allowed"]
+            and command
+        ):
             ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
             return ret, conf
 

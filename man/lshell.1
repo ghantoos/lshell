@@ -1,7 +1,7 @@
 .\"
 .\"   Man page for the Limited Shell (lshell) project.
 .\"
-.TH lshell 1 "October, 2024" "v0.10.2"
+.TH lshell 1 "October, 2024" "v0.10.3-rc1"
 
 .SH NAME
 lshell \- Limited Shell
@@ -150,9 +150,19 @@ using the -exec flag.
 command aliases list (similar to bash's alias directive)
 .TP
 .I allowed
-a list of the allowed commands or set to 'all' to allow all commands in user's \
-PATH
-
+A list of allowed commands, or set to 'all' to allow all commands in the user's PATH.
+.RS
+.BR \ \ \ \ -
+If a command is specified without arguments (e.g., 'echo'), the command is allowed to run with any arguments.
+.RE
+.RS
+.BR \ \ \ \ -
+If a command is specified with exact arguments (e.g., 'echo asd'), only that specific command with those arguments will be allowed.
+.RE
+.RS
+.BR \ \ \ \ -
+To allow all commands in the user's PATH, use the value 'all'.
+.RE
 if  sudo(8) is installed and sudo_noexec.so is available, it will be loaded
 before running every command, preventing it from  running  further  commands
 itself. If not available, beware of commands like vim/find/more/etc. that will

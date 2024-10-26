@@ -93,7 +93,7 @@ class CheckConfig:
             if f"{option[2:]}=" in variables.configparams:
                 conf[option[2:]] = value
             if option in ["-c"]:
-                conf["ssh"] = value
+                conf["ssh"] = value.strip()
             if option in ["-h", "--help"]:
                 utils.usage(exitcode=0)
             if option in ["--version"]:
@@ -694,26 +694,7 @@ class CheckConfig:
                     break
 
         # in case the library was found, set the LD_PRELOAD aliases
-        if "path_noexec" in self.conf:
-            # exclude allowed_shell_escape commands from loop
-            exclude_se = list(
-                set(self.conf["allowed"])
-                - set(self.conf["allowed_shell_escape"])
-                - set(variables.builtins_list)
-            )
-
-            for cmd in exclude_se:
-                # take already set aliases into consideration
-                if cmd in self.conf["aliases"]:
-                    cmd = self.conf["aliases"][cmd]
-
-                # add an alias to all the commands, prepending with LD_PRELOAD=
-                # except for built-in commands
-                if cmd not in variables.builtins_list:
-                    self.conf["aliases"][
-                        cmd
-                    ] = f"LD_PRELOAD={self.conf['path_noexec']} {cmd}"
-        else:
+        if not self.conf.get("path_noexec"):
             # if sudo_noexec.so file is not found,  write error in log file,
             # but don't exit tp  prevent strict dependency on sudo noexec lib
             self.log.error("Error: noexec library not found")

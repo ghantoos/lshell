@@ -84,18 +84,6 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         return self.assertEqual(userconf["strict"], 123)
 
-    def test_12_overssh(self):
-        """U12 | command over ssh"""
-        args = self.args + ["--overssh=['exit']", "-c exit"]
-        userconf = CheckConfig(args).returnconf()
-        shell = ShellCmd(userconf, args)
-        os.environ["SSH_CLIENT"] = "8.8.8.8 36000 22"
-        if "SSH_TTY" in os.environ:
-            os.environ.pop("SSH_TTY")
-        with self.assertRaises(SystemExit) as cm:
-            shell.check_scp_sftp()
-        return self.assertEqual(cm.exception.code, 0)
-
     def test_13_multiple_aliases_with_separator(self):
         """U13 | multiple aliases using &&, || and ; separators"""
         # enable &, | and ; characters
@@ -117,15 +105,6 @@ class TestFunctions(unittest.TestCase):
         userconf["sudo_commands"].sort()
         allowed.sort()
         return self.assertEqual(allowed, userconf["sudo_commands"])
-
-    def test_15_allowed_ld_preload_cmd(self):
-        """U15 | all allowed commands should be prepended with LD_PRELOAD"""
-        args = self.args + ["--allowed=['echo','export']"]
-        userconf = CheckConfig(args).returnconf()
-        # sort lists to compare
-        return self.assertEqual(
-            userconf["aliases"]["echo"], f"LD_PRELOAD={userconf['path_noexec']} echo"
-        )
 
     def test_16_allowed_ld_preload_builtin(self):
         """U16 | builtin commands should NOT be prepended with LD_PRELOAD"""

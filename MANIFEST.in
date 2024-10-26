@@ -1,6 +1,6 @@
 include COPYING
-include README
-include CHANGES
+include README.md
+include CHANGELOG.md
 include etc/lshell.conf
 include etc/logrotate.d/lshell
 include man/lshell.1

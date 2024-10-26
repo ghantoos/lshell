@@ -507,7 +507,7 @@ class TestFunctions(unittest.TestCase):
         # Verify the combined output
         self.assertEqual(expected_output, result)
 
-    def test_31_security_echo_freedom_and_cd(self):
+    def test_32_security_echo_freedom_and_cd(self):
         """F32 | test echo FREEDOM! && cd () bash && cd ~/"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
@@ -534,7 +534,7 @@ class TestFunctions(unittest.TestCase):
         # Verify the combined output
         self.assertEqual(expected_output, result)
 
-    def test_32_ls_non_existing_directory_and_echo(self):
+    def test_33_ls_non_existing_directory_and_echo(self):
         """Test: ls non_existing_directory && echo nothing"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
@@ -548,7 +548,7 @@ class TestFunctions(unittest.TestCase):
         # Since ls fails, echo nothing shouldn't run
         self.assertNotIn("nothing", output)
 
-    def test_33_ls_and_echo_ok(self):
+    def test_34_ls_and_echo_ok(self):
         """Test: ls && echo OK"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
@@ -562,7 +562,7 @@ class TestFunctions(unittest.TestCase):
         # ls succeeds, echo OK should run
         self.assertIn("OK", output)
 
-    def test_34_ls_non_existing_directory_or_echo_ok(self):
+    def test_35_ls_non_existing_directory_or_echo_ok(self):
         """Test: ls non_existing_directory || echo OK"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
@@ -576,7 +576,7 @@ class TestFunctions(unittest.TestCase):
         # ls fails, echo OK should run
         self.assertIn("OK", output)
 
-    def test_35_ls_or_echo_nothing(self):
+    def test_36_ls_or_echo_nothing(self):
         """Test: ls || echo nothing"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
@@ -590,7 +590,7 @@ class TestFunctions(unittest.TestCase):
         # ls succeeds, echo nothing should not run
         self.assertNotIn("nothing", output)
 
-    def test_36_env_vars_file_not_found(self):
+    def test_37_env_vars_file_not_found(self):
         """Test missing environment variable file"""
         missing_file_path = "/path/to/missing/file"
 
@@ -613,7 +613,7 @@ class TestFunctions(unittest.TestCase):
         # Check the error message in the output
         self.assertIn(expected, self.child.before.decode("utf8"))
 
-    def test_37_load_env_vars_from_file(self):
+    def test_38_load_env_vars_from_file(self):
         """Test loading environment variables from file"""
 
         # Create a temporary file to store environment variables
@@ -641,7 +641,7 @@ class TestFunctions(unittest.TestCase):
         # Cleanup the temporary file
         os.remove(temp_env_file_path)
 
-    def test_38_script_execution_with_template(self):
+    def test_39_script_execution_with_template(self):
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
@@ -693,7 +693,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         if os.path.exists(test_script_path):
             os.remove(test_script_path)
 
-    def test_39_script_execution_with_template_strict(self):
+    def test_40_script_execution_with_template_strict(self):
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
@@ -750,3 +750,68 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
             os.remove(test_script_path)
         if os.path.exists(wrapper_path):
             os.remove(wrapper_path)
+
+    def test_41_multicmd_with_wrong_arg_should_fail(self):
+        """F20 | Allowing 'echo asd': Test 'echo qwe' should fail"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            "--allowed \"['echo asd']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        expected = "*** forbidden command: echo"
+
+        self.child.sendline("echo qwe")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n")[1].strip()
+        self.assertEqual(expected, result)
+
+    def test_42_multicmd_with_near_exact_arg_should_fail(self):
+        """F41 | Allowing 'echo asd': Test 'echo asds' should fail"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            "--allowed \"['echo asd']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        expected = "*** forbidden command: echo"
+
+        self.child.sendline("echo asds")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n")[1].strip()
+        self.assertEqual(expected, result)
+
+    def test_43_multicmd_without_arg_should_fail(self):
+        """F42 | Allowing 'echo asd': Test 'echo' should fail"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            "--allowed \"['echo asd']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        expected = "*** forbidden command: echo"
+
+        self.child.sendline("echo")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n")[1].strip()
+        self.assertEqual(expected, result)
+
+    def test_44_multicmd_asd_should_pass(self):
+        """F43 | Allowing 'echo asd': Test 'echo asd' should pass"""
+
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            "--allowed \"['echo asd']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        expected = "asd"
+
+        self.child.sendline("echo asd")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n")[1].strip()
+        self.assertEqual(expected, result)

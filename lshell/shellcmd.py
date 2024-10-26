@@ -121,7 +121,7 @@ class ShellCmd(cmd.Cmd, object):
             ):
                 utils.exec_cmd(f'echo "WinSCP: this is end-of-file: {self.retcode}"')
             return object.__getattribute__(self, attr)
-        if self.g_cmd in self.conf["allowed"]:
+        if self.g_cmd in self.conf["allowed"] or self.g_line in self.conf["allowed"]:
             if self.conf["timer"] > 0:
                 self.mytimer(0)
             self.g_arg = re.sub("^~$|^~/", f"{self.conf['home_path']}/", self.g_arg)

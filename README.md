@@ -81,7 +81,24 @@ You might need to ensure that lshell is listed in /etc/shells.
 
 ### lshell.conf
 
-lshell.conf presents a template configuration file. See etc/lshell.conf or man file for more information.
+#### Allowed list
+lshell.conf presents a template configuration file. See `etc/lshell.conf` or the man file for more information.
+
+You can allow commands specifying commands with exact arguments in the `allowed` list. This means you can define specific commands along with their arguments that are permitted. Commands without arguments can also be specified, allowing any arguments to be passed.
+
+For example:
+```
+allowed: ['ls', 'echo asd', 'telnet localhost']
+```
+
+This will:
+- Allow the `ls` command with any arguments.
+- Allow `echo asd` but will reject `echo` with any other arguments (e.g., `echo qwe` will be rejected).
+- Allow `telnet localhost`, but not `telnet` with other hosts (e.g., `telnet 192.168.0.1` will be rejected).
+
+Commands that do not include arguments (e.g., `ls`) can be used with any arguments, while commands specified with arguments (e.g., `echo asd`) must be used exactly as specified.
+
+#### User profiles
 
 A [default] profile is available for all users using lshell. Nevertheless,  you can create a [username] section or a [grp:groupname] section to customize users' preferences.
 
@@ -92,7 +109,9 @@ Order of priority when loading preferences is the following:
 3. Default configuration
 
 The primary goal of lshell, is to be able to create shell accounts with ssh access and restrict their environment to a couple a needed commands and path.
- 
+
+#### Example
+
 For example User 'foo' and user 'bar' both belong to the 'users' UNIX group:
 
 - User 'foo': 

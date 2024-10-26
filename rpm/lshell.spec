@@ -1,7 +1,7 @@
 %define name lshell
 %define version 0.9.16
 %define release 1
-%define python_sitelib %(python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")
+%define python_sitelib %(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
 
 Summary: Limited Shell
 Name: %{name}
@@ -12,8 +12,8 @@ License: GPL
 Group: System Environment/Shells
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 Prefix: %{_prefix}
-BuildRequires:  python >= 2.4
-Requires:   python >= 2.4
+BuildRequires:  python3 >= 3.6
+Requires:   python3 >= 3.6
 BuildArch: noarch
 Vendor: Ignace Mouzannar (ghantoos) <mouzannar@gmail.com>
 Url: http://lshell.ghantoos.org
@@ -28,26 +28,22 @@ restrictions, and more.
 %setup -q
 
 %build
-%{__python} setup.py build
+%{__python3} setup.py build
 
 %install
-%{__python} setup.py install --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES --skip-build
+%{__python3} setup.py install --root=%{buildroot} --record=INSTALLED_FILES --skip-build
 
 %clean
-rm -rf $RPM_BUILD_ROOT
+rm -rf %{buildroot}
 
 %post
 #!/bin/sh
-#
-# $Id: lshell.spec,v 1.14 2010-10-17 15:47:21 ghantoos Exp $
 #
 # RPM build postinstall script
 
 # case of installation
 if [ "$1" = "1" ] ; then
     if ! getent group lshell 2>&1 > /dev/null; then
-        # thank you Michael Mansour for your suggestion to use groupadd
-        # instead of addgroup
         groupadd -r lshell
     fi
     mkdir -p /var/log/lshell/
@@ -104,8 +100,6 @@ fi
 %postun
 #!/bin/sh
 #
-# $Id: lshell.spec,v 1.14 2010-10-17 15:47:21 ghantoos Exp $
-#
 # RPM build postuninstall script
 
     if [ -x /usr/sbin/remove-shell ] && [ -f /etc/shells ]; then
@@ -150,5 +144,5 @@ exit 0
 %doc /usr/share/doc/lshell/*
 %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/*
 %attr(755,root,root) %{_bindir}/lshell
-%{python_sitelib}/*
+%{python3_sitelib}/*
 %{_mandir}/man1/lshell.1*

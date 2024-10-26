@@ -103,6 +103,8 @@ def cmd_parse_execute(command_line, shell_context=None):
             else:
                 retcode = getattr(builtincmd, executable)(shell_context.conf)
         else:
+            if "path_noexec" in shell_context.conf:
+                command = f"LD_PRELOAD={shell_context.conf['path_noexec']} {command}"
             retcode = exec_cmd(command)
 
     return retcode

@@ -70,6 +70,9 @@ class ShellCmd(cmd.Cmd, object):
         # initialize return code
         self.retcode = 0
 
+        # run overssh, if needed
+        self.run_overssh()
+
     def __getattr__(self, attr):
         """This method actually takes care of all the called method that are
         not resolved (i.e not existing methods). It actually will simulate
@@ -92,8 +95,6 @@ class ShellCmd(cmd.Cmd, object):
             ).returnconf()
             self.conf["promptprint"] = utils.updateprompt(os.getcwd(), self.conf)
             self.log = self.conf["logpath"]
-
-        self.check_scp_sftp()
 
         if self.g_cmd in ["quit", "exit", "EOF"]:
             self.do_exit()
@@ -193,7 +194,7 @@ class ShellCmd(cmd.Cmd, object):
             self.mytimer(self.conf["timer"])
         return object.__getattribute__(self, attr)
 
-    def check_scp_sftp(self):
+    def run_overssh(self):
         """This method checks if the user is trying to SCP a file onto the
         server. If this is the case, it checks if the user is allowed to use
         SCP or not, and    acts as requested. : )
@@ -212,8 +213,6 @@ class ShellCmd(cmd.Cmd, object):
                         self.log.error("*** forbidden SFTP connection")
                         sys.exit(1)
 
-                # initialize cli session
-                cli = ShellCmd(self.conf, None, None, None, None, self.conf["ssh"])
                 ret_check_path, self.conf = sec.check_path(
                     self.conf["ssh"], self.conf, ssh=1
                 )
@@ -254,7 +253,7 @@ class ShellCmd(cmd.Cmd, object):
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
-                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], self)
                         self.log.error("SCP disconnect")
                         sys.exit(retcode)
                     else:
@@ -272,14 +271,15 @@ class ShellCmd(cmd.Cmd, object):
                     )
                     if ret_check_secure:
                         self.ssh_warn("char/command over SSH", self.conf["ssh"])
-                    # else
-                    self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
+                        sys.exit(1)
+                    else:
+                        self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
                     # if command is "help"
                     if self.conf["ssh"] == "help":
-                        cli.do_help(None)
+                        self.do_help(None)
                         retcode = 0
                     else:
-                        retcode = utils.cmd_parse_execute(self.conf["ssh"], cli)
+                        retcode = utils.cmd_parse_execute(self.conf["ssh"], self)
                     self.log.error("Exited")
                     sys.exit(retcode)
 
@@ -290,6 +290,7 @@ class ShellCmd(cmd.Cmd, object):
             else:
                 # case of shell escapes
                 self.ssh_warn("shell escape", self.conf["ssh"])
+            return retcode
 
     def ssh_warn(self, message, command="", key=""):
         """log and warn if forbidden action over SSH"""

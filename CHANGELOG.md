@@ -3,6 +3,10 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+
+### v0.10.5 26/10/2024
+- Fixed parsing and testing of the over SSH commands. Corrected return codes over SSH.
+
 ### v0.10.4 26/10/2024
 - Feature: Allow commands with specific parameters, e.g., `telnet localhost`. Adding `telnet localhost` to the `allowed` configuration will not permit the `telnet` command by itself but will only allow the exact match `telnet localhost`.
 

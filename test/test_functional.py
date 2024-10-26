@@ -815,3 +815,75 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.child.expect(f"{self.user}:~\\$")
         result = self.child.before.decode("utf8").split("\n")[1].strip()
         self.assertEqual(expected, result)
+
+    def test_45_overssh_allowed_command_exit_0(self):
+        """F44 | Test 'ssh -c ls' command should exit 0"""
+        # add SSH_CLIENT to environment
+        if not os.environ.get("SSH_CLIENT"):
+            os.environ["SSH_CLIENT"] = "random"
+
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--overssh \"['ls']\" "
+            f"-c 'ls'"
+        )
+        self.child.expect(pexpect.EOF)
+
+        # Assert that the process exited
+        self.assertIsNotNone(
+            self.child.exitstatus, "The lshell process did not exit as expected."
+        )
+
+        # Optionally, you can assert that the exit code is correct
+        self.assertEqual(
+            self.child.exitstatus, 0, "The process should exit with code 1."
+        )
+
+    def test_46_overssh_allowed_command_exit_1(self):
+        """F44 | Test 'ssh -c ls' command should exit 1"""
+        # add SSH_CLIENT to environment
+        if not os.environ.get("SSH_CLIENT"):
+            os.environ["SSH_CLIENT"] = "random"
+
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--overssh \"['ls']\" "
+            f"-c 'ls /random'"
+        )
+        self.child.expect(pexpect.EOF)
+
+        # Assert that the process exited
+        self.assertIsNotNone(
+            self.child.exitstatus, "The lshell process did not exit as expected."
+        )
+
+        # Optionally, you can assert that the exit code is correct
+        self.assertEqual(
+            self.child.exitstatus, 1, "The process should exit with code 1."
+        )
+
+    def test_46_overssh_not_allowed_command_exit_1(self):
+        """F44 | Test 'ssh -c lss' command should succeed"""
+        # add SSH_CLIENT to environment
+        if not os.environ.get("SSH_CLIENT"):
+            os.environ["SSH_CLIENT"] = "random"
+
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--overssh \"['ls']\" "
+            f"-c 'lss'"
+        )
+        self.child.expect(pexpect.EOF)
+
+        # Assert that the process exited
+        self.assertIsNotNone(
+            self.child.exitstatus, "The lshell process did not exit as expected."
+        )
+
+        # Optionally, you can assert that the exit code is correct
+        self.assertEqual(
+            self.child.exitstatus, 1, "The process should exit with code 1."
+        )

@@ -22,7 +22,7 @@ class TestFunctions(unittest.TestCase):
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1"
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf --strict 1"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -214,7 +214,7 @@ class TestFunctions(unittest.TestCase):
         """F16 | external command exit codes with separator"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             '--forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -229,7 +229,7 @@ class TestFunctions(unittest.TestCase):
         """F17 | external command exit codes without separator"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             '--forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -246,7 +246,7 @@ class TestFunctions(unittest.TestCase):
         """F18 | built-in command exit codes with separator"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             '--forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -263,7 +263,7 @@ class TestFunctions(unittest.TestCase):
         """F19 | built-in exit codes without separator"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             '--forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -282,7 +282,7 @@ class TestFunctions(unittest.TestCase):
         """
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             '--forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -302,7 +302,7 @@ class TestFunctions(unittest.TestCase):
         """
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--path \"['/'] - ['/var']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -319,7 +319,7 @@ class TestFunctions(unittest.TestCase):
         """F22 | expanding of environment variables"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"+ ['export']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -336,7 +336,7 @@ class TestFunctions(unittest.TestCase):
         """F23 | expanding of environment variables when using cd"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"+ ['export']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -354,7 +354,7 @@ class TestFunctions(unittest.TestCase):
     def test_24_cd_and_command(self):
         """F24 | cd && command should not be interpreted by internal function"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf"
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/test/lshell-test.conf"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -368,7 +368,7 @@ class TestFunctions(unittest.TestCase):
         """F25 | test cat(1) with KeyboardInterrupt, should not exit"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"+ ['cat']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -396,7 +396,7 @@ class TestFunctions(unittest.TestCase):
         """F26 | command completion: tab to list ./foo1 ./foo2"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"+ ['./foo1', './foo2']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -412,7 +412,7 @@ class TestFunctions(unittest.TestCase):
         """F27 | checksecure awk script with /bin/bash"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"+ ['awk']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -427,7 +427,7 @@ class TestFunctions(unittest.TestCase):
     def test_28_catch_terminal_ctrl_j(self):
         """F28 | test ctrl-v ctrl-j then command, forbidden/security"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/test/lshell-test.conf "
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -445,7 +445,7 @@ class TestFunctions(unittest.TestCase):
     def test_29_catch_terminal_ctrl_k(self):
         """F29 | test ctrl-v ctrl-k then command, forbidden/security"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/test/lshell-test.conf "
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -464,7 +464,7 @@ class TestFunctions(unittest.TestCase):
         """F31 | test disabled exit command"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--disable_exit 1 "
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -480,7 +480,7 @@ class TestFunctions(unittest.TestCase):
     def test_31_security_echo_freedom_and_help(self):
         """F31 | test help, then echo FREEDOM! && help () sh && help"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/test/lshell-test.conf "
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -510,7 +510,7 @@ class TestFunctions(unittest.TestCase):
     def test_32_security_echo_freedom_and_cd(self):
         """F32 | test echo FREEDOM! && cd () bash && cd ~/"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/etc/lshell.conf "
+            f"{TOPDIR}/bin/lshell " f"--config {TOPDIR}/test/lshell-test.conf "
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -537,7 +537,7 @@ class TestFunctions(unittest.TestCase):
     def test_33_ls_non_existing_directory_and_echo(self):
         """Test: ls non_existing_directory && echo nothing"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -551,7 +551,7 @@ class TestFunctions(unittest.TestCase):
     def test_34_ls_and_echo_ok(self):
         """Test: ls && echo OK"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -565,7 +565,7 @@ class TestFunctions(unittest.TestCase):
     def test_35_ls_non_existing_directory_or_echo_ok(self):
         """Test: ls non_existing_directory || echo OK"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -579,7 +579,7 @@ class TestFunctions(unittest.TestCase):
     def test_36_ls_or_echo_nothing(self):
         """Test: ls || echo nothing"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf"
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -596,7 +596,7 @@ class TestFunctions(unittest.TestCase):
 
         # Inject the environment variable file path
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf "
             f"--env_vars_files \"['{missing_file_path}']\""
         )
 
@@ -626,7 +626,7 @@ class TestFunctions(unittest.TestCase):
 
         # Set the temp env file path in the config
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf "
             f"--env_vars_files \"['{temp_env_file_path}']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -652,7 +652,7 @@ class TestFunctions(unittest.TestCase):
         with open(wrapper_path, "w") as wrapper:
             wrapper.write(
                 f"""#!/bin/bash
-exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "$@"
+exec {TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf "$@"
 """
             )
 
@@ -704,7 +704,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         with open(wrapper_path, "w") as wrapper:
             wrapper.write(
                 f"""#!/bin/bash
-exec {TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 "$@"
+exec {TOPDIR}/bin/lshell --config {TOPDIR}/test/lshell-test.conf --strict 1 "$@"
 """
             )
 
@@ -755,7 +755,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         """F20 | Allowing 'echo asd': Test 'echo qwe' should fail"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"['echo asd']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -771,7 +771,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         """F41 | Allowing 'echo asd': Test 'echo asds' should fail"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"['echo asd']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -787,7 +787,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         """F42 | Allowing 'echo asd': Test 'echo' should fail"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"['echo asd']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -804,7 +804,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             "--allowed \"['echo asd']\""
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -824,7 +824,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             f"--overssh \"['ls']\" "
             f"-c 'ls'"
         )
@@ -848,7 +848,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             f"--overssh \"['ls']\" "
             f"-c 'ls /random'"
         )
@@ -872,7 +872,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
 
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
-            f"--config {TOPDIR}/etc/lshell.conf "
+            f"--config {TOPDIR}/test/lshell-test.conf "
             f"--overssh \"['ls']\" "
             f"-c 'lss'"
         )

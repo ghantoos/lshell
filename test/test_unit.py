@@ -19,7 +19,7 @@ TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 class TestFunctions(unittest.TestCase):
     """Unit tests for lshell"""
 
-    args = [f"--config={TOPDIR}/etc/lshell.conf", "--quiet=1"]
+    args = [f"--config={TOPDIR}/test/lshell-test.conf", "--quiet=1"]
     userconf = CheckConfig(args).returnconf()
 
     def test_03_checksecure_doublepipe(self):
@@ -80,7 +80,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_11_checkconfig_configoverwrite(self):
         """U12 | forbid ';', then check_secure should return 1"""
-        args = [f"--config={TOPDIR}/etc/lshell.conf", "--strict=123"]
+        args = [f"--config={TOPDIR}/test/lshell-test.conf", "--strict=123"]
         userconf = CheckConfig(args).returnconf()
         return self.assertEqual(userconf["strict"], 123)
 

@@ -6,7 +6,10 @@
 PYTHON=`which python`
 DESTDIR=/
 BUILDIR=$(CURDIR)/debian/lshell
+PYPACKAGE=limited-shell
 PROJECT=lshell
+export PYTHONPATH=$PWD/
+
 
 all:
 		@echo "make source - Create source package"
@@ -32,12 +35,13 @@ buildrpm:
 builddeb:
 		# build the source package in the parent directory 
 		# then rename it to project_version.orig.tar.gz
-		$(PYTHON) setup.py sdist --dist-dir=../ --prune
-		rename -f 's/$(PROJECT)-(.*)\.tar\.gz/$(PROJECT)_$$1\.orig\.tar\.gz/' ../*
+		$(PYTHON) setup.py sdist --dist-dir=../
+		rename -f 's/$(PYPACKAGE)-(.*)\.tar\.gz/$(PROJECT)_$$1\.orig\.tar\.gz/' ../*
 		# build the package
-		dpkg-buildpackage -i -I -rfakeroot
+		dpkg-buildpackage -us -uc -b -i -I -rfakeroot
 
 clean:
 		$(PYTHON) setup.py clean
 		rm -rf build/ MANIFEST dist/
 		find . -name '*.pyc' -delete
+		rm ../$(PROJECT)*.orig.tar.gz

@@ -1,7 +1,6 @@
-lshell (0.9.18-3) UNRELEASED; urgency=medium
+lshell (0.10.5-1) UNRELEASED; urgency=medium
 
-  * debian/watch:
-    - Corrected to work with lshell versioning on github.
+  * New upstream version.
 
  -- Ignace Mouzannar <mouzannar@gmail.com>  Sat, 27 Feb 2016 12:29:25 -0500
 

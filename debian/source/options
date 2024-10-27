@@ -1,0 +1,1 @@
+extend-diff-ignore="(^|/)(\.flake8|\.github|Makefile|requirements.txt|source|test|test.lsh|test.conf)$"

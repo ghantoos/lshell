@@ -7,3 +7,4 @@ etc/test.conf
 build/
 dist/
 test.lsh
+.pybuild/

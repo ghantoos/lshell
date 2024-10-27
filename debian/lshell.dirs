@@ -1,1 +1,3 @@
 var/log/lshell/
+etc/
+etc/logrotate.d/lshell

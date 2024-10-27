@@ -2,14 +2,14 @@ Source: lshell
 Section: shells
 Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
-Build-Depends: debhelper (>= 9), python3 (>= 3.4)
-X-Python3-Version: >= 3.4
+Build-Depends: debhelper (>= 9), python3 (>= 3.4), python3-pexpect (>=3.9)
+X-Python3-Version: >= 3.6
 Standards-Version: 3.9.7
 Homepage: https://github.com/ghantoos/lshell
 
 Package: lshell
 Architecture: all
-Homepage: http://lshell.ghantoos.org/
+Homepage: https://github.com/ghantoos/lshell
 Depends: ${misc:Depends}, ${python3:Depends}, adduser
 XB-Python-Version: ${python3:Versions}
 Description: restricts a user's shell environment to limited sets of commands

@@ -56,7 +56,7 @@ class CheckConfig:
     def check_config_file_exists(self, configfile):
         """Check if the configuration file exists, else exit with error"""
         if not os.path.exists(configfile):
-            self.stderr.write("Error: Config file doesn't exist\n")
+            self.stderr.write(f"Error: Config file doesn't exist: {configfile}\n")
             utils.usage()
 
     def check_script(self):
@@ -139,7 +139,7 @@ class CheckConfig:
         file passed via command line arguments
         """
         if not os.path.exists(file):
-            self.stderr.write("Error: Config file doesn't exist\n")
+            self.stderr.write(f"Error: Config file doesn't exist: {file}\n")
             utils.usage()
         else:
             self.config = configparser.ConfigParser()

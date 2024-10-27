@@ -1,18 +1,27 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-export DH_ALWAYS_EXCLUDE=COPYING:CHANGES
+export DH_ALWAYS_EXCLUDE=COPYING:CHANGELOG.md
 export PYTHON=`which python3`
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
+# override_dh_auto_install:
+# 	$(PYTHON) setup.py install --root=$(CURDIR)/debian/lshell --install-layout=deb
+
 override_dh_auto_install:
-	$(PYTHON) setup.py install --root=$(CURDIR)/debian/lshell --install-layout=deb
+	dh_auto_install
+	install -D -m 644 bin/lshell debian/$(PACKAGE)/bin/lshell
+	install -D -m 644 etc/lshell.conf debian/$(PACKAGE)/etc/lshell.conf
+	install -D -m 644 etc/logrotate.d/lshell debian/$(PACKAGE)/etc/logrotate.d/lshell
 
 override_dh_installchangelogs:
-	dh_installchangelogs CHANGES
+	dh_installchangelogs CHANGELOG.md
 
 override_dh_auto_clean:
-	$(PYTHON) setup.py clean -a
 	dh_auto_clean
+	# Remove the configuration files added during installation
+	rm -f debian/$(PACKAGE)/bin/lshell
+	rm -f debian/$(PACKAGE)/etc/lshell.conf
+	rm -f debian/$(PACKAGE)/etc/logrotate.d/lshell

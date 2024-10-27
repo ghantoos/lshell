@@ -16,26 +16,28 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
     """Update the warning_counter, log and display a warning to the user"""
 
     log = conf["logpath"]
-    if not ssh:
-        if strict:
-            conf["warning_counter"] -= 1
-            if conf["warning_counter"] < 0:
-                log.critical(f'*** forbidden {messagetype} -> "{command}"')
-                log.critical("*** Kicked out")
-                sys.exit(1)
-            else:
-                log.critical(f'*** forbidden {messagetype} -> "{command}"')
-                sys.stderr.write(
-                    f"*** You have {conf['warning_counter']} warning(s) left,"
-                    " before getting kicked out.\n"
-                )
-                log.error(f"*** User warned, counter: {conf['warning_counter']}")
-                sys.stderr.write("This incident has been reported.\n")
-        else:
-            if not conf["quiet"]:
-                log.critical(f"*** forbidden {messagetype}: {command}")
 
-    # if you are here, means that you did something wrong. Return 1.
+    if ssh:
+        return 1, conf
+
+    if strict:
+        conf["warning_counter"] -= 1
+        if conf["warning_counter"] < 0:
+            log.critical(f'*** forbidden {messagetype} -> "{command}"')
+            log.critical("*** Kicked out")
+            sys.exit(1)
+        else:
+            log.critical(f'*** forbidden {messagetype} -> "{command}"')
+            sys.stderr.write(
+                f"*** You have {conf['warning_counter']} warning(s) left,"
+                " before getting kicked out.\n"
+            )
+            log.error(f"*** User warned, counter: {conf['warning_counter']}")
+            sys.stderr.write("This incident has been reported.\n")
+    elif not conf["quiet"]:
+        log.critical(f"*** forbidden {messagetype}: {command}")
+
+    # Return 1 to indicate a warning was triggered.
     return 1, conf
 
 
@@ -56,8 +58,8 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
         # remove potential quotes or back-ticks
         item = re.sub(r'^["\'`]|["\'`]$', "", item)
 
-        # remove potential $(), ${}, ``
-        item = re.sub(r"^\$[\(\{]|[\)\}]$", "", item)
+        # remove potential $() and ``
+        item = re.sub(r"^\$[\(]|[\)]$", "", item)
 
         # if item has been converted to something other than a string
         # or an int, reconvert it to a string

@@ -887,3 +887,61 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.assertEqual(
             self.child.exitstatus, 1, "The process should exit with code 1."
         )
+
+    def test_47_backticks(self):
+        """F47 | Forbidden backticks should be reported"""
+        expected = (
+            '*** forbidden syntax -> "echo `uptime`"\r\n'
+            "*** You have 1 warning(s) left, before getting kicked out.\r\n"
+            "This incident has been reported.\r\n"
+        )
+        self.child.sendline("echo `uptime`")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n", 1)[1]
+        self.assertEqual(expected, result)
+
+    def test_48_replace_backticks_with_dollar_parentheses(self):
+        """F48 | Forbidden syntax $(command) should be reported"""
+        expected = (
+            '*** forbidden syntax -> "echo $(uptime)"\r\n'
+            "*** You have 1 warning(s) left, before getting kicked out.\r\n"
+            "This incident has been reported.\r\n"
+        )
+        self.child.sendline("echo $(uptime)")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n", 1)[1]
+        self.assertEqual(expected, result)
+
+    def test_49_env_variable_with_dollar_braces(self):
+        """F49 | Syntax ${command} should replace with the variable"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            "--env_vars \"{'foo':'OK'}\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline("echo ${foo}")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n", 1)[1]
+        expected = "OK\r\n"
+        self.assertEqual(expected, result)
+
+    def test_50_warnings_then_kickout(self):
+        """F48 | kicked out after warning counter"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 --warning_counter 0"
+        )
+        self.child.sendline("lslsls")
+        self.child.sendline("lslsls")
+        self.child.expect(pexpect.EOF)
+
+        # Assert that the process exited
+        self.assertIsNotNone(
+            self.child.exitstatus, "The lshell process did not exit as expected."
+        )
+
+        # Optionally, you can assert that the exit code is correct
+        self.assertEqual(
+            self.child.exitstatus, 1, "The process should exit with code 1."
+        )

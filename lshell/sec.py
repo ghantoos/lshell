@@ -65,7 +65,7 @@ def expand_shell_wildcards(item):
     item = os.path.expandvars(item)
     item = os.path.realpath(item)  # this is a hack - needs to be reviewed
     # test if item is a directory
-    expanded_items = glob.glob(item, recursive=True, include_hidden=True)
+    expanded_items = glob.glob(item, recursive=True)
     if expanded_items:
         # Return all matches instead of just the first one
         item = expanded_items[0]

@@ -69,7 +69,7 @@ class TestFunctions(unittest.TestCase):
     def test_05_external_echo_forbidden_syntax(self):
         """F05 | echo forbidden syntax $(bleh)"""
         expected = (
-            '*** forbidden syntax -> "echo $(uptime)"\r\n*** You '
+            '*** forbidden character -> "$("\r\n*** You '
             "have 1 warning(s) left, before getting kicked out.\r\nThis "
             "incident has been reported.\r\n"
         )
@@ -145,11 +145,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_11_etc_passwd_1(self):
         """F11 | /etc/passwd: empty variable 'ls "$a"/etc/passwd'"""
-        expected = (
-            '*** forbidden path -> "/etc/passwd"\r\n*** You have'
-            " 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
-        )
+        expected = "ls: cannot access '$a/etc/passwd': No such file or directory\r\n"
         self.child.sendline('ls "$a"/etc/passwd')
         self.child.expect(f"{self.user}:~\\$")
         result = self.child.before.decode("utf8").split("\n", 1)[1]
@@ -158,23 +154,29 @@ class TestFunctions(unittest.TestCase):
     def test_12_etc_passwd_2(self):
         """F12 | /etc/passwd: empty variable 'ls -l .*./.*./etc/passwd'"""
         expected = (
-            '*** forbidden path -> "/etc/passwd"\r\n*** You have'
-            " 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
+            "ls: cannot access '.*./.*./etc/passwd': No such file or directory\r\n"
         )
         self.child.sendline("ls -l .*./.*./etc/passwd")
         self.child.expect(f"{self.user}:~\\$")
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_13_etc_passwd_3(self):
-        """F13 | /etc/passwd: empty variable 'ls -l .?/.?/etc/passwd'"""
+    def test_13a_etc_passwd_3(self):
+        """F13(a) | /etc/passwd: empty variable 'ls -l .?/.?/etc/passwd'"""
+        expected = "ls: cannot access '.?/.?/etc/passwd': No such file or directory\r\n"
+        self.child.sendline("ls -l .?/.?/etc/passwd")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n", 1)[1]
+        self.assertEqual(expected, result)
+
+    def test_13b_etc_passwd_4(self):
+        """F13(b) | /etc/passwd: empty variable 'ls -l ../../etc/passwd'"""
         expected = (
             '*** forbidden path -> "/etc/passwd"\r\n*** You have'
             " 1 warning(s) left, before getting kicked out.\r\nThis "
             "incident has been reported.\r\n"
         )
-        self.child.sendline("ls -l .?/.?/etc/passwd")
+        self.child.sendline("ls -l ../../etc/passwd")
         self.child.expect(f"{self.user}:~\\$")
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
@@ -210,8 +212,8 @@ class TestFunctions(unittest.TestCase):
 
         self.assertEqual(expected, result)
 
-    def test_16_exitcode_with_separator_external_cmd(self):
-        """F16 | external command exit codes with separator"""
+    def test_16a_exitcode_with_separator_external_cmd(self):
+        """F16(a) | external command exit codes with separator"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell "
             f"--config {TOPDIR}/etc/lshell.conf "
@@ -219,11 +221,37 @@ class TestFunctions(unittest.TestCase):
         )
         self.child.expect(f"{self.user}:~\\$")
 
-        expected = "2"
+        expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
+        expected_2 = "blabla"
+        expected_3 = "0"
+        self.child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo blabla; echo $?")
+        self.child.expect(f"{self.user}:~\\$")
+        result = self.child.before.decode("utf8").split("\n")
+        result_1 = result[1].strip()
+        result_2 = result[2].strip()
+        result_3 = result[3].strip()
+        self.assertEqual(expected_1, result_1)
+        self.assertEqual(expected_2, result_2)
+        self.assertEqual(expected_3, result_3)
+
+    def test_16b_exitcode_with_separator_external_cmd(self):
+        """F16(b) | external command exit codes with separator"""
+        self.child = pexpect.spawn(
+            f"{TOPDIR}/bin/lshell "
+            f"--config {TOPDIR}/etc/lshell.conf "
+            '--forbidden "[]"'
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
+        expected_2 = "2"
         self.child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         self.child.expect(f"{self.user}:~\\$")
-        result = self.child.before.decode("utf8").split("\n")[2].strip()
-        self.assertEqual(expected, result)
+        result = self.child.before.decode("utf8").split("\n")
+        result_1 = result[1].strip()
+        result_2 = result[2].strip()
+        self.assertEqual(expected_1, result_1)
+        self.assertEqual(expected_2, result_2)
 
     def test_17_exitcode_without_separator_external_cmd(self):
         """F17 | external command exit codes without separator"""
@@ -891,7 +919,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
     def test_47_backticks(self):
         """F47 | Forbidden backticks should be reported"""
         expected = (
-            '*** forbidden syntax -> "echo `uptime`"\r\n'
+            '*** forbidden character -> "`"\r\n'
             "*** You have 1 warning(s) left, before getting kicked out.\r\n"
             "This incident has been reported.\r\n"
         )
@@ -903,7 +931,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
     def test_48_replace_backticks_with_dollar_parentheses(self):
         """F48 | Forbidden syntax $(command) should be reported"""
         expected = (
-            '*** forbidden syntax -> "echo $(uptime)"\r\n'
+            '*** forbidden character -> "$("\r\n'
             "*** You have 1 warning(s) left, before getting kicked out.\r\n"
             "This incident has been reported.\r\n"
         )
@@ -928,7 +956,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.assertEqual(expected, result)
 
     def test_50_warnings_then_kickout(self):
-        """F48 | kicked out after warning counter"""
+        """F50 | kicked out after warning counter"""
         self.child = pexpect.spawn(
             f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1 --warning_counter 0"
         )

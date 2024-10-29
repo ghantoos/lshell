@@ -6,6 +6,7 @@ import os
 import sys
 import random
 import string
+import shlex
 from getpass import getuser
 
 # import lshell specifics
@@ -66,12 +67,76 @@ def get_aliases(line, aliases):
     return line
 
 
+def split_commands(line):
+    """Split the command line into separate commands based on the operators"""
+    # in case ';', '|' or '&' are not forbidden, check if in line
+    lines = []
+
+    # Variable to track if we're inside quotes
+    in_quotes = False
+
+    # Starting position of the command segment
+    if line[0] in ["&", "|", ";"]:
+        start = 1
+    else:
+        start = 0
+
+    # Iterate over the command line
+    for i in range(1, len(line)):
+        # Check for quotes to ignore splitting inside quoted strings
+        if line[i] in ['"', "'"] and (i == 0 or line[i - 1] != "\\"):
+            in_quotes = not in_quotes
+            # Only split if we are not inside quotes and the current character
+            # is an unescaped operator
+        if line[i] in ["&", "|", ";"] and line[i - 1] != "\\" and not in_quotes:
+            if start != i:
+                lines.append(line[start:i])
+            start = i + 1
+
+    # Append the last segment of the command
+    if start != len(line):
+        lines.append(line[start:])
+
+    return lines
+
+
+def split_command_args(line):
+    """Split the command line into cmd and args"""
+    # Use shlex to split the command into parts
+    tokens = shlex.split(line)
+
+    if tokens:
+        # The first token is the command
+        cmd = tokens[0]
+        # The rest are the arguments
+        args = " ".join(tokens[1:])
+    else:
+        # If there are no tokens, return None for both
+        cmd, args = "", ""
+
+    return cmd, args
+
+
+def replace_exit_code(line, retcode):
+    """Replace the exit code in the command line. Replaces all occurrences of
+    $? with the exit code."""
+    if re.search(r"[;&\|]", line):
+        p = re.compile(r"(\s|^)(\$\?)([\s|$]?[;&|].*)")
+    else:
+        p = re.compile(r"(\s|^)(\$\?)(\s|$)")
+
+    line = p.sub(rf" {retcode} \3", line)
+
+    return line
+
+
 def cmd_parse_execute(command_line, shell_context=None):
     """Parse and execute a shell command line"""
     # Split command line by shell grammar: '&&', '||', and ';;'
-    cmd_split = re.split(r"(;;|&&|\|\|)", command_line)
+    cmd_split = re.split(r"(;|&&|\|\|)", command_line)
 
-    retcode = 0  # Initialize return code
+    # Initialize return code
+    retcode = 0
 
     # Iterate over commands and operators
     for i in range(0, len(cmd_split), 2):
@@ -104,23 +169,26 @@ def cmd_parse_execute(command_line, shell_context=None):
                 retcode = getattr(builtincmd, executable)(shell_context.conf)
         else:
             if "path_noexec" in shell_context.conf:
-                command = f"LD_PRELOAD={shell_context.conf['path_noexec']} {command}"
+                os.environ["LD_PRELOAD"] = shell_context.conf["path_noexec"]
+            command = replace_exit_code(command, retcode)
             retcode = exec_cmd(command)
 
     return retcode
 
 
 def exec_cmd(cmd):
-    """execute a command, locally catching the signals"""
+    """Execute a command exactly as entered, without shell interpretation."""
     try:
-        proc = subprocess.Popen([cmd], shell=True)
+        # Split the command to handle it as a list of arguments
+        cmd_args = shlex.split(cmd)
+        # Execute without shell=True to prevent shell interpretation
+        proc = subprocess.Popen(cmd_args)
         proc.communicate()
         retcode = proc.returncode
     except KeyboardInterrupt:
-        # force process to properly terminate (SIGTERM)
+        # Properly handle user interruption (SIGTERM)
         proc.terminate()
         proc.communicate()
-        # exit code for user terminated scripts is 130
         retcode = 130
 
     return retcode

@@ -127,14 +127,9 @@ class ShellCmd(cmd.Cmd, object):
                 self.mytimer(0)
             self.g_arg = re.sub("^~$|^~/", f"{self.conf['home_path']}/", self.g_arg)
             self.g_arg = re.sub(" ~/", f" {self.conf['home_path']}/", self.g_arg)
-            # replace previous command exit code
-            # in case multiple commands (using separators), only replace first
-            # command. Regex replaces all occurrences of $?, before ;,&,|
-            if re.search(r"[;&\|]", self.g_line):
-                p = re.compile(r"(\s|^)(\$\?)([\s|$]?[;&|].*)")
-            else:
-                p = re.compile(r"(\s|^)(\$\?)(\s|$)")
-            self.g_line = p.sub(rf" {self.retcode} \3", self.g_line)
+
+            # replace $? with the exit code
+            self.g_line = utils.replace_exit_code(self.g_line, self.retcode)
 
             if isinstance(self.conf["aliases"], dict):
                 self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])

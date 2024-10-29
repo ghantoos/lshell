@@ -6,7 +6,8 @@ command contains forbidden characters, etc.
 import sys
 import re
 import os
-import subprocess
+import shlex
+import glob
 
 # import lshell specifics
 from lshell import utils
@@ -41,6 +42,36 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
     return 1, conf
 
 
+def tokenize_command(command):
+    """Tokenize the command line into separate commands based on the operators"""
+
+    try:
+        lexer = shlex.shlex(command, posix=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        tokens = list(lexer)
+    except ValueError:
+        # Handle the exception and return an appropriate message or handle as needed
+        return []
+    return tokens
+
+
+def expand_shell_wildcards(item):
+    """Expand shell wildcards in the item and return the expanded path"""
+
+    # Expand shell variables like $HOME
+    item = os.path.expanduser(item)
+    item = os.path.expandvars(item)
+    item = os.path.realpath(item)  # this is a hack - needs to be reviewed
+    # test if item is a directory
+    expanded_items = glob.glob(item, recursive=True)
+    if expanded_items:
+        # Return all matches instead of just the first one
+        item = expanded_items[0]
+
+    return item
+
+
 def check_path(line, conf, completion=None, ssh=None, strict=None):
     """Check if a path is entered in the line. If so, it checks if user
     are allowed to see this path. If user is not allowed, it calls
@@ -49,49 +80,10 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
     allowed_path_re = str(conf["path"][0])
     denied_path_re = str(conf["path"][1][:-1])
 
-    # split line depending on the operators
-    sep = re.compile(r"\ |;|\||&")
-    line = line.strip()
-    line = sep.split(line)
+    line = tokenize_command(line)
 
     for item in line:
-        # remove potential quotes or back-ticks
-        item = re.sub(r'^["\'`]|["\'`]$', "", item)
-
-        # remove potential $() and ``
-        item = re.sub(r"^\$[\(]|[\)]$", "", item)
-
-        # if item has been converted to something other than a string
-        # or an int, reconvert it to a string
-        if type(item) not in ["str", "int"]:
-            item = str(item)
-        # replace "~" with home path
-        item = os.path.expanduser(item)
-
-        # expand shell wildcards using "echo"
-        # i know, this a bit nasty...
-        if re.findall(r"\$|\*|\?", item):
-            # remove quotes if available
-            item = re.sub("\"|'", "", item)
-
-            p = subprocess.Popen(
-                f"`which echo` {item}",
-                shell=True,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            cout = p.stdout
-
-            try:
-                item = cout.readlines()[0].decode("utf8").split(" ")[0]
-                item = item.strip()
-                item = os.path.expandvars(item)
-            except IndexError:
-                conf["logpath"].critical("*** Internal error: command not " "executed")
-                return 1, conf
-
-        tomatch = os.path.realpath(item)
+        tomatch = expand_shell_wildcards(item)
         if os.path.isdir(tomatch) and tomatch[-1] != "/":
             tomatch += "/"
         match_allowed = re.findall(allowed_path_re, tomatch)
@@ -159,11 +151,11 @@ def check_secure(line, conf, strict=None, ssh=None):
         # allow '&&' and '||' even if singles are forbidden
         if item in ["&", "|"]:
             if re.findall(rf"[^\{item}]\{item}[^\{item}]", line):
-                ret, conf = warn_count("syntax", oline, conf, strict=strict, ssh=ssh)
+                ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
                 return ret, conf
         else:
             if item in line:
-                ret, conf = warn_count("syntax", oline, conf, strict=strict, ssh=ssh)
+                ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
                 return ret, conf
 
     # check if the line contains $(foo) executions, and check them
@@ -201,30 +193,7 @@ def check_secure(line, conf, strict=None, ssh=None):
     elif line.startswith("$(") or line.startswith("`"):
         return 0, conf
 
-    # in case ';', '|' or '&' are not forbidden, check if in line
-    lines = []
-
-    # corrected by Alojzij Blatnik #48
-    # test first character
-    if line[0] in ["&", "|", ";"]:
-        start = 1
-    else:
-        start = 0
-
-    # split remaining command line
-    for i in range(1, len(line)):
-        # in case \& or \| or \; don't split it
-        if line[i] in ["&", "|", ";"] and line[i - 1] != "\\":
-            # if there is more && or || skip it
-            if start != i:
-                lines.append(line[start:i])
-            start = i + 1
-
-    # append remaining command line
-    if start != len(line):
-        # fmt: off
-        lines.append(line[start:len(line)])
-        # fmt: on
+    lines = utils.split_commands(line)
 
     for separate_line in lines:
         # remove trailing parenthesis

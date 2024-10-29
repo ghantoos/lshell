@@ -6,7 +6,6 @@ from getpass import getuser
 from unittest.mock import patch
 
 # import lshell specifics
-from lshell.shellcmd import ShellCmd
 from lshell.checkconfig import CheckConfig
 from lshell.utils import get_aliases, updateprompt
 from lshell.variables import builtins_list

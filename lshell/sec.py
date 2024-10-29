@@ -8,7 +8,6 @@ import re
 import os
 import shlex
 import glob
-import subprocess
 
 # import lshell specifics
 from lshell import utils
@@ -51,7 +50,7 @@ def tokenize_command(command):
         lexer.whitespace_split = True
         lexer.commenters = ""
         tokens = list(lexer)
-    except ValueError as e:
+    except ValueError:
         # Handle the exception and return an appropriate message or handle as needed
         return []
     return tokens

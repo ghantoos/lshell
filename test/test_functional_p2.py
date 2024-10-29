@@ -7,6 +7,8 @@ from getpass import getuser
 import pexpect
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
+LSHELL = f"{TOPDIR}/bin/lshell"
 
 
 class TestFunctions(unittest.TestCase):
@@ -17,7 +19,7 @@ class TestFunctions(unittest.TestCase):
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf --strict 1"
+            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf --strict 1"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -35,7 +37,7 @@ class TestFunctions(unittest.TestCase):
 
         self.child = pexpect.spawn(
             (
-                f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+                f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
                 f'--allowed "+ [\'grep\']" --forbidden "[]"'
             )
         )
@@ -56,7 +58,7 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
             '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -76,7 +78,7 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
             '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -96,7 +98,7 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         self.child = pexpect.spawn(
-            f"{TOPDIR}/bin/lshell --config {TOPDIR}/etc/lshell.conf "
+            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
             '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")

@@ -238,4 +238,45 @@ def check_secure(line, conf, strict=None, ssh=None):
             ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
             return ret, conf
 
+        # Check if the command contains any forbidden extensions
+        if conf.get("allowed_file_extensions"):
+            allowed_extensions = conf["allowed_file_extensions"]
+            check_extensions, disallowed_extensions = check_allowed_file_extensions(
+                full_command, allowed_extensions
+            )
+            if check_extensions is False:
+                ret, conf = warn_count(
+                    f"file extension {disallowed_extensions}",
+                    full_command,
+                    conf,
+                    strict=strict,
+                    ssh=ssh,
+                )
+                return ret, conf
+
     return 0, conf
+
+
+def check_allowed_file_extensions(command_line, allowed_extensions):
+    """Checks if any file extensions in the command line are allowed."""
+    # Split the command using shlex to handle quotes and escape characters
+    tokens = shlex.split(command_line)
+
+    # Extract file extensions from tokens
+    extensions_in_command = []
+    for token in tokens:
+        match = re.search(r"\.\w+", token)
+        if match:
+            extensions_in_command.append(match.group())
+
+    # Check each extension against the allowed_extensions list
+    disallowed_extensions = [
+        ext for ext in extensions_in_command if ext not in allowed_extensions
+    ]
+
+    # if len(disallowed_extensions) == 1:
+    #     disallowed_extensions = disallowed_extensions[0]
+
+    if disallowed_extensions:
+        return False, disallowed_extensions
+    return True, None

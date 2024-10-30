@@ -211,7 +211,7 @@ class TestFunctions(unittest.TestCase):
         return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
     def test_29_env_path_updates_path_variable(self):
-        """Test that --env_path updates the PATH environment variable."""
+        """U29 | Test that --env_path updates the PATH environment variable."""
         # store the original $PATH
         original_path = os.environ["PATH"]
 
@@ -232,8 +232,8 @@ class TestFunctions(unittest.TestCase):
         os.environ["PATH"] = original_path
 
     @patch("sys.exit")  # Mock sys.exit to prevent exiting the test on failure
-    def test_invalid_new_path(self, mock_exit):
-        """Test that an invalid new PATH triggers an error and sys.exit."""
+    def test_30_invalid_new_path(self, mock_exit):
+        """U30 | Test that an invalid new PATH triggers an error and sys.exit."""
         original_path = os.environ["PATH"]
         random_path = "/usr/random:/invalid$path"
         args = self.args + [
@@ -250,8 +250,8 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(os.environ["PATH"], original_path)
 
     @patch("sys.exit")
-    def test_new_path_starts_with_colon(self, mock_exit):
-        """Test that a new PATH starting with a colon triggers an error."""
+    def test_31_new_path_starts_with_colon(self, mock_exit):
+        """U31 | Test that a new PATH starting with a colon triggers an error."""
         original_path = os.environ["PATH"]
         random_path = ":/usr/random:/this_is_a_test"
         args = self.args + [

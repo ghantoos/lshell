@@ -179,6 +179,10 @@ commands (e.g. find, vim, xargs).
 important: commands defined in 'allowed_shell_escape' override their definition
 in the \'allowed\' variable.
 .TP
+.I allowed_file_extension
+a list of allowed file extensions that can be provided in the command line.
+If a list of allowed extensions is provided, all other file extensions will be disallowed.
+.TP
 .I allowed_cmd_path
 a list of path; all executable files inside these path will be allowed
 .TP

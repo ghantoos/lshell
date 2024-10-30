@@ -365,7 +365,7 @@ class CheckConfig:
     def minusplus(self, confdict, key, extra):
         """update configuration lists containing -/+ operators"""
         if key in confdict:
-            liste = self.myeval(confdict[key])
+            liste = self.myeval(confdict[key], key)
         elif key == "path":
             liste = ["", ""]
         else:
@@ -428,13 +428,22 @@ class CheckConfig:
 
         return str(expanded_all)
 
-    def myeval(self, value, info=""):
+    def myeval(self, value, key=""):
         """if eval returns SyntaxError, log it as critical conf missing"""
         try:
             evaluated = eval(value)
+            # if list, remove duplicates
+            if isinstance(evaluated, list) and key in [
+                "allowed",
+                "allowed_shell_escape",
+                "forbidden",
+                "overssh",
+                "sudo_commands",
+            ]:
+                evaluated = list(set(evaluated))
             return evaluated
         except SyntaxError:
-            self.log.critical(f"CONF: Incomplete {info} field in configuration file")
+            self.log.critical(f"CONF: Incomplete {key} field in configuration file")
             sys.exit(1)
 
     def check_user_integrity(self):

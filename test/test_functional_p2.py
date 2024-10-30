@@ -18,9 +18,7 @@ class TestFunctions(unittest.TestCase):
 
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
-        self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf --strict 1"
-        )
+        self.child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --strict 1")
         self.child.expect(f"{self.user}:~\\$")
 
     def tearDown(self):
@@ -37,7 +35,7 @@ class TestFunctions(unittest.TestCase):
 
         self.child = pexpect.spawn(
             (
-                f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
+                f"{LSHELL} --config {CONFIG} "
                 f'--allowed "+ [\'grep\']" --forbidden "[]"'
             )
         )
@@ -58,8 +56,7 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
-            '--allowed "+ [\'grep\']" --forbidden "[]"'
+            f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -78,8 +75,7 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
-            '--allowed "+ [\'grep\']" --forbidden "[]"'
+            f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -98,8 +94,7 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
-            '--allowed "+ [\'grep\']" --forbidden "[]"'
+            f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -115,8 +110,7 @@ class TestFunctions(unittest.TestCase):
         expected = "*** forbidden command: echo"
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
-            '--allowed \'"all" - ["echo"]'
+            f"{LSHELL} --config {CONFIG} " '--allowed \'"all" - ["echo"]'
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -134,7 +128,7 @@ class TestFunctions(unittest.TestCase):
         expected2 = "*** forbidden path: /usr/local/"
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
+            f"{LSHELL} --config {CONFIG} "
             '--path \'["/var", "/usr"] - ["/usr/local"]\''
         )
         self.child.expect(f"{self.user}:~\\$")
@@ -187,14 +181,13 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
 
     def test_59a_forbidden_remove_one(self):
-        """U59a | remove all items from forbidden list"""
+        """F59a | remove all items from forbidden list"""
 
         command = "echo 1 ; echo 2"
         expected = [" echo 1 ; echo 2\r", "1\r", "2\r", ""]
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
-            '--forbidden \'[";"] - [";"]\''
+            f"{LSHELL} --config {CONFIG} " '--forbidden \'[";"] - [";"]\''
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -204,13 +197,13 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
 
     def test_59b_forbidden_remove_one(self):
-        """U59b | fixed forbidden list"""
+        """F59b | fixed forbidden list"""
 
         command = "echo 1 ; echo 2"
         expected = "*** forbidden character: ;"
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf " "--forbidden '[\";\"]'"
+            f"{LSHELL} --config {CONFIG} " "--forbidden '[\";\"]'"
         )
         self.child.expect(f"{self.user}:~\\$")
 
@@ -220,18 +213,73 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
 
     def test_59c_forbidden_remove_one(self):
-        """U59c | remove an item from forbidden list"""
+        """F59c | remove an item from forbidden list"""
 
         command = "echo 1 ; echo 2"
         expected = [" echo 1 ; echo 2\r", "1\r", "2\r", ""]
 
         self.child = pexpect.spawn(
-            f"{LSHELL} --config {TOPDIR}/etc/lshell.conf "
-            '--forbidden \'[";", "|", "%"] - [";"]\''
+            f"{LSHELL} --config {CONFIG} " '--forbidden \'[";", "|", "%"] - [";"]\''
         )
         self.child.expect(f"{self.user}:~\\$")
 
         self.child.sendline(command)
         self.child.expect(f"{self.user}:~\\$")
         output = self.child.before.decode("utf-8").split("\n")
+        self.assertEqual(expected, output)
+
+    def test_60_allowed_extension_success(self):
+        """F60 | allow extension and cat file with similar extension"""
+
+        f_name = inspect.currentframe().f_code.co_name
+        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        command = f"cat {log_file}"
+        expected = "Hello world!"
+
+        self.child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"+ ['cat']\" "
+            "--allowed_file_extensions \"['.log']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline(command)
+        self.child.expect(f"{self.user}:~\\$")
+        output = self.child.before.decode("utf-8").split("\n")[1].strip()
+        self.assertEqual(expected, output)
+
+    def test_61_allowed_extension_fail(self):
+        """F61 | allow extension and cat file with different extension"""
+
+        command = f"cat {CONFIG}"
+        expected = f"*** forbidden file extension ['.conf']: cat {CONFIG}"
+
+        self.child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"+ ['cat']\" "
+            "--allowed_file_extensions \"['.log']\""
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline(command)
+        self.child.expect(f"{self.user}:~\\$")
+        output = self.child.before.decode("utf-8").split("\n")[1].strip()
+        self.assertEqual(expected, output)
+
+    def test_62_allowed_extension_empty(self):
+        """F61 | allow extension empty and cat any file extension"""
+
+        command = f"cat {CONFIG}"
+        expected = "[global]"
+
+        self.child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"+ ['cat']\" "
+            '--allowed_file_extensions "[]"'
+        )
+        self.child.expect(f"{self.user}:~\\$")
+
+        self.child.sendline(command)
+        self.child.expect(f"{self.user}:~\\$")
+        output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)

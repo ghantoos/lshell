@@ -329,6 +329,7 @@ class CheckConfig:
                     "overssh",
                     "allowed",
                     "allowed_shell_escape",
+                    "allowed_file_extensions",
                     "forbidden",
                 ]:
                     for stuff in split:
@@ -436,6 +437,7 @@ class CheckConfig:
             if isinstance(evaluated, list) and key in [
                 "allowed",
                 "allowed_shell_escape",
+                "allowed_file_extensions",
                 "forbidden",
                 "overssh",
                 "sudo_commands",
@@ -484,6 +486,7 @@ class CheckConfig:
         for item in [
             "allowed",
             "allowed_shell_escape",
+            "allowed_file_extensions",
             "forbidden",
             "sudo_commands",
             "warning_counter",
@@ -515,6 +518,7 @@ class CheckConfig:
                 if item in [
                     "allowed",
                     "allowed_shell_escape",
+                    "allowed_file_extensions",
                     "overssh",
                     "sudo_commands",
                     "env_vars_files",

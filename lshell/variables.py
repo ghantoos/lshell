@@ -51,6 +51,7 @@ configparams = [
     "logfilename=",
     "syslogname=",
     "allowed=",
+    "allowed_file_extensions=",
     "forbidden=",
     "sudo_commands=",
     "warning_counter=",

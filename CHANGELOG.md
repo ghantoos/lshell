@@ -4,6 +4,13 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
 
+
+### v0.10.6 30/10/2024
+- Updated lexer/parser for handling complex regex and quoted strings.
+- Added the ability to restrict file extensions by providing a list of `allowed_file_extensions`.
+- Fixed configuration interpretation when using `'all' - ['command']` or similar configuration structures.
+- Added more tests.
+
 ### v0.10.5 26/10/2024
 - Fixed parsing and testing of the over SSH commands. Corrected return codes over SSH.
 

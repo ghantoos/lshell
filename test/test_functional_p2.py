@@ -111,7 +111,7 @@ class TestFunctions(unittest.TestCase):
     def test_55_allowed_all_minus_list(self):
         """F55 | allow all commands minus the list"""
 
-        command = f"echo 1"
+        command = "echo 1"
         expected = "*** forbidden command: echo"
 
         self.child = pexpect.spawn(
@@ -148,7 +148,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_57_overssh_all_minus_list(self):
         """F57 | overssh minus command list"""
-        command = f"echo 1"
+        command = "echo 1"
         expected = (
             '*** forbidden char/command over SSH: "echo 1"\r\n'
             "This incident has been reported."
@@ -171,7 +171,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_58_allowed_plus_minus_list(self):
         """F58 | allow plus list minus list"""
-        command = f"echo 1"
+        command = "echo 1"
         expected = "*** forbidden command: echo"
 
         self.child = pexpect.spawn(

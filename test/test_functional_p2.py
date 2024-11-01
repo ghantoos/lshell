@@ -330,18 +330,16 @@ class TestFunctions(unittest.TestCase):
 
     def test_65_multi_line_command_security_echo(self):
         """F65 | test help, then echo FREEDOM! && help () sh && help"""
-        self.child = pexpect.spawn(
-            f"{LSHELL} " f"--config {CONFIG}  --forbidden \"-[';']\""
-        )
-        self.child.expect(PROMPT)
+        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG}  --forbidden \"-[';']\"")
+        child.expect(PROMPT)
 
         # Step 1: Enter `help` command
         expected_help_output = (
             "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
         )
-        self.child.sendline("help")
-        self.child.expect(PROMPT)
-        help_output = self.child.before.decode("utf8").split("\n", 2)[1].strip()
+        child.sendline("help")
+        child.expect(PROMPT)
+        help_output = child.before.decode("utf8").split("\n", 2)[1].strip()
 
         self.assertEqual(expected_help_output, help_output)
 
@@ -350,12 +348,12 @@ class TestFunctions(unittest.TestCase):
             "1\r\nFREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\n"
             "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
         )
-        self.child.sendline("echo 1; \\")
-        self.child.expect(">")
-        self.child.sendline("echo FREEDOM! && help () sh && help")
-        self.child.expect(PROMPT)
+        child.sendline("echo 1; \\")
+        child.expect(">")
+        child.sendline("echo FREEDOM! && help () sh && help")
+        child.expect(PROMPT)
 
-        result = self.child.before.decode("utf8").strip().split("\n", 1)[1]
+        result = child.before.decode("utf8").strip().split("\n", 1)[1]
 
         # Verify the combined output
         self.assertEqual(expected_output, result)
@@ -368,12 +366,12 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
 
         # Send a multi-line command using line continuation
-        child.sendline("echo 'First line' \\")
-        child.sendline("'and second line'")
+        child.sendline("echo 1 \\")
+        child.expect(">")
         child.sendcontrol("c")
         child.expect(PROMPT)
 
-        output = child.before.decode("utf-8").split("\n")[2].strip()
+        output = child.before.decode("utf-8").split("\n")[1].strip()
         expected_output = ""
         assert (
             output == expected_output

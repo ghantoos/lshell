@@ -361,7 +361,12 @@ class ShellCmd(cmd.Cmd, object):
                             line = "EOF"
                         except KeyboardInterrupt:
                             self.stdout.write("\n")
-                            line = ""
+                            if partial_line:
+                                partial_line = ""
+                                self.conf["promptprint"] = utils.updateprompt(
+                                    os.getcwd(), self.conf
+                                )
+                            continue
                     else:
                         self.stdout.write(self.conf["promptprint"])
                         self.stdout.flush()

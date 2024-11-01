@@ -359,3 +359,26 @@ class TestFunctions(unittest.TestCase):
 
         # Verify the combined output
         self.assertEqual(expected_output, result)
+
+    def test_66_multi_line_command_ctrl_c(self):
+        """F66 | Test multi-line command then ctrl-c to cancel"""
+
+        # Start the shell process with lshell config
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} ")
+        child.expect(PROMPT)
+
+        # Send a multi-line command using line continuation
+        child.sendline("echo 'First line' \\")
+        child.sendline("'and second line'")
+        child.sendcontrol("c")
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[2].strip()
+        expected_output = ""
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Send an exit command to end the shell session
+        child.sendline("exit")
+        child.expect(pexpect.EOF)

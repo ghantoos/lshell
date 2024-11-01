@@ -9,17 +9,17 @@ import pexpect
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
+USER = getuser()
+PROMPT = f"{USER}:~\\$"
 
 
 class TestFunctions(unittest.TestCase):
     """Functional tests for lshell"""
 
-    user = getuser()
-
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
         self.child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --strict 1")
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
     def tearDown(self):
         self.child.close()
@@ -39,10 +39,10 @@ class TestFunctions(unittest.TestCase):
                 f'--allowed "+ [\'grep\']" --forbidden "[]"'
             )
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8")
         self.assertIn("user123", output)
 
@@ -58,10 +58,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8")
         self.assertNotIn("user123", output)
 
@@ -77,10 +77,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8")
         self.assertNotIn("user123", output)
 
@@ -96,10 +96,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8")
         self.assertIn("user.name", output)
 
@@ -112,10 +112,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed \'"all" - ["echo"]'
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)
 
@@ -123,7 +123,7 @@ class TestFunctions(unittest.TestCase):
         """F56 | allow paths except for the specified path"""
 
         command1 = "cd /usr/"
-        expected1 = f"{self.user}:/usr\\$"
+        expected1 = f"{USER}:/usr\\$"
         command2 = "cd /usr/local"
         expected2 = "*** forbidden path: /usr/local/"
 
@@ -131,7 +131,7 @@ class TestFunctions(unittest.TestCase):
             f"{LSHELL} --config {CONFIG} "
             '--path \'["/var", "/usr"] - ["/usr/local"]\''
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command1)
         self.child.expect(expected1)
@@ -173,10 +173,10 @@ class TestFunctions(unittest.TestCase):
             f"--config {CONFIG} "
             f"--allowed \"['ls'] + ['echo'] - ['echo']\" "
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)
 
@@ -189,10 +189,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--forbidden \'[";"] - [";"]\''
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")
         self.assertEqual(expected, output)
 
@@ -205,10 +205,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " "--forbidden '[\";\"]'"
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)
 
@@ -221,10 +221,10 @@ class TestFunctions(unittest.TestCase):
         self.child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--forbidden \'[";", "|", "%"] - [";"]\''
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")
         self.assertEqual(expected, output)
 
@@ -241,10 +241,10 @@ class TestFunctions(unittest.TestCase):
             "--allowed \"+ ['cat']\" "
             "--allowed_file_extensions \"['.log']\""
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)
 
@@ -259,15 +259,15 @@ class TestFunctions(unittest.TestCase):
             "--allowed \"+ ['cat']\" "
             "--allowed_file_extensions \"['.log']\""
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)
 
     def test_62_allowed_extension_empty(self):
-        """F61 | allow extension empty and cat any file extension"""
+        """F62 | allow extension empty and cat any file extension"""
 
         command = f"cat {CONFIG}"
         expected = "[global]"
@@ -277,9 +277,85 @@ class TestFunctions(unittest.TestCase):
             "--allowed \"+ ['cat']\" "
             '--allowed_file_extensions "[]"'
         )
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
 
         self.child.sendline(command)
-        self.child.expect(f"{self.user}:~\\$")
+        self.child.expect(PROMPT)
         output = self.child.before.decode("utf-8").split("\n")[1].strip()
         self.assertEqual(expected, output)
+
+    def test_63_multi_line_command(self):
+        """F63 | Test multi-line command execution using line continuation"""
+
+        # Start the shell process with lshell config
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} ")
+        child.expect(PROMPT)
+
+        # Send a multi-line command using line continuation
+        child.sendline("echo 'First line' \\")
+        child.sendline("'and second line'")
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[2].strip()
+        expected_output = "First line and second line"
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Send an exit command to end the shell session
+        child.sendline("exit")
+        child.expect(pexpect.EOF)
+
+    def test_64_multi_line_command_with_two_echos(self):
+        """F64 | Test multi-line command execution with two echo commands"""
+
+        # Start the shell process with lshell config
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-[';']\"")
+        child.expect(PROMPT)
+
+        # Send two echo commands on two lines
+        child.sendline("echo 'First line'; echo \\")
+        child.sendline("'Second line'")
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[2:4]
+        expected_output = ["First line\r", "Second line\r"]
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Send an exit command to end the shell session
+        child.sendline("exit")
+        child.expect(pexpect.EOF)
+
+    def test_65_multi_line_command_security_echo(self):
+        """F65 | test help, then echo FREEDOM! && help () sh && help"""
+        self.child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG}  --forbidden \"-[';']\""
+        )
+        self.child.expect(PROMPT)
+
+        # Step 1: Enter `help` command
+        expected_help_output = (
+            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        )
+        self.child.sendline("help")
+        self.child.expect(PROMPT)
+        help_output = self.child.before.decode("utf8").split("\n", 2)[1].strip()
+
+        self.assertEqual(expected_help_output, help_output)
+
+        # Step 2: Enter `echo FREEDOM! && help () sh && help`
+        expected_output = (
+            "1\r\nFREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\n"
+            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+        )
+        self.child.sendline("echo 1; \\")
+        self.child.expect(">")
+        self.child.sendline("echo FREEDOM! && help () sh && help")
+        self.child.expect(PROMPT)
+
+        result = self.child.before.decode("utf8").strip().split("\n", 1)[1]
+
+        # Verify the combined output
+        self.assertEqual(expected_output, result)

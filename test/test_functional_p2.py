@@ -315,7 +315,7 @@ class TestFunctions(unittest.TestCase):
 
         # Send two echo commands on two lines
         child.sendline("echo 'First line'; echo \\")
-        child.sendline("'Second line'")
+        child.sendline("'Second line';")
         child.expect(PROMPT)
 
         output = child.before.decode("utf-8").split("\n")[2:4]

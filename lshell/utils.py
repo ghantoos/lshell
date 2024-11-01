@@ -143,6 +143,10 @@ def cmd_parse_execute(command_line, shell_context=None):
         command = cmd_split[i].strip()
         operator = cmd_split[i - 1].strip() if i > 0 else None
 
+        # Skip empty commands
+        if not command:
+            continue
+
         # Only execute commands based on the previous operator and return code
         if operator == "&&" and retcode != 0:
             continue

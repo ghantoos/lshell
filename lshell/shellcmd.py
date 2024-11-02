@@ -343,6 +343,12 @@ class ShellCmd(cmd.Cmd, object):
                 self.stdout.write(f"{self.intro}\n")
             if self.conf["login_script"]:
                 utils.cmd_parse_execute(self.conf["login_script"], self)
+            self.prompt2 = "> "  # PS2 prompt
+            # for long commands, a user may escape the new line
+            # by giving a bash like '\' character at the end of
+            # the line. cmdloop() needs to recognize that and
+            # create an appended line before sending it to onecmd()
+            partial_line = ""
             stop = None
             while not stop:
                 if self.cmdqueue:
@@ -355,7 +361,12 @@ class ShellCmd(cmd.Cmd, object):
                             line = "EOF"
                         except KeyboardInterrupt:
                             self.stdout.write("\n")
-                            line = ""
+                            if partial_line:
+                                partial_line = ""
+                                self.conf["promptprint"] = utils.updateprompt(
+                                    os.getcwd(), self.conf
+                                )
+                            continue
                     else:
                         self.stdout.write(self.conf["promptprint"])
                         self.stdout.flush()
@@ -365,6 +376,23 @@ class ShellCmd(cmd.Cmd, object):
                         else:
                             # chop \n
                             line = line[:-1]
+                    if len(line) > 1 and line.startswith("\\"):
+                        # implying previous partial line
+                        line = line[:1].replace("\\", "", 1)
+                    if partial_line:
+                        line = partial_line + line
+                    if line.endswith("\\"):
+                        # continuation character. First partial line.
+                        # We shall expect the command to continue in
+                        # a new line. Change to bash like PS2 prompt to
+                        # indicate this continuation to the user
+                        partial_line = line.strip("\\")
+                        self.conf["promptprint"] = self.prompt2  # switching to PS2
+                        continue
+                    partial_line = ""
+                    self.conf["promptprint"] = utils.updateprompt(
+                        os.getcwd(), self.conf
+                    )
                 line = self.precmd(line)
                 stop = self.onecmd(line)
                 stop = self.postcmd(stop, line)

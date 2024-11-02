@@ -1,2 +1,0 @@
-#!/bin/bash
-exec /Users/ignacemouzannar/src/lshell/bin/lshell --config /Users/ignacemouzannar/src/lshell/test/testfiles/test.conf --strict 1 "$@"

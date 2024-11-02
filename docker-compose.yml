@@ -1,0 +1,116 @@
+version: '3'
+services:
+  ubuntu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "ubuntu:latest"
+    image: lshell-ubuntu
+    container_name: lshell-ubuntu
+    entrypoint: ["lshell"]
+    command: ""
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  debian:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "debian:latest"
+    image: lshell-debian
+    container_name: lshell-debian
+    entrypoint: ["lshell"]
+    command: ""
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  fedora:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "fedora:latest"
+    image: lshell-fedora
+    container_name: lshell-fedora
+    entrypoint: ["lshell"]
+    command: ""
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  alpine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "alpine:latest"
+    image: lshell-alpine
+    container_name: lshell-alpine
+    entrypoint: ["lshell"]
+    command: ""
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  # Run linting and tests for each distribution
+  ubuntu_tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "ubuntu:latest"
+    user: "testuser"
+    working_dir: /home/testuser/lshell
+    container_name: ubuntu_tests
+    command: "pytest && pylint lshell && flake8 lshell"
+    volumes:
+      - .:/home/testuser/lshell
+    environment:
+      - PYTHONPATH=/home/testuser/lshell
+
+  debian_tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "debian:latest"
+    container_name: debian_tests
+    command: "pytest && pylint lshell && flake8 lshell"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  fedora_tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "fedora:latest"
+    container_name: fedora_tests
+    command: "pytest && pylint lshell && flake8 lshell"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  alpine_tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "alpine:latest"
+    container_name: alpine_tests
+    command: "pytest && pylint lshell && flake8 lshell"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app

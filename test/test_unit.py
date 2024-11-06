@@ -272,7 +272,6 @@ class TestFunctions(unittest.TestCase):
         r"""U32 | LPS1 using \u@\h - \t> format"""
         os.environ["LPS1"] = r"\u@\h - \t> "
         expected = f"{getuser()}@{os.uname()[1].split('.')[0]} - {strftime('%H:%M:%S', gmtime())}> "
-        userconf = CheckConfig(self.args).returnconf()
         prompt = parse_ps1(os.getenv("LPS1"))
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]
@@ -281,7 +280,6 @@ class TestFunctions(unittest.TestCase):
         r"""U33 | LPS1 should replace cwd with \w format"""
         os.environ["LPS1"] = r"\u:\w$ "
         expected = f"{getuser()}:{os.getcwd().replace(os.path.expanduser('~'), '~')}$ "
-        userconf = CheckConfig(self.args).returnconf()
         prompt = parse_ps1(os.getenv("LPS1"))
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]

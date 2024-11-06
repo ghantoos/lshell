@@ -260,7 +260,12 @@ def check_secure(line, conf, strict=None, ssh=None):
 def check_allowed_file_extensions(command_line, allowed_extensions):
     """Checks if any file extensions in the command line are allowed."""
     # Split the command using shlex to handle quotes and escape characters
-    tokens = shlex.split(command_line)
+    try:
+        tokens = shlex.split(command_line)
+    except ValueError as e:
+        # Log error or provide user feedback on the invalid input
+        print(f"Error parsing command line: {e}")
+        return True, []
 
     # Extract file extensions from tokens
     extensions_in_command = []

@@ -387,3 +387,25 @@ class TestFunctions(unittest.TestCase):
 
         # Send an exit command to end the shell session
         self.do_exit(child)
+
+    def test_67_unclosed_quotes_traceback(self):
+        """F67 | Test that unclsed quotes do not cause a traceback"""
+
+        # Start the shell process with lshell config
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} ")
+        child.expect(PROMPT)
+
+        # Send a multi-line command using line continuation
+        child.sendline('echo "OK""')
+        child.expect("> ")
+        child.sendline('OK"')
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[1].strip()
+        expected_output = "OKOK"
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Send an exit command to end the shell session
+        self.do_exit(child)

@@ -389,6 +389,11 @@ class ShellCmd(cmd.Cmd, object):
                         partial_line = line.strip("\\")
                         self.conf["promptprint"] = self.prompt2  # switching to PS2
                         continue
+                    elif line.count('"') % 2 != 0 or line.count("'") % 2 != 0:
+                        # unclosed quotes detected
+                        partial_line = line
+                        self.conf["promptprint"] = self.prompt2  # switching to PS2
+                        continue
                     partial_line = ""
                     self.conf["promptprint"] = utils.updateprompt(
                         os.getcwd(), self.conf

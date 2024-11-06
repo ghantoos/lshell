@@ -3,11 +3,12 @@
 import os
 import unittest
 from getpass import getuser
+from time import strftime, gmtime
 from unittest.mock import patch
 
 # import lshell specifics
 from lshell.checkconfig import CheckConfig
-from lshell.utils import get_aliases, updateprompt
+from lshell.utils import get_aliases, updateprompt, parse_ps1, getpromptbase
 from lshell.variables import builtins_list
 from lshell import builtincmd
 from lshell import sec
@@ -170,7 +171,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_23_prompt_short_1(self):
         """U23 | short_prompt = 1 should show only current dir"""
-        expected = f"{getuser()}: foo$ "
+        expected = f"{getuser()}:foo$ "
         args = self.args + ["--prompt_short=1"]
         userconf = CheckConfig(args).returnconf()
         currentpath = f"{userconf['home_path']}/foo"
@@ -180,7 +181,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_24_prompt_short_2(self):
         """U24 | short_prompt = 2 should show full dir path"""
-        expected = f"{getuser()}: {os.getcwd()}$ "
+        expected = f"{getuser()}:{os.getcwd()}/foo$ "
         args = self.args + ["--prompt_short=2"]
         userconf = CheckConfig(args).returnconf()
         currentpath = f"{userconf['home_path']}/foo"
@@ -266,3 +267,80 @@ class TestFunctions(unittest.TestCase):
 
         # The PATH should not have been changed
         self.assertEqual(os.environ["PATH"], original_path)
+
+    def test_32_lps1_user_host_time(self):
+        r"""U32 | LPS1 using \u@\h - \t> format"""
+        os.environ["LPS1"] = r"\u@\h - \t> "
+        expected = f"{getuser()}@{os.uname()[1].split('.')[0]} - {strftime('%H:%M:%S', gmtime())}> "
+        userconf = CheckConfig(self.args).returnconf()
+        prompt = parse_ps1(os.getenv("LPS1"))
+        self.assertEqual(prompt, expected)
+        del os.environ["LPS1"]
+
+    def test_33_lps1_with_cwd(self):
+        r"""U33 | LPS1 should replace cwd with \w format"""
+        os.environ["LPS1"] = r"\u:\w$ "
+        expected = f"{getuser()}:{os.getcwd().replace(os.path.expanduser('~'), '~')}$ "
+        userconf = CheckConfig(self.args).returnconf()
+        prompt = parse_ps1(os.getenv("LPS1"))
+        self.assertEqual(prompt, expected)
+        del os.environ["LPS1"]
+
+    def test_34_prompt_default_user_host(self):
+        """U34 | Default config-based prompt should replace %u and %h"""
+        userconf = CheckConfig(self.args).returnconf()
+        userconf["prompt"] = "%u@%h"
+        expected = f"{getuser()}@{os.uname()[1].split('.')[0]}"
+        prompt = getpromptbase(userconf)
+        self.assertEqual(prompt, expected)
+
+    def test_35_updateprompt_lps1_defined(self):
+        """U35 | LPS1 environment variable should override config-based prompt"""
+        os.environ["LPS1"] = r"\u@\H \W$ "
+        expected = f"{getuser()}@{os.uname()[1]} {os.path.basename(os.getcwd())}$ "
+        userconf = CheckConfig(self.args).returnconf()
+        prompt = updateprompt(os.getcwd(), userconf)
+        self.assertEqual(prompt, expected)
+        del os.environ["LPS1"]
+
+    def test_36_updateprompt_home_path(self):
+        """U36 | Prompt path should use '~' for home directory"""
+        userconf = CheckConfig(self.args).returnconf()
+        currentpath = userconf["home_path"]
+        expected = f"{getuser()}:~$ "
+        prompt = updateprompt(currentpath, userconf)
+        self.assertEqual(prompt, expected)
+
+    def test_37_updateprompt_short_prompt_level_1(self):
+        """U37 | short_prompt = 1 should show only last directory in path"""
+        userconf = CheckConfig(self.args).returnconf()
+        userconf["prompt_short"] = 1
+        currentpath = f"{userconf['home_path']}/foo/bar"
+        expected = f"{getuser()}:bar$ "
+        prompt = updateprompt(currentpath, userconf)
+        self.assertEqual(prompt, expected)
+
+    def test_38_updateprompt_short_prompt_level_2(self):
+        """U38 | short_prompt = 2 should show full directory path"""
+        userconf = CheckConfig(self.args).returnconf()
+        userconf["prompt_short"] = 2
+        currentpath = f"{userconf['home_path']}/foo/bar"
+        expected = f"{getuser()}:{currentpath}$ "
+        prompt = updateprompt(currentpath, userconf)
+        self.assertEqual(prompt, expected)
+
+    def test_39_updateprompt_path_inside_home(self):
+        """U39 | Path inside home directory should start with '~'"""
+        userconf = CheckConfig(self.args).returnconf()
+        currentpath = f"{userconf['home_path']}/projects"
+        expected = f"{getuser()}:~{currentpath[len(userconf['home_path']):]}$ "
+        prompt = updateprompt(currentpath, userconf)
+        self.assertEqual(prompt, expected)
+
+    def test_40_updateprompt_absolute_path_outside_home(self):
+        """U40 | Absolute path outside home should display fully in prompt"""
+        userconf = CheckConfig(self.args).returnconf()
+        currentpath = "/etc"
+        expected = f"{getuser()}:{currentpath}$ "
+        prompt = updateprompt(currentpath, userconf)
+        self.assertEqual(prompt, expected)

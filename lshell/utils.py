@@ -8,6 +8,7 @@ import random
 import string
 import shlex
 from getpass import getuser
+from time import strftime, gmtime
 
 # import lshell specifics
 from lshell import variables
@@ -198,34 +199,70 @@ def exec_cmd(cmd):
     return retcode
 
 
+def parse_ps1(ps1):
+    """Parse and format $PS1-style prompt with lshell-compatible values"""
+    user = getuser()
+    host = os.uname()[1]
+    cwd = os.getcwd()
+    home = os.path.expanduser("~")
+    prompt_symbol = "#" if os.geteuid() == 0 else "$"
+
+    # Define LPS1 replacement mappings
+    replacements = {
+        r"\u": user,
+        r"\h": host.split(".")[0],
+        r"\H": host,
+        r"\w": cwd.replace(home, "~", 1) if cwd.startswith(home) else cwd,
+        r"\W": os.path.basename(cwd),
+        r"\$": prompt_symbol,
+        r"\\": "\\",
+        r"\t": strftime("%H:%M:%S", gmtime()),
+        r"\T": strftime("%I:%M:%S", gmtime()),
+        r"\A": strftime("%H:%M", gmtime()),
+        r"\@": strftime("%I:%M:%S%p", gmtime()),
+        r"\d": strftime("%a %b %d", gmtime()),
+    }
+    # Replace each placeholder with its corresponding value
+    for placeholder, value in replacements.items():
+        ps1 = ps1.replace(placeholder, value)
+
+    return ps1
+
+
 def getpromptbase(conf):
-    """get prompt used by the shell"""
-    if "prompt" in conf:
-        promptbase = conf["prompt"]
+    """Get the base prompt structure, using $PS1 or defaulting to config-based prompt"""
+    ps1_env = os.getenv("LPS1")
+    if ps1_env:
+        # Use $LPS1 with placeholders if defined
+        promptbase = parse_ps1(ps1_env)
+    else:
+        # Fallback to configured prompt if no $PS1 is defined
+        promptbase = conf.get("prompt", "%u")
         promptbase = promptbase.replace("%u", getuser())
         promptbase = promptbase.replace("%h", os.uname()[1].split(".")[0])
-    else:
-        promptbase = getuser()
 
     return promptbase
 
 
 def updateprompt(path, conf):
-    """Set actual prompt to print, updated when changing directories"""
-
-    # get initial promptbase (from configuration)
+    """Set the prompt with updated path and user privilege level, supporting $LPS1 format"""
     promptbase = getpromptbase(conf)
+    prompt_symbol = "# " if os.geteuid() == 0 else "$ "
 
-    # update the prompt when directory is changed
-    if path == conf["home_path"]:
-        prompt = f"{promptbase}:~$ "
-    elif conf["prompt_short"] == 1:
-        prompt = f"{promptbase}: {path.split('/')[-1]}$ "
-    elif conf["prompt_short"] == 2:
-        prompt = f"{promptbase}: {os.getcwd()}$ "
-    elif re.findall(conf["home_path"], path):
-        prompt = f"{promptbase}:~{path.split(conf['home_path'])[1]}$ "
+    # Determine dynamic path display if $LPS1 is not defined
+    if os.getenv("LPS1"):
+        prompt = promptbase
     else:
-        prompt = f"{promptbase}:{path}$ "
+        if path == conf["home_path"]:
+            current_path = "~"
+        elif conf.get("prompt_short") == 1:
+            current_path = os.path.basename(path)
+        elif conf.get("prompt_short") == 2:
+            current_path = path
+        elif path.startswith(conf["home_path"]):
+            current_path = f"~{path[len(conf['home_path']):]}"
+        else:
+            current_path = path
+        prompt = f"{promptbase}:{current_path}{prompt_symbol}"
 
     return prompt

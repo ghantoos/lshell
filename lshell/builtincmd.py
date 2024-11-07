@@ -80,6 +80,20 @@ def export(args):
     return 0, None
 
 
+def source(envfile):
+    """Source a file in the current shell context"""
+    envfile = os.path.expandvars(envfile)
+    try:
+        with open(envfile, encoding="utf-8") as env_vars:
+            for env_var in env_vars.readlines():
+                if env_var.split(" ", 1)[0] == "export":
+                    export(env_var.strip())
+    except (OSError, IOError):
+        sys.stderr.write(f"ERROR: Unable to read environment file: {envfile}\n")
+        return 1
+    return 0
+
+
 def cd(directory, conf):
     """implementation of the "cd" command"""
     # expand user's ~

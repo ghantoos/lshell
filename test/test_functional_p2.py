@@ -409,3 +409,85 @@ class TestFunctions(unittest.TestCase):
 
         # Send an exit command to end the shell session
         self.do_exit(child)
+
+    def test_68_source_nonexistent_file(self):
+        """F68 | Test sourcing a nonexistent environment file shows an error"""
+
+        # Define a nonexistent file path
+        env_file = "does_not_exist"
+
+        # Start lshell and attempt to source the nonexistent file
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
+        child.expect(PROMPT)
+
+        # Source the nonexistent file and check for an error message
+        child.sendline(f"source {env_file}")
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[1].strip()
+        expected_output = f"ERROR: Unable to read environment file: {env_file}"
+
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Clean up and end session
+        self.do_exit(child)
+
+    def test_69_source_valid_file(self):
+        """F69 | Test sourcing a valid environment file sets variables"""
+
+        # Write a sample environment file
+        env_file = "random_test_env"
+        with open(env_file, "w") as file:
+            file.write("export TEST_VAR='test_value'\n")
+
+        # Start lshell and source the environment file
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
+        child.expect(PROMPT)
+
+        # Source the file and check if the variable is set
+        child.sendline(f"source {env_file}")
+        child.expect(PROMPT)
+        child.sendline("echo $TEST_VAR")
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[1].strip()
+        expected_output = f"test_value"
+
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Clean up and end session
+        self.do_exit(child)
+
+    def test_70_source_overwrite_variable(self):
+        """F70 | Test sourcing a file overwrites existing environment variables"""
+
+        # Write a sample environment file
+        env_file = "test_env_overwrite"
+        with open(env_file, "w") as file:
+            file.write("export TEST_VAR='new_value'\n")
+
+        # Start lshell, set initial variable, and source file to overwrite it
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
+        child.expect(PROMPT)
+
+        # Set initial variable and source the file
+        child.sendline("export TEST_VAR='initial_value'")
+        child.expect(PROMPT)
+        child.sendline(f"source {env_file}")
+        child.expect(PROMPT)
+        child.sendline("echo $TEST_VAR")
+        child.expect(PROMPT)
+
+        output = child.before.decode("utf-8").split("\n")[1].strip()
+        expected_output = f"new_value"
+
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Clean up and end session
+        self.do_exit(child)

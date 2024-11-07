@@ -16,7 +16,7 @@ from logging.handlers import SysLogHandler
 # import lshell specifics
 from lshell import utils
 from lshell import variables
-from lshell.builtincmd import export
+from lshell.builtincmd import source
 
 
 class CheckConfig:
@@ -43,7 +43,7 @@ class CheckConfig:
         configfile = self.conf["configfile"]
         self.check_config_file_exists(configfile)
         self.conf["config_mtime"] = self.get_config_mtime(configfile)
-        self.check_file(configfile)
+        self.check_config_file(configfile)
         self.get_global()
         self.check_log()
         self.check_script()
@@ -123,18 +123,9 @@ class CheckConfig:
         # Check paths to files that contain env vars
         if "env_vars_files" in self.conf:
             for envfile in self.conf["env_vars_files"]:
-                file_path = os.path.expandvars(envfile)
-                try:
-                    with open(file_path, encoding="utf-8") as env_vars:
-                        for env_var in env_vars.readlines():
-                            if env_var.split(" ", 1)[0] == "export":
-                                export(env_var.strip())
-                except (OSError, IOError):
-                    self.stderr.write(
-                        f"ERROR: Unable to read environment file: {file_path}\n"
-                    )
+                source(envfile)
 
-    def check_file(self, file):
+    def check_config_file(self, file):
         """This method checks the existence of the given configuration
         file passed via command line arguments
         """

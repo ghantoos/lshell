@@ -172,6 +172,8 @@ class ShellCmd(cmd.Cmd, object):
                 self.retcode, var = builtincmd.export(self.g_line)
                 if self.retcode == 1:
                     self.log.critical(f"** forbidden environment variable '{var}'")
+            elif self.g_cmd == "source":
+                self.retcode = builtincmd.source(self.g_arg)
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]

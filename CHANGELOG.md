@@ -4,6 +4,10 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
 
+### v0.10.7 06/11/2024
+- Added source command
+- Added support for `LPS1` and `PS2` similar to bash `PS1` and `PS2`
+- Minor test updates and bug fixes
 
 ### v0.10.6 30/10/2024
 - Updated lexer/parser for handling complex regex and quoted strings.

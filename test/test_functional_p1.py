@@ -191,9 +191,16 @@ class TestFunctions(unittest.TestCase):
         p = subprocess.Popen(
             "ls -F ~/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
         )
+        # Create two random files in the home directory
+        file1 = os.path.join("random_file_1.txt")
+        file2 = os.path.join("random_file_2.txt")
+        with open(file1, "w") as f:
+            f.write("This is a random file 1.")
+        with open(file2, "w") as f:
+            f.write("This is a random file 2.")
         cout = p.stdout
         expected = cout.read().decode("utf8").strip().split()
-        self.child.sendline("cd ~/\t\t")
+        self.child.sendline("cd \t\t")
         self.child.expect(PROMPT)
         output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
@@ -204,6 +211,10 @@ class TestFunctions(unittest.TestCase):
             if not item.startswith("--More--") and not item.startswith("\x1b")
         ]
         self.assertEqual(len(expected), len(output))
+
+        # cleanup
+        os.remove(file1)
+        os.remove(file2)
 
     def test_15_cmd_completion_tab_tab(self):
         """F15 | command completion: tab to list commands"""
@@ -643,16 +654,17 @@ class TestFunctions(unittest.TestCase):
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
-        test_script_path = f"{TOPDIR}/test/test.lsh"
-        wrapper_path = f"{LSHELL}_wrapper"
+        test_script_path = f"/tmp/test.lsh"
 
         # Step 1: Create the wrapper script
-        with open(wrapper_path, "w") as wrapper:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
             wrapper.write(
                 f"""#!/bin/bash
 exec {LSHELL} --config {CONFIG} "$@"
 """
             )
+            wrapper.flush()  # Ensure data is written to disk
+            wrapper_path = wrapper.name
 
         # Make the wrapper executable
         os.chmod(wrapper_path, 0o755)
@@ -696,16 +708,17 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
-        test_script_path = f"{TOPDIR}/test/test.lsh"
-        wrapper_path = f"{LSHELL}_wrapper"
+        test_script_path = f"/tmp/test.lsh"
 
         # Step 1: Create the wrapper script
-        with open(wrapper_path, "w") as wrapper:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
             wrapper.write(
                 f"""#!/bin/bash
 exec {LSHELL} --config {CONFIG} --strict 1 "$@"
 """
             )
+            wrapper.flush()  # Ensure data is written to disk
+            wrapper_path = wrapper.name
 
         # Make the wrapper executable
         os.chmod(wrapper_path, 0o755)

@@ -6,6 +6,9 @@ import inspect
 from getpass import getuser
 import pexpect
 
+# import lshell specifics
+from test import test_utils
+
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
@@ -51,7 +54,11 @@ class TestFunctions(unittest.TestCase):
         )
         f_name = inspect.currentframe().f_code.co_name
         log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
-        command = f"grep -P '{pattern}' {log_file}"
+
+        if test_utils.is_alpine_linux():
+            command = f"grep -E '{pattern}' {log_file}"
+        else:
+            command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
@@ -71,7 +78,11 @@ class TestFunctions(unittest.TestCase):
         )
         f_name = inspect.currentframe().f_code.co_name
         log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
-        command = f"grep -P '{pattern}' {log_file}"
+
+        if test_utils.is_alpine_linux():
+            command = f"grep -E '{pattern}' {log_file}"
+        else:
+            command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'

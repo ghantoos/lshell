@@ -12,20 +12,11 @@ RUN \
         useradd -m -d /home/testuser -s /bin/bash testuser; \
     # For Fedora
     elif [ -f /etc/fedora-release ]; then \
-        dnf install -y python3 python3-pip git flake8 pylint python3-pexpect python3-setuptools; \
-        useradd -m -d /home/testuser -s /bin/bash testuser; \
-    # For CentOS/RHEL
-    elif [ -f /etc/centos-release ]; then \
-        # Update CentOS repository to use vault.centos.org
-        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
-        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
-        yum install -y python3 python3-pip git && \
-        yum clean all; \
-        python3 -m pip install flake8 pylint; \
+        dnf install -y python3 python3-pip python3-pytest git flake8 pylint python3-pexpect python3-setuptools; \
         useradd -m -d /home/testuser -s /bin/bash testuser; \
     # For Alpine
     elif [ -f /etc/alpine-release ]; then \
-        apk add --no-cache python3 py3-pip py3-flake8 py3-pylint py3-pexpect py3-setuptools; \
+        apk add --no-cache --upgrade python3 py3-pip py3-pytest py3-flake8 py3-pylint py3-pexpect py3-setuptools grep; \
         addgroup -S testuser && adduser -S testuser -G testuser; \
     fi
 

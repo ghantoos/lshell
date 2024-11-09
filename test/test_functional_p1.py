@@ -10,6 +10,7 @@ import pexpect
 
 # import lshell specifics
 from lshell import utils
+from test import test_utils
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
@@ -150,7 +151,12 @@ class TestFunctions(unittest.TestCase):
 
     def test_11_etc_passwd_1(self):
         """F11 | /etc/passwd: empty variable 'ls "$a"/etc/passwd'"""
-        expected = "ls: cannot access '$a/etc/passwd': No such file or directory\r\n"
+        if test_utils.is_alpine_linux():
+            expected = "ls: $a/etc/passwd: No such file or directory\r\n"
+        else:
+            expected = (
+                "ls: cannot access '$a/etc/passwd': No such file or directory\r\n"
+            )
         self.child.sendline('ls "$a"/etc/passwd')
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
@@ -158,9 +164,12 @@ class TestFunctions(unittest.TestCase):
 
     def test_12_etc_passwd_2(self):
         """F12 | /etc/passwd: empty variable 'ls -l .*./.*./etc/passwd'"""
-        expected = (
-            "ls: cannot access '.*./.*./etc/passwd': No such file or directory\r\n"
-        )
+        if test_utils.is_alpine_linux():
+            expected = "ls: .*./.*./etc/passwd: No such file or directory\r\n"
+        else:
+            expected = (
+                "ls: cannot access '.*./.*./etc/passwd': No such file or directory\r\n"
+            )
         self.child.sendline("ls -l .*./.*./etc/passwd")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
@@ -168,7 +177,12 @@ class TestFunctions(unittest.TestCase):
 
     def test_13a_etc_passwd_3(self):
         """F13(a) | /etc/passwd: empty variable 'ls -l .?/.?/etc/passwd'"""
-        expected = "ls: cannot access '.?/.?/etc/passwd': No such file or directory\r\n"
+        if test_utils.is_alpine_linux():
+            expected = "ls: .?/.?/etc/passwd: No such file or directory\r\n"
+        else:
+            expected = (
+                "ls: cannot access '.?/.?/etc/passwd': No such file or directory\r\n"
+            )
         self.child.sendline("ls -l .?/.?/etc/passwd")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
@@ -233,7 +247,10 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
+        if test_utils.is_alpine_linux():
+            expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
+        else:
+            expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
         expected_2 = "blabla"
         expected_3 = "0"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo blabla; echo $?")
@@ -252,8 +269,12 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
-        expected_2 = "2"
+        if test_utils.is_alpine_linux():
+            expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
+            expected_2 = "1"
+        else:
+            expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
+            expected_2 = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n")
@@ -268,7 +289,10 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        expected = "2"
+        if test_utils.is_alpine_linux():
+            expected = "1"
+        else:
+            expected = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55")
         child.expect(PROMPT)
         child.sendline("echo $?")
@@ -429,14 +453,19 @@ class TestFunctions(unittest.TestCase):
         self.do_exit(child)
 
     def test_27_checksecure_awk(self):
-        """F27 | checksecure awk script with /bin/bash"""
+        """F27 | checksecure awk script with /bin/sh"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['awk']\""
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden path: /usr/bin/bash"
-        child.sendline("awk 'BEGIN {system(\"/bin/bash\")}'")
+        if test_utils.is_alpine_linux():
+            command = "awk 'BEGIN {system(\"/bin/sh\")}'"
+            expected = "*** forbidden path: /bin/busybox"
+        else:
+            command = "awk 'BEGIN {system(\"/usr/bin/bash\")}'"
+            expected = "*** forbidden path: /usr/bin/bash"
+        child.sendline(command)
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n")[1].strip()
 
@@ -659,18 +688,19 @@ class TestFunctions(unittest.TestCase):
         # Step 1: Create the wrapper script
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
             wrapper.write(
-                f"""#!/bin/bash
+                f"""#!/bin/sh
 exec {LSHELL} --config {CONFIG} "$@"
 """
             )
             wrapper.flush()  # Ensure data is written to disk
             wrapper_path = wrapper.name
 
-        # Make the wrapper executable
-        os.chmod(wrapper_path, 0o755)
-
         # Step 2: Copy template.lsh to test.lsh and replace the shebang
         shutil.copy(template_path, test_script_path)
+
+        # Make the wrapper executable
+        os.chmod(wrapper_path, 0o755)
+        os.chmod(test_script_path, 0o755)
 
         # Replace the placeholder in the shebang
         with open(test_script_path, "r+") as f:
@@ -681,7 +711,7 @@ exec {LSHELL} --config {CONFIG} "$@"
             f.truncate()
 
         # Spawn a child process to run the test.lsh script using pexpect
-        child = pexpect.spawn(f"{test_script_path}")
+        child = pexpect.spawn(test_script_path)
 
         # Expected output
         expected_output = """test\r
@@ -713,18 +743,19 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         # Step 1: Create the wrapper script
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
             wrapper.write(
-                f"""#!/bin/bash
+                f"""#!/bin/sh
 exec {LSHELL} --config {CONFIG} --strict 1 "$@"
 """
             )
             wrapper.flush()  # Ensure data is written to disk
             wrapper_path = wrapper.name
 
-        # Make the wrapper executable
-        os.chmod(wrapper_path, 0o755)
-
         # Step 2: Copy template.lsh to test.lsh and replace the shebang
         shutil.copy(template_path, test_script_path)
+
+        # Make the wrapper executable
+        os.chmod(wrapper_path, 0o755)
+        os.chmod(test_script_path, 0o755)
 
         with open(test_script_path, "r+") as f:
             content = f.read()
@@ -734,7 +765,7 @@ exec {LSHELL} --config {CONFIG} --strict 1 "$@"
             f.truncate()
 
         # Step 3: Spawn a child process to run the test.lsh script using pexpect
-        child = pexpect.spawn(f"{test_script_path}")
+        child = pexpect.spawn(test_script_path)
 
         # Expected output
         expected_output = """test\r

@@ -10,6 +10,8 @@ import pexpect
 
 # import lshell specifics
 from lshell import utils
+
+# pylint: disable=C0411
 from test import test_utils
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -250,7 +252,10 @@ class TestFunctions(unittest.TestCase):
         if test_utils.is_alpine_linux():
             expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
         else:
-            expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
+            expected_1 = (
+                "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
+                "No such file or directory"
+            )
         expected_2 = "blabla"
         expected_3 = "0"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo blabla; echo $?")
@@ -273,7 +278,10 @@ class TestFunctions(unittest.TestCase):
             expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
             expected_2 = "1"
         else:
-            expected_1 = "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': No such file or directory"
+            expected_1 = (
+                "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
+                "No such file or directory"
+            )
             expected_2 = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         child.expect(PROMPT)

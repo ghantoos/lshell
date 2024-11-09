@@ -7,6 +7,7 @@ from getpass import getuser
 import pexpect
 
 # import lshell specifics
+# pylint: disable=C0411
 from test import test_utils
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

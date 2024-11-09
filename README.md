@@ -165,6 +165,16 @@ In this case, my configuration file will look something like this:
 More information can be found in the manpage: `man -l man/lshell.1` or `man lshell`.
 
 
+## Running Tests in Docker Containers
+
+You can run the tests in parallel across multiple Linux distributions using Docker Compose. This is helpful for ensuring compatibility and consistency across environments. The following command will launch test services for Ubuntu, Debian, Fedora, and Alpine distributions simultaneously:
+
+```bash
+docker-compose up ubuntu_tests debian_tests fedora_tests alpine_tests
+```
+
+Each service will run in parallel and execute the `pytest`, `pylint`, and `flake8` tests specified in the docker-compose.yml.
+
 ## Contributions
 
 To contribute, open an issue or send a pull request.

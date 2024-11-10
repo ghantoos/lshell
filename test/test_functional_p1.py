@@ -873,7 +873,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " f"--overssh \"['ls']\" " f"-c 'ls'"
         )
-        self.child.expect(pexpect.EOF)
+        self.child.expect(pexpect.EOF, timeout=10)
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -900,7 +900,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
             f"--overssh \"['ls']\" "
             f"-c 'ls /random'"
         )
-        self.child.expect(pexpect.EOF)
+        self.child.expect(pexpect.EOF, timeout=10)
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -923,7 +923,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         self.child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " f"--overssh \"['ls']\" " f"-c 'lss'"
         )
-        self.child.expect(pexpect.EOF)
+        self.child.expect(pexpect.EOF, timeout=10)
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -982,7 +982,7 @@ cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
         )
         child.sendline("lslsls")
         child.sendline("lslsls")
-        child.expect(pexpect.EOF)
+        child.expect(pexpect.EOF, timeout=10)
 
         # Assert that the process exited
         self.assertIsNotNone(

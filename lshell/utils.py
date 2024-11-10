@@ -53,7 +53,7 @@ def get_aliases(line, aliases):
             (before, after, rest) = re.findall(reg1, line)[0]
             linesave = line
 
-            line = re.sub(reg2, f"{before} {aliaskey}{after}", line, 1)
+            line = re.sub(reg2, f"{before} {aliaskey}{after}", line, count=1)
 
             # if line does not change after sub, exit loop
             if linesave == line:

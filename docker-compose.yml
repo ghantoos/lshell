@@ -44,6 +44,21 @@ services:
     environment:
       - PYTHONPATH=/app
 
+  centos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "centos:8"
+    image: lshell-centos
+    container_name: lshell-centos
+    entrypoint: ["lshell"]
+    command: ""
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
   alpine:
     build:
       context: .
@@ -96,6 +111,19 @@ services:
         DISTRO: "fedora:latest"
     container_name: fedora_tests
     command: "pytest && pylint lshell && flake8 lshell"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+
+  centos_tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DISTRO: "centos:8"
+    container_name: centos_tests
+    command: "pytest-3 && pylint lshell && pyflake lshell"
     volumes:
       - .:/app
     environment:

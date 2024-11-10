@@ -1,4 +1,7 @@
 services:
+  #################################################
+  ## Run interactive lshellfor each distribution ##
+  #################################################
   ubuntu:
     build:
       context: .
@@ -74,7 +77,10 @@ services:
     environment:
       - PYTHONPATH=/app
 
-  # Run linting and tests for each distribution
+
+  #################################################
+  ## Run linting and tests for each distribution ##
+  #################################################
   ubuntu_tests:
     build:
       context: .

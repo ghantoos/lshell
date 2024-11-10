@@ -190,6 +190,12 @@ def exec_cmd(cmd):
         proc = subprocess.Popen(cmd_args)
         proc.communicate()
         retcode = proc.returncode
+    except FileNotFoundError:
+        # Handle the case where the command is not found
+        sys.stderr.write(
+            f"Command '{cmd_args[0]}' not found in $PATH or not installed on the system.\n"
+        )
+        retcode = 127
     except KeyboardInterrupt:
         # Properly handle user interruption (SIGTERM)
         proc.terminate()

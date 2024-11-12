@@ -174,6 +174,12 @@ class ShellCmd(cmd.Cmd, object):
                     self.log.critical(f"** forbidden environment variable '{var}'")
             elif self.g_cmd == "source":
                 self.retcode = builtincmd.source(self.g_arg)
+            elif self.g_cmd == "fg":
+                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+            elif self.g_cmd == "bg":
+                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+            elif self.g_cmd == "jobs":
+                self.retcode = builtincmd.print_jobs()
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]

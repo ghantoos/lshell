@@ -4,10 +4,15 @@ import glob
 import sys
 import os
 import readline
+import signal
 
 # import lshell specifics
 from lshell import variables
 from lshell import utils
+
+
+# Store background jobs
+background_jobs = []
 
 
 def lpath(conf):
@@ -136,3 +141,93 @@ def cd(directory, conf):
         conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
 
     return 0, conf
+
+
+def get_job_status(job):
+    """Return the status of a background job."""
+    if job.poll() is None:
+        status = "Stopped"  # Process is still stopped
+    elif job.poll() == 0:
+        status = "Completed"  # Process completed successfully
+    else:
+        status = "Killed"  # Process was killed or terminated with a non-zero code
+    return status
+
+
+def jobs():
+    """Return a list of background jobs."""
+    joblist = []
+    for idx, job in enumerate(background_jobs, start=1):
+        status = get_job_status(job)
+        if status == "Stopped":
+            if job.poll() is not None:
+                background_jobs.pop(idx - 1)
+                continue
+        cmd = " ".join(job.args)
+        joblist.append([idx, status, cmd])
+    return joblist
+
+
+def print_jobs():
+    """List all backgrounded jobs."""
+    joblist = jobs()
+    job_count = len(joblist)
+
+    try:
+        for i, job in enumerate(joblist, start=1):
+            idx, status, cmd = job
+            # Add '+' symbol for the most recent job
+            job_symbol = "+"
+            if job_count > 1:
+                if i == job_count - 1:
+                    # Add '-' for the second-to-last job
+                    job_symbol = "-"
+                elif i < job_count:
+                    # No symbol for other jobs
+                    job_symbol = " "
+
+            print(f"[{idx}]{job_symbol}  {status}        {cmd}")
+            return 0
+    except IndexError:
+        return 1
+
+
+def bg_fg(job_type, job_id):
+    """Resume a backgrounded job."""
+
+    if job_id:
+        # Check if job ID is valid
+        try:
+            job_id = int(job_id)
+        except ValueError:
+            print("Invalid job ID.")
+            return 1
+    else:
+        # Use the last job if no specific job_id is provided
+        if background_jobs:
+            job_id = len(background_jobs)
+        else:
+            print(f"lshell: {job_type}: current: no such job")
+            return 1
+
+    if 0 < job_id <= len(background_jobs):
+        job = background_jobs[job_id - 1]
+        if job.poll() is None:
+            if job_type == "fg":
+                job.send_signal(signal.SIGCONT)
+                # Bring it to the foreground and wait
+                job.wait()
+                print(" ".join(job.args))
+                # Remove the job from the list if it has completed
+                if job.poll() is not None:
+                    background_jobs.pop(job_id - 1)
+                return 0
+            elif job_type == "bg":
+                print(f"lshell: bg not supported")
+                return 1
+        else:
+            print(f"lshell: {job_type}: {job_id}: no such job")
+            return 1
+    else:
+        print(f"lshell: {job_type}: {job_id}: no such job")
+        return 1

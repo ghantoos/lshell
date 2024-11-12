@@ -354,7 +354,7 @@ class TestFunctions(unittest.TestCase):
 
         # Step 1: Enter `help` command
         expected_help_output = (
-            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
         )
         child.sendline("help")
         child.expect(PROMPT)
@@ -364,8 +364,9 @@ class TestFunctions(unittest.TestCase):
 
         # Step 2: Enter `echo FREEDOM! && help () sh && help`
         expected_output = (
-            "1\r\nFREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\n"
-            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+            "1\r\nFREEDOM!\r\n"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r\n"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
         )
         child.sendline("echo 1; \\")
         child.expect(">")

@@ -185,15 +185,18 @@ def print_jobs():
                 elif i < job_count:
                     # No symbol for other jobs
                     job_symbol = " "
-
             print(f"[{idx}]{job_symbol}  {status}        {cmd}")
-            return 0
     except IndexError:
         return 1
+    return 0
 
 
 def bg_fg(job_type, job_id):
     """Resume a backgrounded job."""
+
+    if job_type == "bg":
+        print(f"lshell: bg not supported")
+        return 1
 
     if job_id:
         # Check if job ID is valid
@@ -214,17 +217,21 @@ def bg_fg(job_type, job_id):
         job = background_jobs[job_id - 1]
         if job.poll() is None:
             if job_type == "fg":
-                job.send_signal(signal.SIGCONT)
-                # Bring it to the foreground and wait
-                job.wait()
-                print(" ".join(job.args))
-                # Remove the job from the list if it has completed
-                if job.poll() is not None:
-                    background_jobs.pop(job_id - 1)
-                return 0
-            elif job_type == "bg":
-                print(f"lshell: bg not supported")
-                return 1
+                try:
+                    job.send_signal(signal.SIGCONT)
+                    # Bring it to the foreground and wait
+                    job.wait()
+                    print(" ".join(job.args))
+                    # Remove the job from the list if it has completed
+                    if job.poll() is not None:
+                        background_jobs.pop(job_id - 1)
+                    return 0
+                except KeyboardInterrupt:
+                    return 130
+            # bg not supported at the moment
+            # elif job_type == "bg":
+            #     print(f"lshell: bg not supported")
+            #     return 1
         else:
             print(f"lshell: {job_type}: {job_id}: no such job")
             return 1

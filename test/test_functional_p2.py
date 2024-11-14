@@ -4,6 +4,7 @@ import os
 import unittest
 import inspect
 from getpass import getuser
+import time
 import pexpect
 
 # import lshell specifics
@@ -504,3 +505,42 @@ class TestFunctions(unittest.TestCase):
 
         # Clean up and end session
         self.do_exit(child)
+
+    def test_71_backgrounding_with_ctrl_z(self):
+        """F71 | est backgrounding a command with Ctrl+Z."""
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['tail']\"")
+        child.expect(PROMPT)
+
+        # Start a long-running command
+        for file in ["file1", "file2", "file3"]:
+            with open(file, "w") as f:
+                f.write(f"{file} content")
+            child.sendline(f"tail -f {file}")
+            time.sleep(1)
+            child.sendcontrol("z")
+            # Verify stopped job message
+            child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+
+        # Check jobs output
+        child.expect(PROMPT)
+        child.sendline("jobs")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8").split("\n", 1)[1].strip()
+        expected_output = (
+            "[1]   Stopped        tail -f file1\r\n"
+            "[2]-  Stopped        tail -f file2\r\n"
+            "[3]+  Stopped        tail -f file3"
+        )
+
+        assert (
+            output == expected_output
+        ), f"Expected '{expected_output}', got '{output}'"
+
+        # Resume the stopped job
+        child.sendline("fg")
+        child.sendcontrol("c")
+        child.sendline("fg")
+        child.sendcontrol("c")
+        child.sendline("fg")
+        child.sendcontrol("c")
+        child.expect(PROMPT)

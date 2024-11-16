@@ -143,10 +143,36 @@ def cd(directory, conf):
     return 0, conf
 
 
+# def check_background_jobs():
+#     """Check the status of background jobs and print a completion message if done."""
+#     global background_jobs
+#     updated_jobs = []
+#     for idx, job in enumerate(background_jobs, start=1):
+#         if job.poll() is None:
+#             # Process is still running
+#             updated_jobs.append((idx, job.args, job.pid))
+#         else:
+#             # Process has finished
+#             status = "Done" if job.returncode == 0 else "Failed"
+#             args = " ".join(job.args)
+#             # only print if the job has not been interrupted by the user
+#             if job.returncode != -2:
+#                 print(f"[{idx}]+  {status}                    {args}")
+
+#             # Remove the job from the list of background jobs
+#             background_jobs.pop(idx - 1)
+
+
 def get_job_status(job):
     """Return the status of a background job."""
     if job.poll() is None:
-        status = "Stopped"  # Process is still stopped
+        # try:
+        #     # Send signal 0 to check if the process is still running without altering its state
+        #     os.kill(job.pid, 0)
+        #     status = "Running"
+        # except OSError:
+        #     status = "Stopped"
+        status = "Stopped"
     elif job.poll() == 0:
         status = "Completed"  # Process completed successfully
     else:
@@ -156,10 +182,11 @@ def get_job_status(job):
 
 def jobs():
     """Return a list of background jobs."""
+    global background_jobs
     joblist = []
     for idx, job in enumerate(background_jobs, start=1):
         status = get_job_status(job)
-        if status == "Stopped":
+        if status in ["Stopped", "Killed"]:
             if job.poll() is not None:
                 background_jobs.pop(idx - 1)
                 continue
@@ -194,6 +221,7 @@ def print_jobs():
 def bg_fg(job_type, job_id):
     """Resume a backgrounded job."""
 
+    global background_jobs
     if job_type == "bg":
         print(f"lshell: bg not supported")
         return 1
@@ -218,15 +246,17 @@ def bg_fg(job_type, job_id):
         if job.poll() is None:
             if job_type == "fg":
                 try:
-                    job.send_signal(signal.SIGCONT)
-                    # Bring it to the foreground and wait
-                    job.wait()
                     print(" ".join(job.args))
+                    # Bring it to the foreground and wait
+                    os.killpg(os.getpgid(job.pid), signal.SIGCONT)
+                    job.wait()
                     # Remove the job from the list if it has completed
                     if job.poll() is not None:
                         background_jobs.pop(job_id - 1)
                     return 0
                 except KeyboardInterrupt:
+                    os.killpg(os.getpgid(job.pid), signal.SIGINT)
+                    background_jobs.pop(job_id - 1)
                     return 130
             # bg not supported at the moment
             # elif job_type == "bg":

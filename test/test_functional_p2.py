@@ -544,3 +544,23 @@ class TestFunctions(unittest.TestCase):
         child.sendline("fg")
         child.sendcontrol("c")
         child.expect(PROMPT)
+
+    def test_72_background_command_with_ampersand(self):
+        """F72 | Test backgrounding a command with `&`."""
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['sleep']\"")
+        child.expect(PROMPT)
+
+        # Run a background command with &
+        child.sendline("sleep 60 &")
+        child.expect(
+            r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=10
+        )  # Match the job output format
+
+        # Verify it's listed in jobs
+        child.sendline("jobs")
+        child.expect(
+            r"\[\d+\]\+  Running        sleep 60", timeout=10
+        )  # Match the jobs output format
+
+        # Clean up and end session
+        self.do_exit(child)

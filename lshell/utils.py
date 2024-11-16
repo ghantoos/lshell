@@ -201,14 +201,29 @@ def exec_cmd(cmd):
         if proc and proc.poll() is None:
             proc.send_signal(signal.SIGCONT)
 
+    # # Check if the command is to be run in the background
+    # background = cmd.strip().endswith("&")
+    # if background:
+    #     # Remove '&' and strip any extra spaces
+    #     cmd = cmd[:-1].strip()
+
     try:
         cmd_args = shlex.split(cmd)
-        proc = subprocess.Popen(cmd_args)
+        proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
 
         # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
         signal.signal(signal.SIGTSTP, handle_sigtstp)
         signal.signal(signal.SIGCONT, handle_sigcont)
 
+        # if background:
+        #     # If background mode, add to background jobs and return
+        #     builtincmd.background_jobs.append(proc)
+        #     job_id = len(builtincmd.background_jobs)
+        #     sys.stdout.write(f"[{job_id}] {cmd} (pid: {proc.pid})\n")  # Notify the user
+        #     sys.stdout.flush()
+        # else:
+        #     # Otherwise, wait for the process to complete
+        #     proc.communicate()
         proc.communicate()
         retcode = proc.returncode if proc.returncode is not None else 0
 
@@ -222,8 +237,8 @@ def exec_cmd(cmd):
         if proc and proc.poll() is None:
             retcode = 0  # Exit as if job was backgrounded
         else:
-            proc.terminate()
-            proc.communicate()
+            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            proc.wait()
             retcode = 130
 
     return retcode

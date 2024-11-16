@@ -359,6 +359,8 @@ class ShellCmd(cmd.Cmd, object):
             partial_line = ""
             stop = None
             while not stop:
+                # Check background jobs after each command
+                # builtincmd.check_background_jobs()
                 if self.cmdqueue:
                     line = self.cmdqueue.pop(0)
                 else:

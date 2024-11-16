@@ -47,6 +47,7 @@ class ShellCmd(cmd.Cmd, object):
         self.args = args
         self.conf = userconf
         self.log = self.conf["logpath"]
+        self.kill_jobs_at_exit = False
 
         # Set timer
         if self.conf["timer"] > 0:
@@ -587,16 +588,19 @@ class ShellCmd(cmd.Cmd, object):
                 if job.poll() is None:
                     active_jobs.append((job_id, job))
 
-            if active_jobs:
+            if active_jobs and self.kill_jobs_at_exit:
                 for job_id, job in active_jobs:
                     try:
                         os.killpg(os.getpgid(job.pid), signal.SIGKILL)
                         builtincmd.background_jobs.pop(job_id - 1)
                     except Exception as e:
                         print(f"Failed to stop job [{job.pid}]: {e}")
-
+            else:
                 # Warn the user and list the stopped jobs
-                print("All jobs have been stopped.")
+                print(
+                    "There are stopped jobs. Use 'jobs' to list them or 'exit' to stop them and exit shell."
+                )
+                self.kill_jobs_at_exit = True
                 return  # Return to the shell prompt instead of exiting
 
         # Proceed with exit if no active jobs or after stopping them

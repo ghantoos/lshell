@@ -185,15 +185,20 @@ def cmd_parse_execute(command_line, shell_context=None):
 def exec_cmd(cmd):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
 
+    class CtrlZException(Exception):
+        """Custom exception to handle Ctrl+Z (SIGTSTP)."""
+
+        pass
+
     def handle_sigtstp(signum, frame):
         """Handle SIGTSTP (Ctrl+Z) by sending the process to the background."""
         if proc and proc.poll() is None:  # Ensure process is running
             proc.send_signal(signal.SIGSTOP)  # Stop the process
             builtincmd.background_jobs.append(proc)  # Add process to background jobs
             job_id = len(builtincmd.background_jobs)
-            print(f"\n[{job_id}]+  Stopped        {cmd}")
-            # Return to prompt without waiting for proc.communicate()
-            raise KeyboardInterrupt  # Emulate Ctrl+C to exit communicate
+            sys.stdout.write(f"\n[{job_id}]+  Stopped        {cmd}\n")
+            sys.stdout.flush()
+            raise CtrlZException()  # Raise custom exception for SIGTSTP handling
 
     def handle_sigcont(signum, frame):
         """Handle SIGCONT to resume a stopped job in the foreground."""
@@ -207,6 +212,9 @@ def exec_cmd(cmd):
         cmd = cmd[:-1].strip()
 
     try:
+        # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
+        signal.signal(signal.SIGTSTP, handle_sigtstp)
+        signal.signal(signal.SIGCONT, handle_sigcont)
         cmd_args = shlex.split(cmd)
         if background:
             with open(os.devnull, "r") as devnull_in, open(
@@ -219,21 +227,13 @@ def exec_cmd(cmd):
                     stderr=sys.stderr,
                     preexec_fn=os.setsid,
                 )
-        else:
-            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
-
-        # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
-        signal.signal(signal.SIGTSTP, handle_sigtstp)
-        signal.signal(signal.SIGCONT, handle_sigcont)
-
-        if background:
-            # If background mode, add to background jobs and return
+            # add to background jobs and return
             builtincmd.background_jobs.append(proc)
             job_id = len(builtincmd.background_jobs)
             print(f"[{job_id}] {cmd} (pid: {proc.pid})")
             retcode = 0
         else:
-            # Otherwise, wait for the process to complete
+            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
             proc.communicate()
             retcode = proc.returncode if proc.returncode is not None else 0
 
@@ -242,14 +242,12 @@ def exec_cmd(cmd):
             f"Command '{cmd_args[0]}' not found in $PATH or not installed on the system.\n"
         )
         retcode = 127
-    except KeyboardInterrupt:
-        # Handle Ctrl+Z emulation in background mode
+    except CtrlZException:  # Handle Ctrl+Z
+        retcode = 0
+    except KeyboardInterrupt:  # Handle Ctrl+C
         if proc and proc.poll() is None:
-            retcode = 0  # Exit as if job was backgrounded
-        else:
             os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-            proc.wait()
-            retcode = 130
+        retcode = 130
 
     return retcode
 

@@ -3,6 +3,9 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.10.8 16/11/2024
+- Added background job management with `fg` and `jobs` commands, including support for background execution using `&`.
+- Added Docker tests for Debian, Ubuntu, Fedora, and Alpine.
 
 ### v0.10.7 06/11/2024
 - Added source command

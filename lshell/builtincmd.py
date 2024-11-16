@@ -143,36 +143,35 @@ def cd(directory, conf):
     return 0, conf
 
 
-# def check_background_jobs():
-#     """Check the status of background jobs and print a completion message if done."""
-#     global background_jobs
-#     updated_jobs = []
-#     for idx, job in enumerate(background_jobs, start=1):
-#         if job.poll() is None:
-#             # Process is still running
-#             updated_jobs.append((idx, job.args, job.pid))
-#         else:
-#             # Process has finished
-#             status = "Done" if job.returncode == 0 else "Failed"
-#             args = " ".join(job.args)
-#             # only print if the job has not been interrupted by the user
-#             if job.returncode != -2:
-#                 print(f"[{idx}]+  {status}                    {args}")
+def check_background_jobs():
+    """Check the status of background jobs and print a completion message if done."""
+    global background_jobs
+    updated_jobs = []
+    for idx, job in enumerate(background_jobs, start=1):
+        if job.poll() is None:
+            # Process is still running
+            updated_jobs.append((idx, job.args, job.pid))
+        else:
+            # Process has finished
+            status = "Done" if job.returncode == 0 else "Failed"
+            args = " ".join(job.args)
+            # only print if the job has not been interrupted by the user
+            if job.returncode != -2:
+                print(f"[{idx}]+  {status}                    {args}")
 
-#             # Remove the job from the list of background jobs
-#             background_jobs.pop(idx - 1)
+            # Remove the job from the list of background jobs
+            background_jobs.pop(idx - 1)
 
 
 def get_job_status(job):
     """Return the status of a background job."""
     if job.poll() is None:
-        # try:
-        #     # Send signal 0 to check if the process is still running without altering its state
-        #     os.kill(job.pid, 0)
-        #     status = "Running"
-        # except OSError:
-        #     status = "Stopped"
-        status = "Stopped"
+        try:
+            # Send signal 0 to check if the process is still running without altering its state
+            os.kill(job.pid, 0)
+            status = "Running"
+        except OSError:
+            status = "Stopped"
     elif job.poll() == 0:
         status = "Completed"  # Process completed successfully
     else:

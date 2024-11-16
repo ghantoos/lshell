@@ -191,8 +191,7 @@ def exec_cmd(cmd):
             proc.send_signal(signal.SIGSTOP)  # Stop the process
             builtincmd.background_jobs.append(proc)  # Add process to background jobs
             job_id = len(builtincmd.background_jobs)
-            sys.stdout.write(f"\n[{job_id}]+  Stopped        {cmd}\n")
-            sys.stdout.flush()
+            print(f"\n[{job_id}]+  Stopped        {cmd}\n")
             # Return to prompt without waiting for proc.communicate()
             raise KeyboardInterrupt  # Emulate Ctrl+C to exit communicate
 
@@ -201,31 +200,42 @@ def exec_cmd(cmd):
         if proc and proc.poll() is None:
             proc.send_signal(signal.SIGCONT)
 
-    # # Check if the command is to be run in the background
-    # background = cmd.strip().endswith("&")
-    # if background:
-    #     # Remove '&' and strip any extra spaces
-    #     cmd = cmd[:-1].strip()
+    # Check if the command is to be run in the background
+    background = cmd.strip().endswith("&")
+    if background:
+        # Remove '&' and strip any extra spaces
+        cmd = cmd[:-1].strip()
 
     try:
         cmd_args = shlex.split(cmd)
-        proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
+        if background:
+            with open(os.devnull, "r") as devnull_in, open(
+                os.devnull, "w"
+            ) as devnull_out:
+                proc = subprocess.Popen(
+                    cmd_args,
+                    stdin=devnull_in,  # Redirect input to /dev/null
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    preexec_fn=os.setsid,  # **Change 3: Create a new process group**
+                )
+        else:
+            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
 
         # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
         signal.signal(signal.SIGTSTP, handle_sigtstp)
         signal.signal(signal.SIGCONT, handle_sigcont)
 
-        # if background:
-        #     # If background mode, add to background jobs and return
-        #     builtincmd.background_jobs.append(proc)
-        #     job_id = len(builtincmd.background_jobs)
-        #     sys.stdout.write(f"[{job_id}] {cmd} (pid: {proc.pid})\n")  # Notify the user
-        #     sys.stdout.flush()
-        # else:
-        #     # Otherwise, wait for the process to complete
-        #     proc.communicate()
-        proc.communicate()
-        retcode = proc.returncode if proc.returncode is not None else 0
+        if background:
+            # If background mode, add to background jobs and return
+            builtincmd.background_jobs.append(proc)
+            job_id = len(builtincmd.background_jobs)
+            print(f"[{job_id}] {cmd} (pid: {proc.pid})")
+            retcode = 0
+        else:
+            # Otherwise, wait for the process to complete
+            proc.communicate()
+            retcode = proc.returncode if proc.returncode is not None else 0
 
     except FileNotFoundError:
         sys.stderr.write(

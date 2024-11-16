@@ -598,7 +598,8 @@ class ShellCmd(cmd.Cmd, object):
             else:
                 # Warn the user and list the stopped jobs
                 print(
-                    "There are stopped jobs. Use 'jobs' to list them or 'exit' to stop them and exit shell."
+                    "There are stopped jobs. Use 'jobs' to list them or 'exit' "
+                    "to stop them and exit shell."
                 )
                 self.kill_jobs_at_exit = True
                 return  # Return to the shell prompt instead of exiting

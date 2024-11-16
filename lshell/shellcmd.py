@@ -579,9 +579,30 @@ class ShellCmd(cmd.Cmd, object):
 
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""
-        self.log.error("Exited")
+        # Check for background jobs
+        if hasattr(builtincmd, "background_jobs") and builtincmd.background_jobs:
+            # Filter out completed jobs
+            active_jobs = []
+            for job_id, job in enumerate(builtincmd.background_jobs, start=1):
+                if job.poll() is None:
+                    active_jobs.append((job_id, job))
+
+            if active_jobs:
+                for job_id, job in active_jobs:
+                    try:
+                        os.killpg(os.getpgid(job.pid), signal.SIGKILL)
+                        builtincmd.background_jobs.pop(job_id - 1)
+                    except Exception as e:
+                        print(f"Failed to stop job [{job.pid}]: {e}")
+
+                # Warn the user and list the stopped jobs
+                print("All jobs have been stopped.")
+                return  # Return to the shell prompt instead of exiting
+
+        # Proceed with exit if no active jobs or after stopping them
         if self.g_cmd == "EOF":
             self.stdout.write("\n")
+
         if self.conf["disable_exit"] != 1:
             sys.exit(0)
 

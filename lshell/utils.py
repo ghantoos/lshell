@@ -191,7 +191,7 @@ def exec_cmd(cmd):
             proc.send_signal(signal.SIGSTOP)  # Stop the process
             builtincmd.background_jobs.append(proc)  # Add process to background jobs
             job_id = len(builtincmd.background_jobs)
-            print(f"\n[{job_id}]+  Stopped        {cmd}\n")
+            print(f"\n[{job_id}]+  Stopped        {cmd}")
             # Return to prompt without waiting for proc.communicate()
             raise KeyboardInterrupt  # Emulate Ctrl+C to exit communicate
 
@@ -217,7 +217,7 @@ def exec_cmd(cmd):
                     stdin=devnull_in,  # Redirect input to /dev/null
                     stdout=sys.stdout,
                     stderr=sys.stderr,
-                    preexec_fn=os.setsid,  # **Change 3: Create a new process group**
+                    preexec_fn=os.setsid,
                 )
         else:
             proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)

@@ -166,12 +166,7 @@ def check_background_jobs():
 def get_job_status(job):
     """Return the status of a background job."""
     if job.poll() is None:
-        try:
-            # Send signal 0 to check if the process is still running without altering its state
-            os.kill(job.pid, 0)
-            status = "Running"
-        except OSError:
-            status = "Stopped"
+        status = "Stopped"
     elif job.poll() == 0:
         status = "Completed"  # Process completed successfully
     else:

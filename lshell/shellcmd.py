@@ -47,6 +47,7 @@ class ShellCmd(cmd.Cmd, object):
         self.args = args
         self.conf = userconf
         self.log = self.conf["logpath"]
+        self.kill_jobs_at_exit = False
 
         # Set timer
         if self.conf["timer"] > 0:
@@ -174,6 +175,12 @@ class ShellCmd(cmd.Cmd, object):
                     self.log.critical(f"** forbidden environment variable '{var}'")
             elif self.g_cmd == "source":
                 self.retcode = builtincmd.source(self.g_arg)
+            elif self.g_cmd == "fg":
+                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+            elif self.g_cmd == "bg":
+                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+            elif self.g_cmd == "jobs":
+                self.retcode = builtincmd.print_jobs()
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]
@@ -353,6 +360,8 @@ class ShellCmd(cmd.Cmd, object):
             partial_line = ""
             stop = None
             while not stop:
+                # Check background jobs after each command
+                builtincmd.check_background_jobs()
                 if self.cmdqueue:
                     line = self.cmdqueue.pop(0)
                 else:
@@ -571,9 +580,34 @@ class ShellCmd(cmd.Cmd, object):
 
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""
-        self.log.error("Exited")
+        # Check for background jobs
+        if hasattr(builtincmd, "background_jobs") and builtincmd.background_jobs:
+            # Filter out completed jobs
+            active_jobs = []
+            for job_id, job in enumerate(builtincmd.background_jobs, start=1):
+                if job.poll() is None:
+                    active_jobs.append((job_id, job))
+
+            if active_jobs and self.kill_jobs_at_exit:
+                for job_id, job in active_jobs:
+                    try:
+                        os.killpg(os.getpgid(job.pid), signal.SIGKILL)
+                        builtincmd.background_jobs.pop(job_id - 1)
+                    except Exception as e:
+                        print(f"Failed to stop job [{job.pid}]: {e}")
+            else:
+                # Warn the user and list the stopped jobs
+                print(
+                    "There are stopped jobs. Use 'jobs' to list them or 'exit' "
+                    "to stop them and exit shell."
+                )
+                self.kill_jobs_at_exit = True
+                return  # Return to the shell prompt instead of exiting
+
+        # Proceed with exit if no active jobs or after stopping them
         if self.g_cmd == "EOF":
             self.stdout.write("\n")
+
         if self.conf["disable_exit"] != 1:
             sys.exit(0)
 

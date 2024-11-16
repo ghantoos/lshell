@@ -235,8 +235,8 @@ class TestFunctions(unittest.TestCase):
     def test_15_cmd_completion_tab_tab(self):
         """F15 | command completion: tab to list commands"""
         expected = (
-            "\x07\r\ncd       echo     help     ll       ls       "
-            "\r\nclear    exit     history  lpath    lsudo"
+            "\x07\r\nbg       clear    exit     help     jobs     lpath    lsudo    "
+            "\r\ncd       echo     fg       history  ll       ls"
         )
         self.child.sendline("\t\t")
         self.child.expect(PROMPT)
@@ -534,7 +534,7 @@ class TestFunctions(unittest.TestCase):
 
         # Step 1: Enter `help` command
         expected_help_output = (
-            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
         )
         child.sendline("help")
         child.expect(PROMPT)
@@ -544,8 +544,9 @@ class TestFunctions(unittest.TestCase):
 
         # Step 2: Enter `echo FREEDOM! && help () sh && help`
         expected_output = (
-            "FREEDOM!\r\ncd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r\n"
-            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+            "FREEDOM!\r\nbg  cd  clear  echo  exit  fg  help  history  "
+            "jobs  ll  lpath  ls  lsudo\r\n"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
         )
         child.sendline("echo FREEDOM! && help () sh && help")
         child.expect(PROMPT)
@@ -563,7 +564,7 @@ class TestFunctions(unittest.TestCase):
 
         # Step 1: Enter `help` command
         expected_help_output = (
-            "cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
         )
         child.sendline("help")
         child.expect(PROMPT)
@@ -726,8 +727,8 @@ exec {LSHELL} --config {CONFIG} "$@"
 *** forbidden command: dig\r
 *** forbidden path: /tmp/\r
 FREEDOM\r
-cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
-cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
 *** forbidden path: /"""
 
         # Wait for the script to finish executing
@@ -784,8 +785,8 @@ This incident has been reported.\r
 *** You have 0 warning(s) left, before getting kicked out.\r
 This incident has been reported.\r
 FREEDOM\r
-cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
-cd  clear  echo  exit  help  history  ll  lpath  ls  lsudo\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
 *** forbidden path -> "/"\r
 *** Kicked out"""
 

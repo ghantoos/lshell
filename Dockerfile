@@ -7,7 +7,7 @@ RUN \
     # For Debian/Ubuntu
     if [ -f /etc/debian_version ]; then \
         apt-get update && \
-        apt-get install -y python3 python3-pip git flake8 pylint python3-pytest python3-pexpect python3-setuptools vim && \
+        apt-get install -y python3 python3-pip git flake8 pylint python3-pytest python3-pexpect python3-setuptools vim procps && \
         apt-get clean; \
         useradd -m -d /home/testuser -s /bin/bash testuser; \
     # For Fedora

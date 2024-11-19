@@ -153,7 +153,9 @@ class ShellCmd(cmd.Cmd, object):
                     if self.retcode == 0:
                         cmd_split = re.split(r";|&&|&|\|\||\|", command)
                         for command in cmd_split:
-                            self.retcode = utils.cmd_parse_execute(command, self)
+                            self.retcode = utils.cmd_parse_execute(
+                                command, shell_context=self
+                            )
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
@@ -188,7 +190,7 @@ class ShellCmd(cmd.Cmd, object):
                 self.retcode, self.conf = builtincmd.cd(directory, self.conf)
 
             else:
-                self.retcode = utils.cmd_parse_execute(self.g_line, self)
+                self.retcode = utils.cmd_parse_execute(self.g_line, shell_context=self)
 
         elif self.g_cmd not in ["", "?", "help", None]:
             self.log.warn(f'INFO: unknown syntax -> "{self.g_line}"')
@@ -210,7 +212,9 @@ class ShellCmd(cmd.Cmd, object):
                 if "sftp-server" in self.conf["ssh"]:
                     if self.conf["sftp"] == 1:
                         self.log.error("SFTP connect")
-                        retcode = utils.cmd_parse_execute(self.conf["ssh"])
+                        retcode = utils.cmd_parse_execute(
+                            self.conf["ssh"], shell_context=self
+                        )
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
                     else:
@@ -257,7 +261,9 @@ class ShellCmd(cmd.Cmd, object):
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
-                        retcode = utils.cmd_parse_execute(self.conf["ssh"], self)
+                        retcode = utils.cmd_parse_execute(
+                            self.conf["ssh"], shell_context=self
+                        )
                         self.log.error("SCP disconnect")
                         sys.exit(retcode)
                     else:
@@ -283,7 +289,9 @@ class ShellCmd(cmd.Cmd, object):
                         self.do_help(None)
                         retcode = 0
                     else:
-                        retcode = utils.cmd_parse_execute(self.conf["ssh"], self)
+                        retcode = utils.cmd_parse_execute(
+                            self.conf["ssh"], shell_context=self
+                        )
                     self.log.error("Exited")
                     sys.exit(retcode)
 
@@ -351,7 +359,7 @@ class ShellCmd(cmd.Cmd, object):
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write(f"{self.intro}\n")
             if self.conf["login_script"]:
-                utils.cmd_parse_execute(self.conf["login_script"], self)
+                utils.cmd_parse_execute(self.conf["login_script"], shell_context=self)
             self.prompt2 = "> "  # PS2 prompt
             # for long commands, a user may escape the new line
             # by giving a bash like '\' character at the end of

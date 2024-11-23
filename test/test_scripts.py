@@ -1,3 +1,5 @@
+"""Functional tests for lshell script execution"""
+
 import os
 import unittest
 from getpass import getuser

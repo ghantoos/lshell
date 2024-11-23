@@ -1,3 +1,5 @@
+"""Functional tests for lshell terminal signals"""
+
 import os
 import unittest
 import time

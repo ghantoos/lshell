@@ -1,3 +1,5 @@
+"""Functional tests for lshell built-in commands"""
+
 import os
 import unittest
 import subprocess

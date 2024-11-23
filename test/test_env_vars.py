@@ -1,3 +1,5 @@
+"""Test environment variables in lshell"""
+
 import os
 import unittest
 from getpass import getuser

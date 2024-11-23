@@ -1,3 +1,5 @@
+"""Functional tests for lshell path handling"""
+
 import os
 import unittest
 from getpass import getuser

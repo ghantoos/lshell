@@ -1,4 +1,4 @@
-"""Functional tests for lshell"""
+"""Functional tests for lshell for exit command"""
 
 import os
 import unittest

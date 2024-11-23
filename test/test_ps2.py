@@ -1,4 +1,4 @@
-"""Functional tests for lshell"""
+"""Functional tests for lshell PS2 prompt"""
 
 import os
 import unittest

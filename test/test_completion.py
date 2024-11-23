@@ -1,3 +1,5 @@
+"""Functional tests for lshell completion"""
+
 import os
 import unittest
 import subprocess

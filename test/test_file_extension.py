@@ -1,4 +1,4 @@
-"""Functional tests for lshell"""
+"""Functional tests for file extension restrictions"""
 
 import os
 import unittest

@@ -1,4 +1,4 @@
-"""Functional tests for lshell"""
+"""Functional tests for lshell regex handling"""
 
 import os
 import unittest

@@ -123,11 +123,11 @@ def replace_exit_code(line, retcode):
     """Replace the exit code in the command line. Replaces all occurrences of
     $? with the exit code."""
     if re.search(r"[;&\|]", line):
-        p = re.compile(r"(\s|^)(\$\?)([\s|$]?[;&|].*)")
+        pattern = re.compile(r"(\s|^)(\$\?)([\s|$]?[;&|].*)")
     else:
-        p = re.compile(r"(\s|^)(\$\?)(\s|$)")
+        pattern = re.compile(r"(\s|^)(\$\?)(\s|$)")
 
-    line = p.sub(rf" {retcode} \3", line)
+    line = pattern.sub(rf" {retcode} \3", line)
 
     return line
 
@@ -170,7 +170,7 @@ def cmd_parse_execute(command_line, shell_context=None):
             elif executable == "history":
                 builtincmd.history(shell_context.conf, shell_context.log)
             elif executable == "cd":
-                retcode = builtincmd.cd(argument, shell_context.conf)
+                retcode = builtincmd.cmd_cd(argument, shell_context.conf)
             else:
                 retcode = getattr(builtincmd, executable)(shell_context.conf)
         else:
@@ -194,8 +194,8 @@ def exec_cmd(cmd):
         """Handle SIGTSTP (Ctrl+Z) by sending the process to the background."""
         if proc and proc.poll() is None:  # Ensure process is running
             proc.send_signal(signal.SIGSTOP)  # Stop the process
-            builtincmd.background_jobs.append(proc)  # Add process to background jobs
-            job_id = len(builtincmd.background_jobs)
+            builtincmd.BACKGROUND_JOBS.append(proc)  # Add process to background jobs
+            job_id = len(builtincmd.BACKGROUND_JOBS)
             sys.stdout.write(f"\n[{job_id}]+  Stopped        {cmd}\n")
             sys.stdout.flush()
             raise CtrlZException()  # Raise custom exception for SIGTSTP handling
@@ -217,9 +217,7 @@ def exec_cmd(cmd):
         signal.signal(signal.SIGCONT, handle_sigcont)
         cmd_args = shlex.split(cmd)
         if background:
-            with open(os.devnull, "r") as devnull_in, open(
-                os.devnull, "w"
-            ) as devnull_out:
+            with open(os.devnull, "r") as devnull_in:
                 proc = subprocess.Popen(
                     cmd_args,
                     stdin=devnull_in,  # Redirect input to /dev/null
@@ -228,8 +226,8 @@ def exec_cmd(cmd):
                     preexec_fn=os.setsid,
                 )
             # add to background jobs and return
-            builtincmd.background_jobs.append(proc)
-            job_id = len(builtincmd.background_jobs)
+            builtincmd.BACKGROUND_JOBS.append(proc)
+            job_id = len(builtincmd.BACKGROUND_JOBS)
             print(f"[{job_id}] {cmd} (pid: {proc.pid})")
             retcode = 0
         else:

@@ -12,7 +12,7 @@ from lshell import utils
 
 
 # Store background jobs
-background_jobs = []
+BACKGROUND_JOBS = []
 
 
 def lpath(conf):
@@ -54,13 +54,17 @@ def history(conf, log):
         except IOError:
             log.error(f"WARN: couldn't write history to file {conf['history_file']}\n")
             return 1
-        with open(conf["history_file"], "r", encoding="utf-8") as f:
+        with open(conf["history_file"], "r", encoding="utf-8") as history_file:
             i = 1
-            for item in f.readlines():
+            for item in history_file.readlines():
                 sys.stdout.write(f"{i}:  {item}")
                 i += 1
-    except (OSError, IOError, FileNotFoundError) as e:  # Catch specific exceptions
-        log.critical(f"** Unable to read the history file: {e}")
+    except (
+        OSError,
+        IOError,
+        FileNotFoundError,
+    ) as exception:  # Catch specific exceptions
+        log.critical(f"** Unable to read the history file: {exception}")
         return 1
     return 0
 
@@ -99,7 +103,7 @@ def source(envfile):
     return 0
 
 
-def cd(directory, conf):
+def cmd_cd(directory, conf):
     """implementation of the "cd" command"""
     # expand user's ~
     directory = os.path.expanduser(directory)
@@ -145,9 +149,9 @@ def cd(directory, conf):
 
 def check_background_jobs():
     """Check the status of background jobs and print a completion message if done."""
-    global background_jobs
+    global BACKGROUND_JOBS
     updated_jobs = []
-    for idx, job in enumerate(background_jobs, start=1):
+    for idx, job in enumerate(BACKGROUND_JOBS, start=1):
         if job.poll() is None:
             # Process is still running
             updated_jobs.append((idx, job.args, job.pid))
@@ -160,7 +164,7 @@ def check_background_jobs():
                 print(f"[{idx}]+  {status}                    {args}")
 
             # Remove the job from the list of background jobs
-            background_jobs.pop(idx - 1)
+            BACKGROUND_JOBS.pop(idx - 1)
 
 
 def get_job_status(job):
@@ -176,13 +180,13 @@ def get_job_status(job):
 
 def jobs():
     """Return a list of background jobs."""
-    global background_jobs
+    global BACKGROUND_JOBS
     joblist = []
-    for idx, job in enumerate(background_jobs, start=1):
+    for idx, job in enumerate(BACKGROUND_JOBS, start=1):
         status = get_job_status(job)
         if status in ["Stopped", "Killed"]:
             if job.poll() is not None:
-                background_jobs.pop(idx - 1)
+                BACKGROUND_JOBS.pop(idx - 1)
                 continue
         cmd = " ".join(job.args)
         joblist.append([idx, status, cmd])
@@ -215,9 +219,9 @@ def print_jobs():
 def bg_fg(job_type, job_id):
     """Resume a backgrounded job."""
 
-    global background_jobs
+    global BACKGROUND_JOBS
     if job_type == "bg":
-        print(f"lshell: bg not supported")
+        print("lshell: bg not supported")
         return 1
 
     if job_id:
@@ -229,14 +233,14 @@ def bg_fg(job_type, job_id):
             return 1
     else:
         # Use the last job if no specific job_id is provided
-        if background_jobs:
-            job_id = len(background_jobs)
+        if BACKGROUND_JOBS:
+            job_id = len(BACKGROUND_JOBS)
         else:
             print(f"lshell: {job_type}: current: no such job")
             return 1
 
-    if 0 < job_id <= len(background_jobs):
-        job = background_jobs[job_id - 1]
+    if 0 < job_id <= len(BACKGROUND_JOBS):
+        job = BACKGROUND_JOBS[job_id - 1]
         if job.poll() is None:
             if job_type == "fg":
                 try:
@@ -246,11 +250,11 @@ def bg_fg(job_type, job_id):
                     job.wait()
                     # Remove the job from the list if it has completed
                     if job.poll() is not None:
-                        background_jobs.pop(job_id - 1)
+                        BACKGROUND_JOBS.pop(job_id - 1)
                     return 0
                 except KeyboardInterrupt:
                     os.killpg(os.getpgid(job.pid), signal.SIGINT)
-                    background_jobs.pop(job_id - 1)
+                    BACKGROUND_JOBS.pop(job_id - 1)
                     return 130
             # bg not supported at the moment
             # elif job_type == "bg":

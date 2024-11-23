@@ -103,7 +103,7 @@ services:
       args:
         DISTRO: "debian:latest"
     container_name: debian_tests
-    command: "sh -c 'pytest && pylint lshell && flake8 lshell'"
+    command: "sh -c 'pytest; pylint lshell; flake8 lshell'"
     volumes:
       - .:/app
     environment:

@@ -15,7 +15,7 @@ from lshell import utils
 BACKGROUND_JOBS = []
 
 
-def lpath(conf):
+def cmd_lpath(conf):
     """lists allowed and forbidden path"""
     if conf["path"][0]:
         sys.stdout.write("Allowed:\n")
@@ -34,7 +34,7 @@ def lpath(conf):
     return 0
 
 
-def lsudo(conf):
+def cmd_lsudo(conf):
     """lists allowed sudo commands"""
     if "sudo_commands" in conf and len(conf["sudo_commands"]) > 0:
         sys.stdout.write("Allowed sudo commands:\n")
@@ -46,7 +46,7 @@ def lsudo(conf):
     return 1
 
 
-def history(conf, log):
+def cmd_history(conf, log):
     """print the commands history"""
     try:
         try:
@@ -69,7 +69,7 @@ def history(conf, log):
     return 0
 
 
-def export(args):
+def cmd_export(args):
     """export environment variables"""
     # if command contains at least 1 space
     if args.count(" "):
@@ -89,14 +89,14 @@ def export(args):
     return 0, None
 
 
-def source(envfile):
+def cmd_source(envfile):
     """Source a file in the current shell context"""
     envfile = os.path.expandvars(envfile)
     try:
         with open(envfile, encoding="utf-8") as env_vars:
             for env_var in env_vars.readlines():
                 if env_var.split(" ", 1)[0] == "export":
-                    export(env_var.strip())
+                    cmd_export(env_var.strip())
     except (OSError, IOError):
         sys.stderr.write(f"ERROR: Unable to read environment file: {envfile}\n")
         return 1
@@ -193,7 +193,7 @@ def jobs():
     return joblist
 
 
-def print_jobs():
+def cmd_jobs():
     """List all backgrounded jobs."""
     joblist = jobs()
     job_count = len(joblist)
@@ -216,7 +216,7 @@ def print_jobs():
     return 0
 
 
-def bg_fg(job_type, job_id):
+def cmd_bg_fg(job_type, job_id):
     """Resume a backgrounded job."""
 
     global BACKGROUND_JOBS

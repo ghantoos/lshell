@@ -128,14 +128,14 @@ class TestFunctions(unittest.TestCase):
         """U18 | unsafe environment are forbidden"""
         input_command = "export LD_PRELOAD=/lib64/ld-2.21.so"
         args = input_command
-        retcode = builtincmd.export(args)[0]
+        retcode = builtincmd.cmd_export(args)[0]
         return self.assertEqual(retcode, 1)
 
     def test_19_allowed_environment(self):
         """U19 | other environment are accepted"""
         input_command = "export MY_PROJECT_VERSION=43"
         args = input_command
-        retcode = builtincmd.export(args)[0]
+        retcode = builtincmd.cmd_export(args)[0]
         return self.assertEqual(retcode, 0)
 
     def test_20_winscp_allowed_commands(self):

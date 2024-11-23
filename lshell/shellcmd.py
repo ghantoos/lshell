@@ -163,26 +163,26 @@ class ShellCmd(cmd.Cmd, object):
 
             # built-in lpath function: list all allowed path
             elif self.g_cmd == "lpath":
-                self.retcode = builtincmd.lpath(self.conf)
+                self.retcode = builtincmd.cmd_lpath(self.conf)
             # built-in lsudo function: list all allowed sudo commands
             elif self.g_cmd == "lsudo":
-                self.retcode = builtincmd.lsudo(self.conf)
+                self.retcode = builtincmd.cmd_lsudo(self.conf)
             # built-in history function: print command history
             elif self.g_cmd == "history":
-                self.retcode = builtincmd.history(self.conf, self.log)
+                self.retcode = builtincmd.cmd_history(self.conf, self.log)
             # built-in export function
             elif self.g_cmd == "export":
-                self.retcode, var = builtincmd.export(self.g_line)
+                self.retcode, var = builtincmd.cmd_export(self.g_line)
                 if self.retcode == 1:
                     self.log.critical(f"** forbidden environment variable '{var}'")
             elif self.g_cmd == "source":
-                self.retcode = builtincmd.source(self.g_arg)
+                self.retcode = builtincmd.cmd_source(self.g_arg)
             elif self.g_cmd == "fg":
-                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+                self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
             elif self.g_cmd == "bg":
-                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+                self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
             elif self.g_cmd == "jobs":
-                self.retcode = builtincmd.print_jobs()
+                self.retcode = builtincmd.cmd_jobs()
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]

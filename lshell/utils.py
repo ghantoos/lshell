@@ -168,7 +168,7 @@ def cmd_parse_execute(command_line, shell_context=None):
             elif executable == "exit":
                 shell_context.do_exit(command)
             elif executable == "history":
-                builtincmd.history(shell_context.conf, shell_context.log)
+                builtincmd.cmd_history(shell_context.conf, shell_context.log)
             elif executable == "cd":
                 retcode = builtincmd.cmd_cd(argument, shell_context.conf)
             else:

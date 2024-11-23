@@ -16,7 +16,7 @@ from logging.handlers import SysLogHandler
 # import lshell specifics
 from lshell import utils
 from lshell import variables
-from lshell.builtincmd import source
+from lshell.builtincmd import cmd_source
 
 
 class CheckConfig:
@@ -123,7 +123,7 @@ class CheckConfig:
         # Check paths to files that contain env vars
         if "env_vars_files" in self.conf:
             for envfile in self.conf["env_vars_files"]:
-                source(envfile)
+                cmd_source(envfile)
 
     def check_config_file(self, file):
         """This method checks the existence of the given configuration

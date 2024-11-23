@@ -262,9 +262,9 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
     # Split the command using shlex to handle quotes and escape characters
     try:
         tokens = shlex.split(command_line)
-    except ValueError as e:
+    except ValueError as exception:
         # Log error or provide user feedback on the invalid input
-        print(f"Error parsing command line: {e}")
+        print(f"Error parsing command line: {exception}")
         return True, []
 
     # Extract file extensions from tokens

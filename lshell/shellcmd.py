@@ -148,7 +148,7 @@ class ShellCmd(cmd.Cmd, object):
                     directory = directory.split("cd", 1)[1].strip()
                     # change directory then, if success, execute the rest of
                     # the cmd line
-                    self.retcode, self.conf = builtincmd.cd(directory, self.conf)
+                    self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
 
                     if self.retcode == 0:
                         cmd_split = re.split(r";|&&|&|\|\||\|", command)
@@ -159,35 +159,35 @@ class ShellCmd(cmd.Cmd, object):
                 else:
                     # set directory to command line argument and change dir
                     directory = self.g_arg
-                    self.retcode, self.conf = builtincmd.cd(directory, self.conf)
+                    self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
 
             # built-in lpath function: list all allowed path
             elif self.g_cmd == "lpath":
-                self.retcode = builtincmd.lpath(self.conf)
+                self.retcode = builtincmd.cmd_lpath(self.conf)
             # built-in lsudo function: list all allowed sudo commands
             elif self.g_cmd == "lsudo":
-                self.retcode = builtincmd.lsudo(self.conf)
+                self.retcode = builtincmd.cmd_lsudo(self.conf)
             # built-in history function: print command history
             elif self.g_cmd == "history":
-                self.retcode = builtincmd.history(self.conf, self.log)
+                self.retcode = builtincmd.cmd_history(self.conf, self.log)
             # built-in export function
             elif self.g_cmd == "export":
-                self.retcode, var = builtincmd.export(self.g_line)
+                self.retcode, var = builtincmd.cmd_export(self.g_line)
                 if self.retcode == 1:
                     self.log.critical(f"** forbidden environment variable '{var}'")
             elif self.g_cmd == "source":
-                self.retcode = builtincmd.source(self.g_arg)
+                self.retcode = builtincmd.cmd_source(self.g_arg)
             elif self.g_cmd == "fg":
-                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+                self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
             elif self.g_cmd == "bg":
-                self.retcode = builtincmd.bg_fg(self.g_cmd, self.g_arg)
+                self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
             elif self.g_cmd == "jobs":
-                self.retcode = builtincmd.print_jobs()
+                self.retcode = builtincmd.cmd_jobs()
             # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
             elif self.g_line[0:2] == "cd":
                 self.g_cmd = self.g_line.split()[0]
                 directory = " ".join(self.g_line.split()[1:])
-                self.retcode, self.conf = builtincmd.cd(directory, self.conf)
+                self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
 
             else:
                 self.retcode = utils.cmd_parse_execute(self.g_line, shell_context=self)
@@ -589,10 +589,10 @@ class ShellCmd(cmd.Cmd, object):
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""
         # Check for background jobs
-        if hasattr(builtincmd, "background_jobs") and builtincmd.background_jobs:
+        if hasattr(builtincmd, "BACKGROUND_JOBS") and builtincmd.BACKGROUND_JOBS:
             # Filter out completed jobs
             active_jobs = []
-            for job_id, job in enumerate(builtincmd.background_jobs, start=1):
+            for job_id, job in enumerate(builtincmd.BACKGROUND_JOBS, start=1):
                 if job.poll() is None:
                     active_jobs.append((job_id, job))
 
@@ -600,9 +600,9 @@ class ShellCmd(cmd.Cmd, object):
                 for job_id, job in active_jobs:
                     try:
                         os.killpg(os.getpgid(job.pid), signal.SIGKILL)
-                        builtincmd.background_jobs.pop(job_id - 1)
-                    except Exception as e:
-                        print(f"Failed to stop job [{job.pid}]: {e}")
+                        builtincmd.BACKGROUND_JOBS.pop(job_id - 1)
+                    except Exception as exception:
+                        print(f"Failed to stop job [{job.pid}]: {exception}")
             else:
                 # Warn the user and list the stopped jobs
                 print(

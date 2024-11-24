@@ -133,7 +133,7 @@ class CheckConfig:
             self.stderr.write("Error: Config file doesn't exist\n")
             utils.usage()
         else:
-            self.config = configparser.ConfigParser()
+            self.config = configparser.ConfigParser(interpolation=None)
 
     def get_global(self):
         """Loads the [global] parameters from the configuration file"""
@@ -307,7 +307,7 @@ class CheckConfig:
                 conf.append((key, self.conf[key]))
 
         if self.config.has_section(section):
-            conf = self.config.items(section) + conf
+            conf = list(self.config.items(section)) + conf
             for item in conf:
                 key = item[0]
                 value = item[1]

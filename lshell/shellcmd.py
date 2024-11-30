@@ -451,13 +451,17 @@ class ShellCmd(cmd.Cmd, object):
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
             # complete with sudo allowed commands
-            if line.split(" ")[0] == "sudo" and len(line.split(" ")) <= 2:
+            command = line.split(" ")[0]
+            if command == "sudo" and len(line.split(" ")) <= 2:
                 compfunc = self.completesudo
-            # complete next argument with file or directory
+            # complete with directories
+            elif command == "cd":
+                compfunc = self.completechdir
+            # complete with files and directories
             elif (
                 len(line.split(" ")) > 1 and line.split(" ")[0] in self.conf["allowed"]
             ):
-                compfunc = self.completechdir
+                compfunc = self.completelistdir
             elif begidx > 0:
                 cmd, args, _ = self.parseline(line)
                 if cmd == "":
@@ -509,6 +513,60 @@ class ShellCmd(cmd.Cmd, object):
 
     def completechdir(self, text, line, begidx, endidx):
         """complete directories"""
+        dirs_to_return = []
+        tocomplete = line.split(" ")[1]
+        # replace "~" with home path
+        tocomplete = re.sub("^~", self.conf["home_path"], tocomplete)
+
+        # Detect relative vs absolute paths
+        if not tocomplete.startswith("/"):
+            # Resolve relative paths based on current working directory
+            base_path = os.getcwd()
+            tocomplete = os.path.normpath(os.path.join(base_path, tocomplete))
+        try:
+            directory = os.path.realpath(tocomplete)
+        except OSError:
+            directory = os.getcwd()
+
+        # if directory doesn't exist, take the parent directory
+        if not os.path.isdir(directory):
+            directory = directory.rsplit("/", 1)[0]
+            if directory == "":
+                directory = "/"
+
+        directory = os.path.normpath(directory)
+
+        # check path security
+        ret_check_path, self.conf = sec.check_path(directory, self.conf, completion=1)
+
+        # if path is secure, list subdirectories and files
+        if ret_check_path == 0:
+            for instance in os.listdir(directory):
+                if os.path.isdir(os.path.join(directory, instance)):
+                    if instance.startswith(text):
+                        dirs_to_return.append(f"{instance}/")
+
+        # if path is not secure, add completion based on allowed path
+        else:
+            allowed_paths = self.conf["path"][0].split("|")
+            for instance in allowed_paths:
+                # Check if the directory matches or is a parent of the allowed path
+                if instance.startswith(directory) and instance.startswith(tocomplete):
+                    # Extract the next unmatched segment of the allowed path
+                    remaining_path = instance[len(directory) :].lstrip("/")
+                    if "/" in remaining_path:
+                        next_segment = remaining_path.split("/", 1)[0] + "/"
+                    else:
+                        next_segment = remaining_path + "/"
+
+                    # Add unique suggestions
+                    if next_segment and next_segment not in dirs_to_return:
+                        dirs_to_return.append(next_segment)
+
+        return dirs_to_return
+
+    def completelistdir(self, text, line, begidx, endidx):
+        """complete with files and directories"""
         toreturn = []
         tocomplete = line.split()[-1]
         # replace "~" with home path

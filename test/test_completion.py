@@ -44,31 +44,35 @@ class TestFunctions(unittest.TestCase):
 
     def test_14_path_completion_tilda(self):
         """F14 | path completion with ~/"""
+        # Create two random directories in the home directory
+        home_dir = f"/home/{USER}"
+        dir1 = f"{home_dir}/test_14_dir_1"
+        dir2 = f"{home_dir}/test_14_dir_2"
+        file1 = f"{home_dir}/test_14_file_1"
+        file2 = f"{home_dir}/test_14_file_2"
+        os.mkdir(dir1)
+        os.mkdir(dir2)
+        open(file1, "w").close()
+        open(file2, "w").close()
+
         p = subprocess.Popen(
-            "ls -F ~/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+            "ls -d ~/*/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
         )
-        # Create two random files in the home directory
-        file1 = os.path.join("random_file_1.txt")
-        file2 = os.path.join("random_file_2.txt")
-        with open(file1, "w") as f:
-            f.write("This is a random file 1.")
-        with open(file2, "w") as f:
-            f.write("This is a random file 2.")
         cout = p.stdout
         expected = cout.read().decode("utf8").strip().split()
-        self.child.sendline("cd \t\t")
+        # Normalize expected to relative paths
+        expected = [f"{os.path.relpath(path, home_dir)}/" for path in expected]
+
+        self.child.sendline("cd ~/\t\t")
         self.child.expect(PROMPT)
         output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
-        output = [
-            item
-            for item in output
-            if not item.startswith("--More--") and not item.startswith("\x1b")
-        ]
-        self.assertEqual(len(expected), len(output))
+        self.assertEqual(expected, output)
 
         # cleanup
+        os.rmdir(dir1)
+        os.rmdir(dir2)
         os.remove(file1)
         os.remove(file2)
 

@@ -334,7 +334,7 @@ class CheckConfig:
                             liste = ["", ""]
                             for path in eval(stuff):
                                 for item in glob.glob(path):
-                                    liste[0] += os.path.realpath(item) + "/.*|"
+                                    liste[0] += os.path.realpath(item) + "/|"
                             # remove double slashes
                             liste[0] = liste[0].replace("//", "/")
                             self.conf_raw.update({key: str(liste)})
@@ -347,7 +347,7 @@ class CheckConfig:
                     liste = ["", ""]
                     for path in self.myeval(value, "path"):
                         for item in glob.glob(path):
-                            liste[0] += os.path.realpath(item) + "/.*|"
+                            liste[0] += os.path.realpath(item) + "/|"
                     # remove double slashes
                     liste[0] = liste[0].replace("//", "/")
                     self.conf_raw.update({key: str(liste)})
@@ -367,14 +367,14 @@ class CheckConfig:
         if extra.startswith("+"):
             if key == "path":
                 for path in sublist:
-                    liste[0] += os.path.realpath(path) + "/.*|"
+                    liste[0] += os.path.realpath(path) + "/|"
             else:
                 for item in sublist:
                     liste.append(item)
         elif extra.startswith("-"):
             if key == "path":
                 for path in sublist:
-                    liste[1] += os.path.realpath(path) + "/.*|"
+                    liste[1] += os.path.realpath(path) + "/|"
             else:
                 for item in sublist:
                     if item in liste:
@@ -550,10 +550,10 @@ class CheckConfig:
 
         if "path" in self.conf_raw:
             self.conf["path"] = eval(self.conf_raw["path"])
-            self.conf["path"][0] += self.conf["home_path"] + ".*"
+            self.conf["path"][0] += self.conf["home_path"]
         else:
             self.conf["path"] = ["", ""]
-            self.conf["path"][0] = self.conf["home_path"] + ".*"
+            self.conf["path"][0] = self.conf["home_path"]
 
         if "env_path" in self.conf_raw:
             self.conf["env_path"] = self.myeval(self.conf_raw["env_path"], "env_path")

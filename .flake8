@@ -1,4 +1,4 @@
 [flake8]
 max-line-length = 120
-ignore = E501, W503, C901
+ignore = E501,W503,C901,E203,E701
 exclude = build/

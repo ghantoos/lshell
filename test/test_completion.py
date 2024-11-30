@@ -58,7 +58,7 @@ class TestFunctions(unittest.TestCase):
 
         # test dir list
         p_dir_list = subprocess.Popen(
-            "ls -d ~/*/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+            "ls -a -d ~/*/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
         )
         stdout_p_dir_list = p_dir_list.stdout
         expected = stdout_p_dir_list.read().decode("utf8").strip().split()

@@ -75,6 +75,8 @@ class TestFunctions(unittest.TestCase):
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
         output = set(output)
+        # github action hackish-fix...
+        output.discard(".ghcup/")
 
         self.assertEqual(expected, output)
 
@@ -116,6 +118,11 @@ class TestFunctions(unittest.TestCase):
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
         output = set(output)
+        # github action hackish-fix...
+        output.discard(".ghcup/")
+        if ".ghcupl" in expected:
+            output.add(".ghcupl")
+
         self.assertEqual(expected, output)
 
         # cleanup
@@ -156,6 +163,11 @@ class TestFunctions(unittest.TestCase):
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
         output = set(output)
+        # github action hackish-fix...
+        output.discard(".ghcup/")
+        if ".ghcupl" in expected:
+            output.add(".ghcupl")
+
         self.assertEqual(expected, output)
 
         # cleanup

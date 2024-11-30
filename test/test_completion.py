@@ -46,10 +46,11 @@ class TestFunctions(unittest.TestCase):
         """F14 | path completion with ~/"""
         # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
-        dir1 = f"{home_dir}/test_14_dir_1"
-        dir2 = f"{home_dir}/test_14_dir_2"
-        file1 = f"{home_dir}/test_14_file_1"
-        file2 = f"{home_dir}/test_14_file_2"
+        test_num = 14
+        dir1 = f"{home_dir}/test_{test_num}_dir_1"
+        dir2 = f"{home_dir}/test_{test_num}_dir_2"
+        file1 = f"{home_dir}/test_{test_num}_file_1"
+        file2 = f"{home_dir}/test_{test_num}_file_2"
         os.mkdir(dir1)
         os.mkdir(dir2)
         open(file1, "w").close()
@@ -60,16 +61,16 @@ class TestFunctions(unittest.TestCase):
             "ls -d ~/*/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
         )
         stdout_p_dir_list = p_dir_list.stdout
-        expected_dir = stdout_p_dir_list.read().decode("utf8").strip().split()
+        expected = stdout_p_dir_list.read().decode("utf8").strip().split()
         # Normalize expected to relative paths
-        expected_dir = [f"{os.path.relpath(path, home_dir)}/" for path in expected_dir]
+        expected = [f"{os.path.relpath(path, home_dir)}/" for path in expected]
 
         self.child.sendline("cd ~/\t\t")
         self.child.expect(PROMPT)
-        dir_list_output = (
+        output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
-        self.assertEqual(expected_dir, dir_list_output)
+        self.assertEqual(expected, output)
 
         # cleanup
         os.rmdir(dir1)
@@ -81,10 +82,11 @@ class TestFunctions(unittest.TestCase):
         """F15 | file completion ls with ~/"""
         # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
-        dir1 = f"{home_dir}/test_14_dir_1"
-        dir2 = f"{home_dir}/test_14_dir_2"
-        file1 = f"{home_dir}/test_14_file_1"
-        file2 = f"{home_dir}/test_14_file_2"
+        test_num = 15
+        dir1 = f"{home_dir}/test_{test_num}_dir_1"
+        dir2 = f"{home_dir}/test_{test_num}_dir_2"
+        file1 = f"{home_dir}/test_{test_num}_file_1"
+        file2 = f"{home_dir}/test_{test_num}_file_2"
         os.mkdir(dir1)
         os.mkdir(dir2)
         open(file1, "w").close()
@@ -92,20 +94,24 @@ class TestFunctions(unittest.TestCase):
 
         # test file list
         p_file_list = subprocess.Popen(
-            "ls --indicator-style=slash ~/",
+            "ls -a --indicator-style=slash ~/",
             shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
         stdout_p_file_list = p_file_list.stdout
-        expected_file = stdout_p_file_list.read().decode("utf8").strip().split()
+        expected = stdout_p_file_list.read().decode("utf8").strip().split()
+        expected = set(expected)
+        expected.discard("./")
+        expected.discard("../")
 
         self.child.sendline("ls ~/\t\t")
         self.child.expect(PROMPT)
-        file_list_output = (
+        output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
-        self.assertEqual(set(expected_file), set(file_list_output))
+        output = set(output)
+        self.assertEqual(expected, output)
 
         # cleanup
         os.rmdir(dir1)
@@ -117,10 +123,11 @@ class TestFunctions(unittest.TestCase):
         """F15 | file completion ls with ~/"""
         # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
-        dir1 = f"{home_dir}/test_14_dir_1"
-        dir2 = f"{home_dir}/test_14_dir_2"
-        file1 = f"{home_dir}/test_14_file_1"
-        file2 = f"{home_dir}/test_14_file_2"
+        test_num = 16
+        dir1 = f"{home_dir}/test_{test_num}_dir_1"
+        dir2 = f"{home_dir}/test_{test_num}_dir_2"
+        file1 = f"{home_dir}/test_{test_num}_file_1"
+        file2 = f"{home_dir}/test_{test_num}_file_2"
         os.mkdir(dir1)
         os.mkdir(dir2)
         open(file1, "w").close()
@@ -128,20 +135,24 @@ class TestFunctions(unittest.TestCase):
 
         # test file list
         p_file_list = subprocess.Popen(
-            "ls --indicator-style=slash ~/",
+            "ls -a --indicator-style=slash ~/",
             shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
         stdout_p_file_list = p_file_list.stdout
-        expected_file = stdout_p_file_list.read().decode("utf8").strip().split()
+        expected = stdout_p_file_list.read().decode("utf8").strip().split()
+        expected = set(expected)
+        expected.discard("./")
+        expected.discard("../")
 
         self.child.sendline("ls -l ~/\t\t")
         self.child.expect(PROMPT)
-        file_list_output = (
+        output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
-        self.assertEqual(set(expected_file), set(file_list_output))
+        output = set(output)
+        self.assertEqual(expected, output)
 
         # cleanup
         os.rmdir(dir1)

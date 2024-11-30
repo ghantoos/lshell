@@ -89,7 +89,7 @@ def complete_change_dir(conf, text, line, begidx, endidx):
 
 def complete_list_dir(conf, text, line, begidx, endidx):
     """complete with files and directories"""
-    toreturn = []
+    results = []
     tocomplete = line.split()[-1]
     # replace "~" with home path
     tocomplete = re.sub("^~", conf["home_path"], tocomplete)
@@ -107,18 +107,15 @@ def complete_list_dir(conf, text, line, begidx, endidx):
 
     ret_check_path, conf = sec.check_path(directory, conf, completion=1)
     if ret_check_path == 0:
-        for instance in os.listdir(directory):
+        # if path is secure, list subdirectories and files
+        list_dir = os.listdir(directory)
+        for instance in list_dir:
             if os.path.isdir(os.path.join(directory, instance)):
                 instance = instance + "/"
             else:
                 instance = instance + " "
-            if instance.startswith("."):
-                if text.startswith("."):
-                    toreturn.append(instance)
-                else:
-                    pass
-            else:
-                toreturn.append(instance)
-        return [a for a in toreturn if a.startswith(text)]
+            results.append(instance)
+        return results
     else:
+        # if path is not secure, return nothing
         return None

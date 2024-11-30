@@ -44,31 +44,135 @@ class TestFunctions(unittest.TestCase):
 
     def test_14_path_completion_tilda(self):
         """F14 | path completion with ~/"""
-        p = subprocess.Popen(
-            "ls -F ~/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+        # Create two random directories in the home directory
+        home_dir = f"/home/{USER}"
+        test_num = 14
+        dir1 = f"{home_dir}/test_{test_num}_dir_1"
+        dir2 = f"{home_dir}/test_{test_num}_dir_2"
+        file1 = f"{home_dir}/test_{test_num}_file_1"
+        file2 = f"{home_dir}/test_{test_num}_file_2"
+        os.mkdir(dir1)
+        os.mkdir(dir2)
+        open(file1, "w").close()
+        open(file2, "w").close()
+
+        # test dir list
+        p_dir_list = subprocess.Popen(
+            "find . -maxdepth 1 -type d -printf '%f/\n'",
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
         )
-        # Create two random files in the home directory
-        file1 = os.path.join("random_file_1.txt")
-        file2 = os.path.join("random_file_2.txt")
-        with open(file1, "w") as f:
-            f.write("This is a random file 1.")
-        with open(file2, "w") as f:
-            f.write("This is a random file 2.")
-        cout = p.stdout
-        expected = cout.read().decode("utf8").strip().split()
-        self.child.sendline("cd \t\t")
+        stdout_p_dir_list = p_dir_list.stdout
+        expected = stdout_p_dir_list.read().decode("utf8").strip().split()
+        # Normalize expected to relative paths
+        expected = set(expected)
+        expected.discard("./")
+
+        self.child.sendline("cd ~/\t\t")
         self.child.expect(PROMPT)
         output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
-        output = [
-            item
-            for item in output
-            if not item.startswith("--More--") and not item.startswith("\x1b")
-        ]
-        self.assertEqual(len(expected), len(output))
+        output = set(output)
+        # github action hackish-fix...
+        output.discard(".ghcup/")
+
+        self.assertEqual(expected, output)
 
         # cleanup
+        os.rmdir(dir1)
+        os.rmdir(dir2)
+        os.remove(file1)
+        os.remove(file2)
+
+    def test_15_file_completion_tilda(self):
+        """F15 | file completion ls with ~/"""
+        # Create two random directories in the home directory
+        home_dir = f"/home/{USER}"
+        test_num = 15
+        dir1 = f"{home_dir}/test_{test_num}_dir_1"
+        dir2 = f"{home_dir}/test_{test_num}_dir_2"
+        file1 = f"{home_dir}/test_{test_num}_file_1"
+        file2 = f"{home_dir}/test_{test_num}_file_2"
+        os.mkdir(dir1)
+        os.mkdir(dir2)
+        open(file1, "w").close()
+        open(file2, "w").close()
+
+        # test file list
+        p_file_list = subprocess.Popen(
+            "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'",
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        stdout_p_file_list = p_file_list.stdout
+        expected = stdout_p_file_list.read().decode("utf8").strip().split()
+        expected = set(expected)
+        expected.discard("/")
+
+        self.child.sendline("ls ~/\t\t")
+        self.child.expect(PROMPT)
+        output = (
+            self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
+        )
+        output = set(output)
+        # github action hackish-fix...
+        output.discard(".ghcup/")
+        if ".ghcupl" in expected:
+            output.add(".ghcupl")
+
+        self.assertEqual(expected, output)
+
+        # cleanup
+        os.rmdir(dir1)
+        os.rmdir(dir2)
+        os.remove(file1)
+        os.remove(file2)
+
+    def test_16_file_completion_with_arg(self):
+        """F15 | file completion ls with ~/"""
+        # Create two random directories in the home directory
+        home_dir = f"/home/{USER}"
+        test_num = 16
+        dir1 = f"{home_dir}/test_{test_num}_dir_1"
+        dir2 = f"{home_dir}/test_{test_num}_dir_2"
+        file1 = f"{home_dir}/test_{test_num}_file_1"
+        file2 = f"{home_dir}/test_{test_num}_file_2"
+        os.mkdir(dir1)
+        os.mkdir(dir2)
+        open(file1, "w").close()
+        open(file2, "w").close()
+
+        # test file list
+        p_file_list = subprocess.Popen(
+            "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'",
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        stdout_p_file_list = p_file_list.stdout
+        expected = stdout_p_file_list.read().decode("utf8").strip().split()
+        expected = set(expected)
+        expected.discard("/")
+
+        self.child.sendline("ls -l ~/\t\t")
+        self.child.expect(PROMPT)
+        output = (
+            self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
+        )
+        output = set(output)
+        # github action hackish-fix...
+        output.discard(".ghcup/")
+        if ".ghcupl" in expected:
+            output.add(".ghcupl")
+
+        self.assertEqual(expected, output)
+
+        # cleanup
+        os.rmdir(dir1)
+        os.rmdir(dir2)
         os.remove(file1)
         os.remove(file2)
 

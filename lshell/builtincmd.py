@@ -23,14 +23,14 @@ def cmd_lpath(conf):
         lpath_allowed.sort()
         for path in lpath_allowed:
             if path:
-                sys.stdout.write(f" {path[:-2]}\n")
+                sys.stdout.write(f" {path}\n")
     if conf["path"][1]:
         sys.stdout.write("Denied:\n")
         lpath_denied = conf["path"][1].split("|")
         lpath_denied.sort()
         for path in lpath_denied:
             if path:
-                sys.stdout.write(f" {path[:-2]}\n")
+                sys.stdout.write(f" {path}\n")
     return 0
 
 

@@ -27,12 +27,12 @@ def completenames(conf, text, line, *ignored):
         return [cmd for cmd in commands if cmd.startswith(text)]
 
 
-def completesudo(conf, text, line, begidx, endidx):
+def complete_sudo(conf, text, line, begidx, endidx):
     """complete sudo command"""
     return [a for a in conf["sudo_commands"] if a.startswith(text)]
 
 
-def completechdir(conf, text, line, begidx, endidx):
+def complete_change_dir(conf, text, line, begidx, endidx):
     """complete directories"""
     dirs_to_return = []
     tocomplete = line.split(" ")[1]
@@ -87,7 +87,7 @@ def completechdir(conf, text, line, begidx, endidx):
     return dirs_to_return
 
 
-def completelistdir(conf, text, line, begidx, endidx):
+def complete_list_dir(conf, text, line, begidx, endidx):
     """complete with files and directories"""
     toreturn = []
     tocomplete = line.split()[-1]

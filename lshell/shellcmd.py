@@ -454,15 +454,15 @@ class ShellCmd(cmd.Cmd, object):
             # complete with sudo allowed commands
             command = line.split(" ")[0]
             if command == "sudo" and len(line.split(" ")) <= 2:
-                compfunc = completion.completesudo
+                compfunc = completion.complete_sudo
             # complete with directories
             elif command == "cd":
-                compfunc = completion.completechdir
+                compfunc = completion.complete_change_dir
             # complete with files and directories
             elif (
                 len(line.split(" ")) > 1 and line.split(" ")[0] in self.conf["allowed"]
             ):
-                compfunc = completion.completelistdir
+                compfunc = completion.complete_list_dir
             elif begidx > 0:
                 cmd, args, _ = self.parseline(line)
                 if cmd == "":

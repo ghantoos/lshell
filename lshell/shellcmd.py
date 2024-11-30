@@ -16,6 +16,7 @@ from lshell.checkconfig import CheckConfig
 from lshell import utils
 from lshell import builtincmd
 from lshell import sec
+from lshell import completion
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -453,35 +454,35 @@ class ShellCmd(cmd.Cmd, object):
             # complete with sudo allowed commands
             command = line.split(" ")[0]
             if command == "sudo" and len(line.split(" ")) <= 2:
-                compfunc = self.completesudo
+                compfunc = completion.completesudo
             # complete with directories
             elif command == "cd":
-                compfunc = self.completechdir
+                compfunc = completion.completechdir
             # complete with files and directories
             elif (
                 len(line.split(" ")) > 1 and line.split(" ")[0] in self.conf["allowed"]
             ):
-                compfunc = self.completelistdir
+                compfunc = completion.completelistdir
             elif begidx > 0:
                 cmd, args, _ = self.parseline(line)
                 if cmd == "":
-                    compfunc = self.completedefault
+                    compfunc = completion.completedefault
                 else:
                     try:
                         compfunc = getattr(self, "complete_" + cmd)
                     except AttributeError:
-                        compfunc = self.completedefault
+                        compfunc = completion.completedefault
                     # exception called when using './' completion
                     except IndexError:
-                        compfunc = self.completenames
+                        compfunc = completion.completenames
                     # exception called when using './' completion
                     except TypeError:
-                        compfunc = self.completenames
+                        compfunc = completion.completenames
             else:
                 # call the lshell allowed commands completion
-                compfunc = self.completenames
+                compfunc = completion.completenames
 
-            self.completion_matches = compfunc(text, line, begidx, endidx)
+            self.completion_matches = compfunc(self.conf, text, line, begidx, endidx)
         try:
             return self.completion_matches[state]
         except IndexError:
@@ -501,105 +502,7 @@ class ShellCmd(cmd.Cmd, object):
         it's output with the command available in the 'allowed' variable
         This is useful when typing 'tab-tab' in the command prompt
         """
-        commands = self.conf["allowed"]
-        if line.startswith("./"):
-            return [cmd[2:] for cmd in commands if cmd.startswith(f"./{text}")]
-        else:
-            return [cmd for cmd in commands if cmd.startswith(text)]
-
-    def completesudo(self, text, line, begidx, endidx):
-        """complete sudo command"""
-        return [a for a in self.conf["sudo_commands"] if a.startswith(text)]
-
-    def completechdir(self, text, line, begidx, endidx):
-        """complete directories"""
-        dirs_to_return = []
-        tocomplete = line.split(" ")[1]
-        # replace "~" with home path
-        tocomplete = re.sub("^~", self.conf["home_path"], tocomplete)
-
-        # Detect relative vs absolute paths
-        if not tocomplete.startswith("/"):
-            # Resolve relative paths based on current working directory
-            base_path = os.getcwd()
-            tocomplete = os.path.normpath(os.path.join(base_path, tocomplete))
-        try:
-            directory = os.path.realpath(tocomplete)
-        except OSError:
-            directory = os.getcwd()
-
-        # if directory doesn't exist, take the parent directory
-        if not os.path.isdir(directory):
-            directory = directory.rsplit("/", 1)[0]
-            if directory == "":
-                directory = "/"
-
-        directory = os.path.normpath(directory)
-
-        # check path security
-        ret_check_path, self.conf = sec.check_path(directory, self.conf, completion=1)
-
-        # if path is secure, list subdirectories and files
-        if ret_check_path == 0:
-            for instance in os.listdir(directory):
-                if os.path.isdir(os.path.join(directory, instance)):
-                    if instance.startswith(text):
-                        dirs_to_return.append(f"{instance}/")
-
-        # if path is not secure, add completion based on allowed path
-        else:
-            allowed_paths = self.conf["path"][0].split("|")
-            for instance in allowed_paths:
-                # Check if the directory matches or is a parent of the allowed path
-                if instance.startswith(directory) and instance.startswith(tocomplete):
-                    # Extract the next unmatched segment of the allowed path
-                    remaining_path = instance[len(directory) :].lstrip("/")
-                    if "/" in remaining_path:
-                        next_segment = remaining_path.split("/", 1)[0] + "/"
-                    else:
-                        next_segment = remaining_path + "/"
-
-                    # Add unique suggestions
-                    if next_segment and next_segment not in dirs_to_return:
-                        dirs_to_return.append(next_segment)
-
-        return dirs_to_return
-
-    def completelistdir(self, text, line, begidx, endidx):
-        """complete with files and directories"""
-        toreturn = []
-        tocomplete = line.split()[-1]
-        # replace "~" with home path
-        tocomplete = re.sub("^~", self.conf["home_path"], tocomplete)
-        try:
-            directory = os.path.realpath(tocomplete)
-        except OSError:
-            directory = os.getcwd()
-
-        if not os.path.isdir(directory):
-            directory = directory.rsplit("/", 1)[0]
-            if directory == "":
-                directory = "/"
-            if not os.path.isdir(directory):
-                directory = os.getcwd()
-
-        ret_check_path, self.conf = sec.check_path(directory, self.conf, completion=1)
-        if ret_check_path == 0:
-            for instance in os.listdir(directory):
-                if os.path.isdir(os.path.join(directory, instance)):
-                    instance = instance + "/"
-                else:
-                    instance = instance + " "
-                if instance.startswith("."):
-                    if text.startswith("."):
-                        toreturn.append(instance)
-                    else:
-                        pass
-                else:
-                    toreturn.append(instance)
-            return [a for a in toreturn if a.startswith(text)]
-        else:
-            return None
+        return completion.completenames(self.conf, text, line, *ignored)
 
     def onecmd(self, line):
         """This method overrides the original onecmd method, to put the cmd,

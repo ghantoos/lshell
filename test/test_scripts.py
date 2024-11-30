@@ -35,7 +35,7 @@ class TestFunctions(unittest.TestCase):
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
-        test_script_path = f"/tmp/test.lsh"
+        test_script_path = "/tmp/test.lsh"
 
         # Step 1: Create the wrapper script
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
@@ -90,7 +90,7 @@ bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
-        test_script_path = f"/tmp/test.lsh"
+        test_script_path = "/tmp/test.lsh"
 
         # Step 1: Create the wrapper script
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:

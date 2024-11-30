@@ -179,7 +179,7 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
 
         output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = f"test_value"
+        expected_output = "test_value"
 
         assert (
             output == expected_output
@@ -209,7 +209,7 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
 
         output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = f"new_value"
+        expected_output = "new_value"
 
         assert (
             output == expected_output

@@ -498,10 +498,7 @@ class ShellCmd(cmd.Cmd, object):
         self.stdout.write("")
 
     def completenames(self, text, line, *ignored):
-        """This method overrides the original completenames method to overload
-        it's output with the command available in the 'allowed' variable
-        This is useful when typing 'tab-tab' in the command prompt
-        """
+        """Override the original completenames method."""
         return completion.completenames(self.conf, text, line, *ignored)
 
     def onecmd(self, line):

@@ -58,18 +58,24 @@ class TestFunctions(unittest.TestCase):
 
         # test dir list
         p_dir_list = subprocess.Popen(
-            "ls -a -d ~/*/", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+            "find . -maxdepth 1 -type d -printf '%f/\n'",
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
         )
         stdout_p_dir_list = p_dir_list.stdout
         expected = stdout_p_dir_list.read().decode("utf8").strip().split()
         # Normalize expected to relative paths
-        expected = [f"{os.path.relpath(path, home_dir)}/" for path in expected]
+        expected = set(expected)
+        expected.discard("./")
 
         self.child.sendline("cd ~/\t\t")
         self.child.expect(PROMPT)
         output = (
             self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
         )
+        output = set(output)
+
         self.assertEqual(expected, output)
 
         # cleanup
@@ -94,7 +100,7 @@ class TestFunctions(unittest.TestCase):
 
         # test file list
         p_file_list = subprocess.Popen(
-            "ls -a --indicator-style=slash ~/",
+            "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'",
             shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -102,8 +108,7 @@ class TestFunctions(unittest.TestCase):
         stdout_p_file_list = p_file_list.stdout
         expected = stdout_p_file_list.read().decode("utf8").strip().split()
         expected = set(expected)
-        expected.discard("./")
-        expected.discard("../")
+        expected.discard("/")
 
         self.child.sendline("ls ~/\t\t")
         self.child.expect(PROMPT)
@@ -135,7 +140,7 @@ class TestFunctions(unittest.TestCase):
 
         # test file list
         p_file_list = subprocess.Popen(
-            "ls -a --indicator-style=slash ~/",
+            "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'",
             shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -143,8 +148,7 @@ class TestFunctions(unittest.TestCase):
         stdout_p_file_list = p_file_list.stdout
         expected = stdout_p_file_list.read().decode("utf8").strip().split()
         expected = set(expected)
-        expected.discard("./")
-        expected.discard("../")
+        expected.discard("/")
 
         self.child.sendline("ls -l ~/\t\t")
         self.child.expect(PROMPT)

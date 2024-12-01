@@ -3,6 +3,10 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.10.10 25/11/2024
+- Added path-only completion with completion from allowed paths.
+- Added prompt color support using ANSI codes.
+
 ### v0.10.9 19/11/2024
 - Fixed SFTP bug that caused connection failure.
 

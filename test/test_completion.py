@@ -4,9 +4,9 @@ import os
 import unittest
 import subprocess
 from getpass import getuser
+from test.test_utils import is_alpine_linux
 import pexpect
 
-from test.test_utils import is_alpine_linux
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"

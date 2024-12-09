@@ -69,12 +69,11 @@ class TestFunctions(unittest.TestCase):
 
     def test_11_etc_passwd_1(self):
         """F11 | /etc/passwd: empty variable 'ls "$a"/etc/passwd'"""
-        if test_utils.is_alpine_linux():
-            expected = "ls: $a/etc/passwd: No such file or directory\r\n"
-        else:
-            expected = (
-                "ls: cannot access '$a/etc/passwd': No such file or directory\r\n"
-            )
+        expected = (
+            '*** forbidden path -> "/etc/passwd"\r\n*** You have'
+            " 1 warning(s) left, before getting kicked out.\r\nThis "
+            "incident has been reported.\r\n"
+        )
         self.child.sendline('ls "$a"/etc/passwd')
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]

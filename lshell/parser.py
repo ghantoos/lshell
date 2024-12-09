@@ -112,9 +112,9 @@ class LshellParser:
             | cmd_subst_backtick
             | var_expansion
             | Word(
-                "$" + alphanums + "_" + "/.-?~" + self._escape_char
+                "$" + alphanums + "_" + "/.-?~*" + self._escape_char
             )  # Environment variables and paths
-            | Word(alphanums + "/.-_=")
+            | Word(alphanums + "/.-_=*?")
             | quotedString.setParseAction(lambda t: self._advanced_quote_handler(t[0]))
         )
 

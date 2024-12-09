@@ -35,7 +35,7 @@ class TestFunctions(unittest.TestCase):
         """F15 | command completion: tab to list commands"""
         expected = (
             "\x07\r\nbg       clear    exit     help     jobs     lpath    lsudo    "
-            "\r\ncd       echo     fg       history  ll       ls"
+            "\r\ncd       echo     fg       history  ll       ls       source"
         )
         self.child.sendline("\t\t")
         self.child.expect(PROMPT)

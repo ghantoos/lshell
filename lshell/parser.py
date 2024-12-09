@@ -1,81 +1,216 @@
-import json
+""" Custom shell command parser with advanced tokenization and error handling """
+
+from typing import Optional
 from pyparsing import (
     Word,
-    alphas,
     alphanums,
     quotedString,
     Group,
     ZeroOrMore,
     Literal,
-    Optional,
-    Suppress,
+    Optional as PyOptional,
+    ParseException,
+    oneOf,
+    ParseResults,
+    alphas,
+    printables,
+    OneOrMore,
+    SkipTo,
 )
 
-# Define basic tokens
-word = Word(alphanums + "/.-_") | quotedString
-operator_pipe = Literal("|").setResultsName("pipe")
-operator_logical = (Literal("&&") | Literal("||")).setResultsName("logical_operator")
-operator_logical = (Literal("&&") | Literal("||")).setResultsName("logical_operator")
 
-redirection = (Literal(">") | Literal(">>") | Literal("<")).setResultsName(
-    "redirection_operator"
-)  # Redirection
-background = (~Literal("&&") + Literal("&")).setResultsName(
-    "background"
-)  # Background operator
+class LshellParser:
+    """Custom shell command parser"""
 
-# Define grammar rules
-executable = word.setResultsName("executable")  # Command executable
-argument = word.setResultsName("argument", listAllMatches=True)  # Command arguments
+    def __init__(self):
+        """Initialize the parser with custom settings"""
+        # Improved tokenization
+        self._escape_char = "\\"
+        self._quote_chars = ['"', "'"]
 
-# Simple command: command + optional arguments + optional redirection + optional background
-simple_command = Group(
-    executable
-    + ZeroOrMore(argument)
-    + Optional(redirection + word.setResultsName("redirection_target"))
-    + Optional(background)
-).setResultsName("simple_command")
+    def _handle_escaped_chars(self, token: str) -> str:
+        """
+        Handle escaped characters in tokens
+        Supports escaping of quote characters and special symbols
+        """
+        if not token:
+            return token
 
-# Pipeline: multiple commands connected by "|"
-pipeline = Group(
-    simple_command.setResultsName("start_command")
-    + ZeroOrMore(Group(operator_pipe + simple_command).setResultsName("pipeline_step"))
-).setResultsName("pipeline")
+        cleaned_token = []
+        is_escaped = False
 
-# Conditional command: commands connected by "&&" or "||"
-conditional_command = Group(
-    pipeline.setResultsName("initial_pipeline")
-    + ZeroOrMore(Group(operator_logical + pipeline).setResultsName("conditional_step"))
-    + Optional(background)
-).setResultsName("conditional_command")
+        for char in token:
+            if is_escaped:
+                # List of escapable characters
+                escaped_map = {
+                    "n": "\n",
+                    "t": "\t",
+                    "r": "\r",
+                    '"': '"',
+                    "'": "'",
+                    "\\": "\\",
+                }
+                cleaned_token.append(escaped_map.get(char, char))
+                is_escaped = False
+            elif char == self._escape_char:
+                is_escaped = True
+            else:
+                cleaned_token.append(char)
 
-# A full command can be simple, pipeline, or conditional
-full_command = conditional_command | pipeline | simple_command
+        return "".join(cleaned_token)
 
-# Command sequence: full commands separated by ";" + optional background
-command_sequence = Group(
-    full_command.setResultsName("first_command")
-    + ZeroOrMore(Suppress(";") + full_command.setResultsName("next_command"))
-).setResultsName("command_sequence")
+    def _advanced_quote_handler(self, token: str) -> str:
+        """
+        Advanced quote handling with nested quote support
+        """
+        if not token:
+            return token
 
-# Test parsing a command sequence
+        # If it's a quoted string
+        if token[0] in self._quote_chars and token[0] == token[-1]:
+            # Keep the quotes, but handle escaped characters inside
+            quoted_content = token[1:-1]
+            unescaped_content = self._handle_escaped_chars(quoted_content)
+            # Return with original quotes
+            return token[0] + unescaped_content + token[-1]
+
+        # For non-quoted strings, just handle escaped chars
+        return self._handle_escaped_chars(token)
+
+    def _build_grammar(self):
+        """
+        Construct a more robust parsing grammar with background support
+        """
+        # Variable assignment pattern
+        var_name = Word(alphas + "_", alphanums + "_")
+        var_value = Word(alphanums + "_/.-") | quotedString
+        var_assignment = Group(var_name + Literal("=") + var_value)
+
+        # Command substitution patterns
+        cmd_subst_dollar = Group(
+            Literal("$(") + SkipTo(Literal(")")) + Literal(")")
+        ).setParseAction(
+            lambda t: [" ".join(t[0])]
+        )  # Preserve as single token
+
+        cmd_subst_backtick = Group(
+            Literal("`") + SkipTo(Literal("`")) + Literal("`")
+        ).setParseAction(
+            lambda t: [" ".join(t[0])]
+        )  # Preserve as single token
+
+        # Variable expansion pattern
+        var_expansion = Group(
+            Literal("${") + Word(alphanums + "_") + Literal("}")
+        ).setParseAction(
+            lambda t: [" ".join(t[0])]
+        )  # Preserve as single token
+
+        # Advanced word tokenization
+        advanced_word = (
+            cmd_subst_dollar
+            | cmd_subst_backtick
+            | var_expansion
+            | Word(
+                "$" + alphanums + "_" + "/.-?~" + self._escape_char
+            )  # Environment variables and paths
+            | Word(alphanums + "/.-_=")
+            | quotedString.setParseAction(lambda t: self._advanced_quote_handler(t[0]))
+        )
+
+        # Operators with more flexible parsing
+        operators = oneOf(["|", "&&", "||", ";"])
+
+        # Redirection with enhanced support
+        redirection_ops = oneOf([">", ">>", "<", "2>", "2>>", ">&"])
+
+        # Background operator
+        background_op = PyOptional(Literal("&"))
+
+        # Trailing semicolon
+        trailing_semicolon = PyOptional(Literal(";"))
+
+        # Command structure with optional variable assignments
+        command = Group(
+            (
+                # Either a command with optional var assignments
+                (ZeroOrMore(var_assignment) + advanced_word + ZeroOrMore(advanced_word))
+                # Or just variable assignments
+                | OneOrMore(var_assignment)
+            )
+            + PyOptional(redirection_ops + advanced_word)  # Optional redirection
+        )
+
+        # Full command sequence with optional background at the end
+        command_sequence = Group(
+            command
+            + ZeroOrMore(operators + command)
+            + background_op
+            + trailing_semicolon
+        )
+
+        return command_sequence
+
+    def parse(self, command: str) -> Optional[ParseResults]:
+        """
+        Main parsing method with error handling
+        """
+        try:
+            grammar = self._build_grammar()
+            parsed_result = grammar.parseString(command, parseAll=True)
+            return parsed_result
+        except ParseException as error:
+            print(f"Parsing Error: {error}")
+            print(f"Error at line {error.lineno}, column {error.col}")
+            return None
+
+    def validate_command(self, parsed_command: ParseResults) -> bool:
+        """
+        Basic command validation
+        Can be extended with more sophisticated checks
+        """
+        if not parsed_command:
+            return False
+
+        # Example validation rules
+        max_tokens = 20
+        max_token_length = 255
+
+        flattened = list(parsed_command)
+
+        # Check total number of tokens
+        if len(flattened) > max_tokens:
+            return False
+
+        # Check individual token lengths
+        for token in flattened:
+            if len(str(token)) > max_token_length:
+                return False
+
+        return True
+
+
+# Testing
 if __name__ == "__main__":
-    # Example input
-    test_input = 'echo "hello world" | ls -la || mkdir /tmp/test; cat /var/log/syslog &'
-    # Example inputs
-    test_inputs = [
-        'grep "error" /var/log/syslog | sort -u > errors.txt && echo "Errors found" || echo "No errors"',
-        'find / -name "*.py" -print | xargs grep "def " > functions.txt; echo "Search complete" &',
+    parser = LshellParser()
+
+    test_commands = [
+        'echo "hello world"',
+        'grep "error" /var/log/syslog | sort -u > errors.txt',
+        'find / -name "*.py" -print | xargs grep "def \\"test\\""',
+        r'echo "escaped \"quote\""',
         'tar -czf backup.tar.gz /home/user/data && mv backup.tar.gz /mnt/backup/ || echo "Backup failed"',
+        'find / -name "*.py" -print | xargs grep "def " > functions.txt; echo "Search complete" &',
+        'grep "error" /var/log/syslog | sort -u > errors.txt && echo "Errors found" || echo "No errors"',
+        'echo "hello" &',
+        "ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?",
     ]
 
-    for test_input in test_inputs:
-        # Parse the input
-        parsed = command_sequence.parseString(test_input)
-        parsed_dict = parsed.asList()
-
-        # Pretty print the parsed structure
-        print(f"Input: {test_input}")
-        print("")
-        print(json.dumps(parsed_dict[0][0], indent=2))
-        print("\n" + "=" * 80 + "\n")
+    for cmd in test_commands:
+        print(f"Parsing: {cmd}")
+        result = parser.parse(cmd)
+        if result:
+            print("Parsed Successfully:")
+            print(result)
+            print("Validation:", parser.validate_command(result))
+        print("-" * 40)

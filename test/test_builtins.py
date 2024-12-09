@@ -99,9 +99,7 @@ class TestFunctions(unittest.TestCase):
         expected = "2"
         child.sendline("cd nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         child.expect(PROMPT)
-        child.sendline("echo $?")
-        child.expect(PROMPT)
-        result = child.before.decode("utf8").split("\n")[1].strip()
+        result = child.before.decode("utf8").split("\n")[2].strip()
         self.assertEqual(expected, result)
         self.do_exit(child)
 

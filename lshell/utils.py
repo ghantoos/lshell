@@ -14,6 +14,8 @@ import signal
 # import lshell specifics
 from lshell import variables
 from lshell import builtincmd
+from lshell import sec
+from lshell.parser import LshellParser
 
 
 def usage(exitcode=1):
@@ -132,52 +134,247 @@ def replace_exit_code(line, retcode):
     return line
 
 
+def expand_env_vars(arg):
+    """
+    Expand environment variables, replacing non-existing ones with empty string.
+    Uses os.path.expandvars but handles non-existing variables.
+    """
+    # First find all environment variables in the string
+    try:
+        env_vars = re.findall(r"\$\{([^}]*)\}|\$([a-zA-Z0-9_]+)", arg)
+    except re.error:
+        # If there's an error in the regex, return the original string
+        return arg
+
+    # For each non-existing var, temporarily set it to empty string
+    temp_vars = {}
+    for var_braces, var_plain in env_vars:
+        var_name = var_braces or var_plain
+        if var_name not in os.environ:
+            temp_vars[var_name] = ""
+            os.environ[var_name] = ""
+
+    try:
+        # Use standard os.path.expandvars
+        result = os.path.expandvars(arg)
+    finally:
+        # Clean up temporary environment variables
+        for var_name in temp_vars:
+            del os.environ[var_name]
+
+    return result
+
+
+def expand_command_group(command_group, retcode):
+    """
+    Expand environment variables in a command group.
+    Returns a tuple of (executable, args, full_command)
+    """
+    # Handle variable assignment case
+    if len(command_group) == 1:
+        # Since command_group is [['a', '=', '1']], get the inner list
+        inner_group = command_group[0]
+        if len(inner_group) == 3 and inner_group[1] == "=":
+            # This is a variable assignment
+            var_name = inner_group[0]
+            var_value = inner_group[2]
+            # Return format that indicates this is a variable assignment
+            return (
+                "lshell-internal-env",
+                f"{var_name}={var_value}",
+                f"lshell-internal-env {var_name}={var_value}",
+            )
+
+    # Replace $? with the exit code first
+    for i, arg in enumerate(command_group):
+        if arg == "$?":
+            command_group[i] = str(retcode)
+
+    # Then expand any other environment variables
+    expanded_group = []
+    for arg in command_group:
+        expanded_arg = expand_env_vars(arg)  # os.path.expandvars(arg)
+        expanded_group.append(expanded_arg)
+
+    executable = expanded_group[0]
+    args = expanded_group[1:] if len(expanded_group) > 1 else []
+
+    # Special handling for export command and '=' in arguments
+    if executable == "export":
+        # Join the arguments, removing spaces around '='
+        argument = "".join(args)
+        full_command = f"{executable} {''.join(args)}"
+    else:
+        argument = " ".join(args)
+        full_command = " ".join(expanded_group)
+
+    return executable, argument, full_command
+
+
+def handle_builtin_command(full_command, executable, argument, shell_context):
+    """
+    Handle built-in commands like cd, lpath, lsudo, etc.
+    Returns tuple of (retcode, conf)
+    """
+
+    retcode = 0
+    conf = shell_context.conf
+
+    if executable == "help":
+        shell_context.do_help(executable)
+    elif executable == "exit":
+        shell_context.do_exit(full_command)
+    elif executable == "history":
+        builtincmd.cmd_history(shell_context.conf, shell_context.log)
+    elif executable == "cd":
+        retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
+    elif executable == "lpath":
+        retcode = builtincmd.cmd_lpath(conf)
+    elif executable == "lsudo":
+        retcode = builtincmd.cmd_lsudo(conf)
+    elif executable == "history":
+        retcode = builtincmd.cmd_history(conf, shell_context.log)
+    elif executable == "export":
+        retcode, var = builtincmd.cmd_export(full_command)
+        if retcode == 1:
+            shell_context.log.critical(f"** forbidden environment variable '{var}'")
+    elif executable == "source":
+        retcode = builtincmd.cmd_source(argument)
+    elif executable == "fg":
+        retcode = builtincmd.cmd_bg_fg(executable, argument)
+    elif executable == "bg":
+        retcode = builtincmd.cmd_bg_fg(executable, argument)
+    elif executable == "jobs":
+        retcode = builtincmd.cmd_jobs()
+
+    return retcode, conf
+
+
 def cmd_parse_execute(command_line, shell_context=None):
     """Parse and execute a shell command line"""
-    # Split command line by shell grammar: '&&', '||', and ';;'
-    cmd_split = re.split(r"(;|&&|\|\|)", command_line)
+    parser = LshellParser()
+    parsed = parser.parse(command_line)
+
+    if not parsed:
+        # If parsing fails, return error code
+        return 1
 
     # Initialize return code
     retcode = 0
 
-    # Iterate over commands and operators
-    for i in range(0, len(cmd_split), 2):
-        command = cmd_split[i].strip()
-        operator = cmd_split[i - 1].strip() if i > 0 else None
+    # Convert parsed result to command sequence
+    command_sequence = parsed[0]  # First item contains the full sequence
+
+    # Check for forbidden characters in the command line
+    ret_forbidden_chars, shell_context.conf = sec.check_forbidden_chars(
+        command_line, shell_context.conf, strict=shell_context.conf["strict"]
+    )
+    if ret_forbidden_chars == 1:
+        # see http://tldp.org/LDP/abs/html/exitcodes.html
+        retcode = 126
+        return retcode
+
+    # Iterate through the command sequence
+    i = 0
+    while i < len(command_sequence):
+        # Get the current item
+        current_item = command_sequence[i]
+
+        # Skip if it's an operator
+        if isinstance(current_item, str) and current_item in [
+            "&&",
+            "||",
+            "|",
+            "&",
+            ";",
+        ]:
+            i += 1
+            continue
+
+        # Get the previous operator (if any)
+        prev_operator = (
+            command_sequence[i - 1]
+            if i > 0 and isinstance(command_sequence[i - 1], str)
+            else None
+        )
 
         # Skip empty commands
-        if not command:
+        if not current_item:
+            i += 1
             continue
 
-        # Only execute commands based on the previous operator and return code
-        if operator == "&&" and retcode != 0:
+        # Handle logical operators
+        if prev_operator == "&&" and retcode != 0:
+            # Previous command failed, skip this one
+            i += 1
             continue
-        elif operator == "||" and retcode == 0:
+        elif prev_operator == "||" and retcode == 0:
+            # Previous command succeeded, skip this one
+            i += 1
             continue
 
-        # Get the executable command
-        try:
-            executable, argument = re.split(r"\s+", command, maxsplit=1)
-        except ValueError:
-            executable, argument = command, ""
+        executable, argument, full_command = expand_command_group(current_item, retcode)
 
-        # Check if command is in built-ins list or execute it via exec_cmd
-        if executable in variables.builtins_list:
-            if executable == "help":
-                shell_context.do_help(command)
-            elif executable == "exit":
-                shell_context.do_exit(command)
-            elif executable == "history":
-                builtincmd.cmd_history(shell_context.conf, shell_context.log)
-            elif executable == "cd":
-                retcode = builtincmd.cmd_cd(argument, shell_context.conf)
-            else:
-                retcode = getattr(builtincmd, executable)(shell_context.conf)
-        else:
+        # Handle variable assignment
+        if executable == "lshell-internal-env":
+            var_name, var_value = argument.split("=")
+            os.environ[var_name] = var_value
+            retcode = 0
+            i += 1
+            continue
+
+        # check that commands/chars present in line are allowed/secure
+        ret_check_secure, shell_context.conf = sec.check_secure(
+            full_command, shell_context.conf, strict=shell_context.conf["strict"]
+        )
+        if ret_check_secure == 1:
+            # see http://tldp.org/LDP/abs/html/exitcodes.html
+            retcode = 126
+            return retcode
+
+        # check that path present in line are allowed/secure
+        ret_check_path, shell_context.conf = sec.check_path(
+            full_command, shell_context.conf, strict=shell_context.conf["strict"]
+        )
+        if ret_check_path == 1:
+            # see http://tldp.org/LDP/abs/html/exitcodes.html
+            retcode = 126
+            # in case request was sent by WinSCP, return error code has to be
+            # sent via a specific echo command
+            if shell_context.conf["winscp"] and re.search(
+                "WinSCP: this is end-of-file", command_line
+            ):
+                exec_cmd(f'echo "WinSCP: this is end-of-file: {retcode}"')
+            return retcode
+
+        # Extract command and arguments
+        command_group = current_item
+        executable = os.path.expandvars(command_group[0])
+        # Expand vars in all arguments
+        args = (
+            [os.path.expandvars(arg) for arg in command_group[1:]]
+            if len(command_group) > 1
+            else []
+        )
+        argument = " ".join(args)
+
+        # Execute command
+        if executable in builtincmd.builtins_list:
+            retcode, shell_context.conf = handle_builtin_command(
+                full_command, executable, argument, shell_context
+            )
+        elif (
+            executable in shell_context.conf["allowed"]
+            or full_command in shell_context.conf["allowed"]
+        ):
             if "path_noexec" in shell_context.conf:
                 os.environ["LD_PRELOAD"] = shell_context.conf["path_noexec"]
-            command = replace_exit_code(command, retcode)
-            retcode = exec_cmd(command)
+            retcode = exec_cmd(full_command)
+        else:
+            shell_context.log.warn(f'INFO: unknown syntax -> "{full_command}"')
+            sys.stderr.write(f"*** unknown syntax: {full_command}\n")
+
+        i += 1
 
     return retcode
 

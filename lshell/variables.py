@@ -82,20 +82,6 @@ configparams = [
     "include_dir=",
 ]
 
-builtins_list = [
-    "cd",
-    "clear",
-    "exit",
-    "export",
-    "history",
-    "lpath",
-    "lsudo",
-    "help",
-    "fg",
-    "bg",
-    "jobs",
-]
-
 FORBIDDEN_ENVIRON = (
     "LD_AOUT_LIBRARY_PATH",
     "LD_AOUT_PRELOAD",

@@ -33,13 +33,13 @@ class TestFunctions(unittest.TestCase):
 
     def test_31_security_echo_freedom_and_help(self):
         """F31 | test help, then echo FREEDOM! && help () sh && help"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} ")
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} --forbidden \"-[';','&']\" "
+        )
         child.expect(PROMPT)
 
         # Step 1: Enter `help` command
-        expected_help_output = (
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
-        )
+        expected_help_output = "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source"
         child.sendline("help")
         child.expect(PROMPT)
         help_output = child.before.decode("utf8").split("\n", 1)[1].strip()
@@ -49,8 +49,8 @@ class TestFunctions(unittest.TestCase):
         # Step 2: Enter `echo FREEDOM! && help () sh && help`
         expected_output = (
             "FREEDOM!\r\nbg  cd  clear  echo  exit  fg  help  history  "
-            "jobs  ll  lpath  ls  lsudo\r\n"
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
+            "jobs  ll  lpath  ls  lsudo  source\r\n"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source"
         )
         child.sendline("echo FREEDOM! && help () sh && help")
         child.expect(PROMPT)
@@ -63,13 +63,13 @@ class TestFunctions(unittest.TestCase):
 
     def test_32_security_echo_freedom_and_cd(self):
         """F32 | test echo FREEDOM! && cd () bash && cd ~/"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} ")
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} --forbidden \"-[';','&']\" "
+        )
         child.expect(PROMPT)
 
         # Step 1: Enter `help` command
-        expected_help_output = (
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
-        )
+        expected_help_output = "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source"
         child.sendline("help")
         child.expect(PROMPT)
         help_output = child.before.decode("utf8").split("\n", 1)[1].strip()

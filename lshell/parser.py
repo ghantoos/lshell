@@ -106,16 +106,22 @@ class LshellParser:
             lambda t: [" ".join(t[0])]
         )  # Preserve as single token
 
+        # Advanced word tokenization - allow all printable chars except operators
+        operator_chars = "|&;><"
+        # Create allowed chars string: all printables except operators
+        word_chars = "".join(c for c in printables if c not in operator_chars)
+
+        # Define custom quoted string that preserves all spaces
+        quoted_text = quotedString.setParseAction(lambda t: t[0])
+
         # Advanced word tokenization
         advanced_word = (
-            cmd_subst_dollar
-            | cmd_subst_backtick
-            | var_expansion
-            | Word(
-                "$" + alphanums + "_" + "/.-?~*" + self._escape_char
-            )  # Environment variables and paths
-            | Word(alphanums + "/.-_=*?")
-            | quotedString.setParseAction(lambda t: self._advanced_quote_handler(t[0]))
+            cmd_subst_dollar  # Command substitution
+            | cmd_subst_backtick  # Command substitution
+            | var_expansion  # Variable expansion
+            | quoted_text
+            | Word("$" + word_chars)  # Environment variables and paths
+            | Word(word_chars)  # Regular words
         )
 
         # Operators with more flexible parsing
@@ -199,9 +205,11 @@ if __name__ == "__main__":
         'grep "error" /var/log/syslog | sort -u > errors.txt',
         'find / -name "*.py" -print | xargs grep "def \\"test\\""',
         r'echo "escaped \"quote\""',
-        'tar -czf backup.tar.gz /home/user/data && mv backup.tar.gz /mnt/backup/ || echo "Backup failed"',
+        "tar -czf backup.tar.gz /home/user/data && mv backup.tar.gz /mnt/backup/ "
+        '|| echo "Backup failed"',
         'find / -name "*.py" -print | xargs grep "def " > functions.txt; echo "Search complete" &',
-        'grep "error" /var/log/syslog | sort -u > errors.txt && echo "Errors found" || echo "No errors"',
+        'grep "error" /var/log/syslog | sort -u > errors.txt && echo "Errors found" '
+        '|| echo "No errors"',
         'echo "hello" &',
         "ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?",
     ]

@@ -64,13 +64,13 @@ class TestFunctions(unittest.TestCase):
 
     def test_65_multi_line_command_security_echo(self):
         """F65 | test help, then echo FREEDOM! && help () sh && help"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG}  --forbidden \"-[';']\"")
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG}  --forbidden \"-[';','&']\""
+        )
         child.expect(PROMPT)
 
         # Step 1: Enter `help` command
-        expected_help_output = (
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
-        )
+        expected_help_output = "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source"
         child.sendline("help")
         child.expect(PROMPT)
         help_output = child.before.decode("utf8").split("\n", 2)[1].strip()
@@ -80,8 +80,8 @@ class TestFunctions(unittest.TestCase):
         # Step 2: Enter `echo FREEDOM! && help () sh && help`
         expected_output = (
             "1\r\nFREEDOM!\r\n"
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r\n"
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r\n"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source"
         )
         child.sendline("echo 1; \\")
         child.expect(">")

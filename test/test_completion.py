@@ -8,6 +8,7 @@ import pexpect  # pylint: disable=wrong-import-order
 
 from test.test_utils import is_alpine_linux
 
+
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"

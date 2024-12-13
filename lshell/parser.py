@@ -125,45 +125,55 @@ class LshellParser:
         )
 
         # Operators with more flexible parsing
-        operators = oneOf(["|", "&&", "||", ";"])
+        operators = ["&&", "||", "|", ";"]
 
         # Redirection with enhanced support
-        redirection_ops = oneOf([">", ">>", "<", "2>", "2>>", ">&"])
+        redirection_ops = [">", ">>", "<", "2>", "2>>", ">&"]
 
         # Background operator
-        background_op = PyOptional(Literal("&"))
+        background_op = ~Literal("&&") + Literal("&")
 
         # Trailing semicolon
-        trailing_semicolon = PyOptional(Literal(";"))
+        trailing_semicolon = Literal(";")
 
         # Command structure with optional variable assignments
         command = Group(
             (
                 # Either a command with optional var assignments
-                (ZeroOrMore(var_assignment) + advanced_word + ZeroOrMore(advanced_word))
+                (
+                    ZeroOrMore(var_assignment)
+                    + advanced_word
+                    + ZeroOrMore(advanced_word)
+                    + PyOptional(background_op)
+                )
                 # Or just variable assignments
                 | OneOrMore(var_assignment)
             )
-            + PyOptional(redirection_ops + advanced_word)  # Optional redirection
+            + PyOptional(oneOf(redirection_ops) + advanced_word)  # Optional redirection
         )
 
         # Full command sequence with optional background at the end
         command_sequence = Group(
             command
-            + ZeroOrMore(operators + command)
-            + background_op
-            + trailing_semicolon
+            + ZeroOrMore(oneOf(operators) + command)
+            + PyOptional(trailing_semicolon)
         )
 
         return command_sequence
+
+    def _clean_input(self, command: str) -> str:
+        """Clean control characters from input"""
+        return "".join(char for char in command if ord(char) >= 32 or char in "\n\r\t")
 
     def parse(self, command: str) -> Optional[ParseResults]:
         """
         Main parsing method with error handling
         """
         try:
+            # Clean the input first
+            cleaned_command = self._clean_input(command)
             grammar = self._build_grammar()
-            parsed_result = grammar.parseString(command, parseAll=True)
+            parsed_result = grammar.parseString(cleaned_command, parseAll=True)
             return parsed_result
         except ParseException as error:
             print(f"Parsing Error: {error}")

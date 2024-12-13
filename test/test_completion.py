@@ -4,7 +4,7 @@ import os
 import unittest
 import subprocess
 from getpass import getuser
-import pexpect
+import pexpect  # pylint: disable=wrong-import-order
 
 from test.test_utils import is_alpine_linux
 

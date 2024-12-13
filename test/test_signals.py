@@ -273,7 +273,8 @@ class TestFunctions(unittest.TestCase):
     def test_77_mix_background_and_foreground(self):
         """F77 | Test mixing background and foreground commands."""
         child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} --allowed \"+['sleep', 'tail']\" --forbidden \"-['&',';']\""
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"+['sleep', 'tail']\" --forbidden \"-['&',';']\""
         )
         child.expect(PROMPT)
 

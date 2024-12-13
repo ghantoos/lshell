@@ -70,7 +70,10 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
 
         # Step 1: Enter `help` command
-        expected_help_output = "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source"
+        expected_help_output = (
+            "bg  cd  clear  echo  exit  fg  help  history  "
+            "jobs  ll  lpath  ls  lsudo  source"
+        )
         child.sendline("help")
         child.expect(PROMPT)
         help_output = child.before.decode("utf8").split("\n", 2)[1].strip()

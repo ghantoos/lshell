@@ -101,29 +101,6 @@ class ShellCmd(cmd.Cmd, object):
         if self.g_cmd in ["quit", "exit", "EOF"]:
             self.do_exit()
 
-        # # check that commands/chars present in line are allowed/secure
-        # ret_check_secure, self.conf = sec.check_secure(
-        #     self.g_line, self.conf, strict=self.conf["strict"]
-        # )
-        # if ret_check_secure == 1:
-        #     # see http://tldp.org/LDP/abs/html/exitcodes.html
-        #     self.retcode = 126
-        #     return object.__getattribute__(self, attr)
-
-        # # check that path present in line are allowed/secure
-        # ret_check_path, self.conf = sec.check_path(
-        #     self.g_line, self.conf, strict=self.conf["strict"]
-        # )
-        # if ret_check_path == 1:
-        #     # see http://tldp.org/LDP/abs/html/exitcodes.html
-        #     self.retcode = 126
-        #     # in case request was sent by WinSCP, return error code has to be
-        #     # sent via an specific echo command
-        #     if self.conf["winscp"] and re.search(
-        #         "WinSCP: this is end-of-file", self.g_line
-        #     ):
-        #         utils.exec_cmd(f'echo "WinSCP: this is end-of-file: {self.retcode}"')
-        #     return object.__getattribute__(self, attr)
         if self.conf["timer"] > 0:
             self.mytimer(0)
 
@@ -134,58 +111,6 @@ class ShellCmd(cmd.Cmd, object):
             self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])
 
         self.log.info(f'CMD: "{self.g_line}"')
-
-        # if self.g_cmd == "cd":
-        #     # split cd <dir> and rest of command
-        #     cmd_split = re.split(r";|&&|&|\|\||\|", self.g_line, 1)
-        #     # in case the are commands following cd, first change the
-        #     # directory, then execute the command
-        #     if len(cmd_split) == 2:
-        #         directory, command = cmd_split
-        #         # only keep cd's argument
-        #         directory = directory.split("cd", 1)[1].strip()
-        #         # change directory then, if success, execute the rest of
-        #         # the cmd line
-        #         self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
-
-        #         if self.retcode == 0:
-        #             cmd_split = re.split(r";|&&|&|\|\||\|", command)
-        #             for command in cmd_split:
-        #                 self.retcode = utils.cmd_parse_execute(
-        #                     command, shell_context=self
-        #                 )
-        #     else:
-        #         # set directory to command line argument and change dir
-        #         directory = self.g_arg
-        #         self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
-
-        # # built-in lpath function: list all allowed path
-        # elif self.g_cmd == "lpath":
-        #     self.retcode = builtincmd.cmd_lpath(self.conf)
-        # # built-in lsudo function: list all allowed sudo commands
-        # elif self.g_cmd == "lsudo":
-        #     self.retcode = builtincmd.cmd_lsudo(self.conf)
-        # # built-in history function: print command history
-        # elif self.g_cmd == "history":
-        #     self.retcode = builtincmd.cmd_history(self.conf, self.log)
-        # # built-in export function
-        # elif self.g_cmd == "export":
-        #     self.retcode, var = builtincmd.cmd_export(self.g_line)
-        #     if self.retcode == 1:
-        #         self.log.critical(f"** forbidden environment variable '{var}'")
-        # elif self.g_cmd == "source":
-        #     self.retcode = builtincmd.cmd_source(self.g_arg)
-        # elif self.g_cmd == "fg":
-        #     self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
-        # elif self.g_cmd == "bg":
-        #     self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
-        # elif self.g_cmd == "jobs":
-        #     self.retcode = builtincmd.cmd_jobs()
-        # # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
-        # elif self.g_line[0:2] == "cd":
-        #     self.g_cmd = self.g_line.split()[0]
-        #     directory = " ".join(self.g_line.split()[1:])
-        #     self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
 
         self.retcode = utils.cmd_parse_execute(self.g_line, shell_context=self)
 

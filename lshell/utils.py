@@ -255,8 +255,10 @@ def cmd_parse_execute(command_line, shell_context=None):
     parser = LshellParser()
     parsed = parser.parse(command_line)
 
-    if not parsed:
+    if parsed is None:
         # If parsing fails, return error code
+        shell_context.log.warn(f'INFO: unknown syntax -> "{command_line}"')
+        sys.stderr.write(f"*** unknown syntax: {command_line}\n")
         return 1
 
     # Initialize return code

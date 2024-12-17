@@ -114,6 +114,19 @@ class LshellParser:
         # Define custom quoted string that preserves all spaces
         quoted_text = quotedString.setParseAction(lambda t: t[0])
 
+        # Define tokens that can start a command (no operators)
+        safe_chars = "".join(
+            set(word_chars) - set(operator_chars)
+        )  # Convert to sets for subtraction
+        command_start = (
+            cmd_subst_dollar  # Command substitution
+            | cmd_subst_backtick  # Command substitution
+            | var_expansion  # Variable expansion
+            | quoted_text
+            | Word("$" + word_chars)  # Environment variables and paths
+            | Word(safe_chars)  # Regular words, excluding operators
+        )
+
         # Advanced word tokenization
         advanced_word = (
             cmd_subst_dollar  # Command substitution
@@ -142,7 +155,7 @@ class LshellParser:
                 # Either a command with optional var assignments
                 (
                     ZeroOrMore(var_assignment)
-                    + advanced_word
+                    + command_start
                     + ZeroOrMore(advanced_word)
                     + PyOptional(background_op)
                 )
@@ -174,11 +187,10 @@ class LshellParser:
             cleaned_command = self._clean_input(command)
             grammar = self._build_grammar()
             parsed_result = grammar.parseString(cleaned_command, parseAll=True)
-            return parsed_result
-        except ParseException as error:
-            print(f"Parsing Error: {error}")
-            print(f"Error at line {error.lineno}, column {error.col}")
-            return None
+            ret = parsed_result
+        except ParseException:
+            ret = None
+        return ret
 
     def validate_command(self, parsed_command: ParseResults) -> bool:
         """

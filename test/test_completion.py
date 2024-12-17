@@ -4,8 +4,9 @@ import os
 import unittest
 import subprocess
 from getpass import getuser
+import pexpect  # pylint: disable=wrong-import-order
+
 from test.test_utils import is_alpine_linux
-import pexpect
 
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -35,7 +36,7 @@ class TestFunctions(unittest.TestCase):
         """F15 | command completion: tab to list commands"""
         expected = (
             "\x07\r\nbg       clear    exit     help     jobs     lpath    lsudo    "
-            "\r\ncd       echo     fg       history  ll       ls"
+            "\r\ncd       echo     fg       history  ll       ls       source"
         )
         self.child.sendline("\t\t")
         self.child.expect(PROMPT)

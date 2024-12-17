@@ -41,7 +41,7 @@ class TestFunctions(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
             wrapper.write(
                 f"""#!/bin/sh
-exec {LSHELL} --config {CONFIG} "$@"
+exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" "$@"
 """
             )
             wrapper.flush()  # Ensure data is written to disk
@@ -70,8 +70,8 @@ exec {LSHELL} --config {CONFIG} "$@"
 *** forbidden command: dig\r
 *** forbidden path: /tmp/\r
 FREEDOM\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
 *** forbidden path: /"""
 
         # Wait for the script to finish executing
@@ -96,7 +96,7 @@ bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir="/tmp") as wrapper:
             wrapper.write(
                 f"""#!/bin/sh
-exec {LSHELL} --config {CONFIG} --strict 1 "$@"
+exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" --strict 1 "$@"
 """
             )
             wrapper.flush()  # Ensure data is written to disk
@@ -128,8 +128,8 @@ This incident has been reported.\r
 *** You have 0 warning(s) left, before getting kicked out.\r
 This incident has been reported.\r
 FREEDOM\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
 *** forbidden path -> "/"\r
 *** Kicked out"""
 

@@ -116,7 +116,7 @@ services:
       args:
         DISTRO: "fedora:latest"
     container_name: fedora_tests
-    command: "pytest && pylint lshell && flake8 lshell"
+    command: "pytest; pylint lshell; flake8 lshell"
     volumes:
       - .:/app
     environment:
@@ -129,7 +129,7 @@ services:
       args:
         DISTRO: "centos:8"
     container_name: centos_tests
-    command: "sh -c 'pytest-3 && pylint lshell && pyflake lshell'"
+    command: "sh -c 'pytest-3; pylint lshell; pyflake lshell'"
     volumes:
       - .:/app
     environment:
@@ -142,7 +142,7 @@ services:
       args:
         DISTRO: "alpine:latest"
     container_name: alpine_tests
-    command: "sh -c 'pytest && pylint lshell && flake8 lshell'"
+    command: "sh -c 'pytest; pylint lshell; flake8 lshell'"
     volumes:
       - .:/app
     environment:

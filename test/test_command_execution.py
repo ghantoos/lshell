@@ -114,7 +114,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_24_cd_and_command(self):
         """F24 | cd && command should not be interpreted by internal function"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} --forbidden \"-['&']\"")
         child.expect(PROMPT)
 
         expected = "OK"
@@ -139,7 +139,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_34_ls_and_echo_ok(self):
         """Test: ls && echo OK"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['&']\"")
         child.expect(PROMPT)
 
         child.sendline("ls && echo OK")
@@ -152,7 +152,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_35_ls_non_existing_directory_or_echo_ok(self):
         """Test: ls non_existing_directory || echo OK"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['|']\"")
         child.expect(PROMPT)
 
         child.sendline("ls non_existing_directory || echo OK")

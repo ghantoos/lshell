@@ -109,6 +109,17 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
     return 0, conf
 
 
+def check_forbidden_chars(line, conf, strict=None, ssh=None):
+    """Check if the line contains any forbidden
+    characters. If so, it calls warn_count.
+    """
+    for item in conf["forbidden"]:
+        if item in line:
+            ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
+            return ret, conf
+    return 0, conf
+
+
 def check_secure(line, conf, strict=None, ssh=None):
     """This method is used to check the content on the typed command.
     Its purpose is to forbid the user to user to override the lshell

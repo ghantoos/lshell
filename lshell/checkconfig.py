@@ -16,7 +16,7 @@ from logging.handlers import SysLogHandler
 # import lshell specifics
 from lshell import utils
 from lshell import variables
-from lshell.builtincmd import cmd_source
+from lshell import builtincmd
 
 
 class CheckConfig:
@@ -123,7 +123,7 @@ class CheckConfig:
         # Check paths to files that contain env vars
         if "env_vars_files" in self.conf:
             for envfile in self.conf["env_vars_files"]:
-                cmd_source(envfile)
+                builtincmd.cmd_source(envfile)
 
     def check_config_file(self, file):
         """This method checks the existence of the given configuration
@@ -618,7 +618,7 @@ class CheckConfig:
                 sys.exit(1)
 
         # append default commands to allowed list
-        self.conf["allowed"] += list(set(variables.builtins_list) - set(["export"]))
+        self.conf["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf["sudo_commands"]:
@@ -638,7 +638,7 @@ class CheckConfig:
         # case sudo_commands set to 'all', expand to all 'allowed' commands
         if "sudo_commands" in self.conf_raw and self.conf_raw["sudo_commands"] == "all":
             # exclude native commands and sudo(8)
-            exclude = variables.builtins_list + ["sudo"]
+            exclude = builtincmd.builtins_list + ["sudo"]
             self.conf["sudo_commands"] = [
                 x for x in self.conf["allowed"] if x not in exclude
             ]

@@ -14,6 +14,21 @@ from lshell import utils
 # Store background jobs
 BACKGROUND_JOBS = []
 
+builtins_list = [
+    "cd",
+    "clear",
+    "exit",
+    "export",
+    "history",
+    "lpath",
+    "lsudo",
+    "help",
+    "fg",
+    "bg",
+    "jobs",
+    "source",
+]
+
 
 def cmd_lpath(conf):
     """lists allowed and forbidden path"""

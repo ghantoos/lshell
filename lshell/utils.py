@@ -1,5 +1,6 @@
 """ Utils for lshell """
 
+import copy
 import re
 import subprocess
 import os
@@ -174,15 +175,23 @@ def cmd_parse_execute(command_line, shell_context=None):
             else:
                 retcode = getattr(builtincmd, executable)(shell_context.conf)
         else:
-            if "path_noexec" in shell_context.conf:
-                os.environ["LD_PRELOAD"] = shell_context.conf["path_noexec"]
             command = replace_exit_code(command, retcode)
-            retcode = exec_cmd(command)
+            # Create a set of allowed shell escape commands by removing builtins from the allowed list
+            shell_excape_commands = set(shell_context.conf["allowed_shell_escape"]) - \
+                set(variables.builtins_list)
+
+            # If the command is in the allowed shell escape list, modify the environment and execute it
+            if command.split()[0] in shell_excape_commands:
+                env = copy.deepcopy(os.environ)
+                env["LD_PRELOAD"] = ""
+                retcode = exec_cmd(command, env=env)
+            else:
+                retcode = exec_cmd(command)
 
     return retcode
 
 
-def exec_cmd(cmd):
+def exec_cmd(cmd, env=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
 
     class CtrlZException(Exception):
@@ -223,7 +232,7 @@ def exec_cmd(cmd):
                     stdin=devnull_in,  # Redirect input to /dev/null
                     stdout=sys.stdout,
                     stderr=sys.stderr,
-                    preexec_fn=os.setsid,
+                    env=env
                 )
             # add to background jobs and return
             builtincmd.BACKGROUND_JOBS.append(proc)
@@ -231,7 +240,7 @@ def exec_cmd(cmd):
             print(f"[{job_id}] {cmd} (pid: {proc.pid})")
             retcode = 0
         else:
-            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
+            proc = subprocess.Popen(cmd_args, env=env)
             proc.communicate()
             retcode = proc.returncode if proc.returncode is not None else 0
 

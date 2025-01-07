@@ -702,6 +702,9 @@ class CheckConfig:
             # if sudo_noexec.so file is not found,  write error in log file,
             # but don't exit tp  prevent strict dependency on sudo noexec lib
             self.log.error("Error: noexec library not found")
+        else:
+            # setting the global level LD_PRELOAD env variable
+            os.environ["LD_PRELOAD"] = self.conf.get("path_noexec")
 
         self.conf["allowed"] += self.conf["allowed_shell_escape"]
 

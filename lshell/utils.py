@@ -10,6 +10,7 @@ import shlex
 from getpass import getuser
 from time import strftime, gmtime
 import signal
+from pyparsing import ParseResults
 
 # import lshell specifics
 from lshell import variables
@@ -185,16 +186,33 @@ def expand_command_group(command_group, retcode):
                 f"lshell-internal-env {var_name}={var_value}",
             )
 
+    # Normalize tokens and apply inline variable assignments (e.g. VAR=1 cmd).
+    normalized_group = []
+    for token in command_group:
+        # pyparsing variable assignment tokens look like ['VAR', '=', 'value']
+        is_assignment = (
+            not isinstance(token, str)
+            and len(token) == 3
+            and str(token[1]) == "="
+        )
+        if is_assignment:
+            os.environ[str(token[0])] = expand_env_vars(str(token[2]))
+            continue
+        normalized_group.append(str(token))
+
     # Replace $? with the exit code first
-    for i, arg in enumerate(command_group):
+    for i, arg in enumerate(normalized_group):
         if arg == "$?":
-            command_group[i] = str(retcode)
+            normalized_group[i] = str(retcode)
 
     # Then expand any other environment variables
     expanded_group = []
-    for arg in command_group:
+    for arg in normalized_group:
         expanded_arg = expand_env_vars(arg)  # os.path.expandvars(arg)
         expanded_group.append(expanded_arg)
+
+    if not expanded_group:
+        return ("lshell-internal-env", "", "lshell-internal-env")
 
     executable = expanded_group[0]
     args = expanded_group[1:] if len(expanded_group) > 1 else []
@@ -225,15 +243,13 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     elif executable == "exit":
         shell_context.do_exit(full_command)
     elif executable == "history":
-        builtincmd.cmd_history(shell_context.conf, shell_context.log)
+        retcode = builtincmd.cmd_history(shell_context.conf, shell_context.log)
     elif executable == "cd":
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
     elif executable == "lpath":
         retcode = builtincmd.cmd_lpath(conf)
     elif executable == "lsudo":
         retcode = builtincmd.cmd_lsudo(conf)
-    elif executable == "history":
-        retcode = builtincmd.cmd_history(conf, shell_context.log)
     elif executable == "export":
         retcode, var = builtincmd.cmd_export(full_command)
         if retcode == 1:
@@ -255,7 +271,7 @@ def cmd_parse_execute(command_line, shell_context=None):
     parser = LshellParser()
     parsed = parser.parse(command_line)
 
-    if parsed is None:
+    if not isinstance(parsed, ParseResults):
         # If parsing fails, return error code
         shell_context.log.warn(f'INFO: unknown syntax -> "{command_line}"')
         sys.stderr.write(f"*** unknown syntax: {command_line}\n")
@@ -319,8 +335,9 @@ def cmd_parse_execute(command_line, shell_context=None):
 
         # Handle variable assignment
         if executable == "lshell-internal-env":
-            var_name, var_value = argument.split("=")
-            os.environ[var_name] = var_value
+            if "=" in argument:
+                var_name, var_value = argument.split("=", 1)
+                os.environ[var_name] = var_value
             retcode = 0
             i += 1
             continue
@@ -348,17 +365,6 @@ def cmd_parse_execute(command_line, shell_context=None):
             ):
                 exec_cmd(f'echo "WinSCP: this is end-of-file: {retcode}"')
             return retcode
-
-        # Extract command and arguments
-        command_group = current_item
-        executable = os.path.expandvars(command_group[0])
-        # Expand vars in all arguments
-        args = (
-            [os.path.expandvars(arg) for arg in command_group[1:]]
-            if len(command_group) > 1
-            else []
-        )
-        argument = " ".join(args)
 
         # Execute command
         if executable in builtincmd.builtins_list:

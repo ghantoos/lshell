@@ -4,13 +4,13 @@ from typing import Optional
 from pyparsing import (
     Word,
     alphanums,
-    quotedString,
+    quoted_string,
     Group,
     ZeroOrMore,
     Literal,
     Optional as PyOptional,
     ParseException,
-    oneOf,
+    one_of,
     ParseResults,
     alphas,
     printables,
@@ -83,26 +83,26 @@ class LshellParser:
         """
         # Variable assignment pattern
         var_name = Word(alphas + "_", alphanums + "_")
-        var_value = Word(alphanums + "_/.-") | quotedString
+        var_value = Word(alphanums + "_/.-") | quoted_string
         var_assignment = Group(var_name + Literal("=") + var_value)
 
         # Command substitution patterns
         cmd_subst_dollar = Group(
             Literal("$(") + SkipTo(Literal(")")) + Literal(")")
-        ).setParseAction(
+        ).set_parse_action(
             lambda t: [" ".join(t[0])]
         )  # Preserve as single token
 
         cmd_subst_backtick = Group(
             Literal("`") + SkipTo(Literal("`")) + Literal("`")
-        ).setParseAction(
+        ).set_parse_action(
             lambda t: [" ".join(t[0])]
         )  # Preserve as single token
 
         # Variable expansion pattern
         var_expansion = Group(
             Literal("${") + Word(alphanums + "_") + Literal("}")
-        ).setParseAction(
+        ).set_parse_action(
             lambda t: [" ".join(t[0])]
         )  # Preserve as single token
 
@@ -112,7 +112,7 @@ class LshellParser:
         word_chars = "".join(c for c in printables if c not in operator_chars)
 
         # Define custom quoted string that preserves all spaces
-        quoted_text = quotedString.setParseAction(lambda t: t[0])
+        quoted_text = quoted_string.set_parse_action(lambda t: t[0])
 
         # Define tokens that can start a command (no operators)
         safe_chars = "".join(
@@ -162,13 +162,13 @@ class LshellParser:
                 # Or just variable assignments
                 | OneOrMore(var_assignment)
             )
-            + PyOptional(oneOf(redirection_ops) + advanced_word)  # Optional redirection
+            + PyOptional(one_of(" ".join(redirection_ops)) + advanced_word)
         )
 
         # Full command sequence with optional background at the end
         command_sequence = Group(
             command
-            + ZeroOrMore(oneOf(operators) + command)
+            + ZeroOrMore(one_of(" ".join(operators)) + command)
             + PyOptional(trailing_semicolon)
         )
 
@@ -186,7 +186,7 @@ class LshellParser:
             # Clean the input first
             cleaned_command = self._clean_input(command)
             grammar = self._build_grammar()
-            parsed_result = grammar.parseString(cleaned_command, parseAll=True)
+            parsed_result = grammar.parse_string(cleaned_command, parse_all=True)
             ret = parsed_result
         except ParseException:
             ret = None
@@ -238,9 +238,9 @@ if __name__ == "__main__":
 
     for cmd in test_commands:
         print(f"Parsing: {cmd}")
-        result = parser.parse(cmd)
-        if result:
+        parsed_result = parser.parse(cmd)
+        if parsed_result:
             print("Parsed Successfully:")
-            print(result)
-            print("Validation:", parser.validate_command(result))
+            print(parsed_result)
+            print("Validation:", parser.validate_command(parsed_result))
         print("-" * 40)

@@ -83,7 +83,7 @@ if __name__ == "__main__":
             "Topic :: Terminals",
         ],
         python_requires=">=3.6",
-        install_requires=[],
+        install_requires=["pyparsing>=3.0.0"],
         cmdclass={
             "install": CustomInstallCommand,  # Use custom install command
         },

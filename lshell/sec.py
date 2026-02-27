@@ -114,7 +114,14 @@ def check_forbidden_chars(line, conf, strict=None, ssh=None):
     characters. If so, it calls warn_count.
     """
     for item in conf["forbidden"]:
-        if item in line:
+        # keep compatibility with historical behavior from check_secure:
+        # allow "&&" and "||" even when single "&" or "|" are forbidden.
+        if item in ["&", "|"]:
+            escaped_item = re.escape(item)
+            if re.search(rf"(?<!{escaped_item}){escaped_item}(?!{escaped_item})", line):
+                ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
+                return ret, conf
+        elif item in line:
             ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
             return ret, conf
     return 0, conf

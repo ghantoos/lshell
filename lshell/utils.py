@@ -552,9 +552,12 @@ def cmd_parse_execute(command_line, shell_context=None):
             and _is_allowed_command(executable_name, part, shell_context.conf)
             for (executable_name, _, _, _), part in zip(parsed_parts, pipeline_parts)
         ):
+            extra_env = None
             if "path_noexec" in shell_context.conf:
-                os.environ["LD_PRELOAD"] = shell_context.conf["path_noexec"]
-            retcode = exec_cmd(full_command, background=background)
+                extra_env = {"LD_PRELOAD": shell_context.conf["path_noexec"]}
+            retcode = exec_cmd(
+                full_command, background=background, extra_env=extra_env
+            )
         else:
             shell_context.log.warn(f'INFO: unknown syntax -> "{full_command}"')
             sys.stderr.write(f"*** unknown syntax: {full_command}\n")
@@ -564,10 +567,12 @@ def cmd_parse_execute(command_line, shell_context=None):
     return retcode
 
 
-def exec_cmd(cmd, background=False):
+def exec_cmd(cmd, background=False, extra_env=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
     exec_env = dict(os.environ)
+    if extra_env:
+        exec_env.update(extra_env)
     # Prevent non-interactive shell startup file injection.
     exec_env.pop("BASH_ENV", None)
     exec_env.pop("ENV", None)

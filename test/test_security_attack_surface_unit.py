@@ -158,7 +158,7 @@ class TestAttackSurface(unittest.TestCase):
         mock_secure.side_effect = lambda line, conf, strict=None: (0, conf)
         mock_path.side_effect = lambda line, conf, strict=None: (0, conf)
 
-        def exec_side_effect(command, background=False):
+        def exec_side_effect(command, background=False, extra_env=None):
             if command == "false":
                 return 1
             if command == "echo recovered":

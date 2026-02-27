@@ -11,6 +11,7 @@ import logging
 import grp
 import time
 import glob
+import subprocess
 from logging.handlers import SysLogHandler
 
 # import lshell specifics
@@ -21,6 +22,26 @@ from lshell import builtincmd
 
 class CheckConfig:
     """Check the configuration file."""
+
+    def noexec_library_usable(self, path_noexec):
+        """Return True when a noexec library can be safely preloaded."""
+        probe_env = dict(os.environ)
+        probe_env["LD_PRELOAD"] = path_noexec
+        probe_env.pop("BASH_ENV", None)
+        probe_env.pop("ENV", None)
+
+        try:
+            probe = subprocess.run(
+                ["bash", "-c", "/usr/bin/true"],
+                env=probe_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            return False
+
+        return probe.returncode == 0
 
     def __init__(self, args, refresh=None, stdin=None, stdout=None, stderr=None):
         """Force the calling of the methods below"""
@@ -698,6 +719,14 @@ class CheckConfig:
                     break
 
         # in case the library was found, set the LD_PRELOAD aliases
+        if self.conf.get("path_noexec") and not self.noexec_library_usable(
+            self.conf["path_noexec"]
+        ):
+            self.log.error(
+                f"Error: disabling incompatible noexec library: {self.conf['path_noexec']}"
+            )
+            self.conf.pop("path_noexec", None)
+
         if not self.conf.get("path_noexec"):
             # if sudo_noexec.so file is not found,  write error in log file,
             # but don't exit tp  prevent strict dependency on sudo noexec lib

@@ -33,6 +33,31 @@ class FakeJob:
         return self.returncode
 
 
+class FakeProcess:
+    """Simple fake subprocess object used by exec_cmd signal tests."""
+
+    def __init__(self, pid=12345, returncode=0, trigger_suspend=False):
+        self.pid = pid
+        self.returncode = returncode
+        self.trigger_suspend = trigger_suspend
+        self.lshell_cmd = ""
+        self.args = ["tail", "-f", "blabla"]
+        self._poll_value = None
+        self._signal_handlers = {}
+
+    def poll(self):
+        """Report running state until the fake process completes."""
+        return self._poll_value
+
+    def communicate(self):
+        """Simulate command execution, optionally triggering Ctrl+Z."""
+        if self.trigger_suspend:
+            handler = self._signal_handlers.get(utils.signal.SIGTSTP)
+            if handler is not None:
+                handler(utils.signal.SIGTSTP, None)
+        self._poll_value = self.returncode
+
+
 class TestParserUtilities(unittest.TestCase):
     """Tests for shell command parsing and env expansion helpers."""
 
@@ -159,6 +184,71 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 0)
         self.assertIn("sleep 10", stdout.getvalue())
         mock_killpg.assert_called_once()
+
+    @patch("lshell.builtincmd.os.getpgid", return_value=4242)
+    @patch("lshell.builtincmd.os.killpg")
+    def test_cmd_bg_fg_ctrl_z_keeps_single_job_entry(self, mock_killpg, _mock_getpgid):
+        """Ctrl+Z during fg should not duplicate the same job or raise."""
+        job = FakeJob(poll_value=None, returncode=0, pid=9876, cmd="tail -f blabla")
+        builtincmd.BACKGROUND_JOBS.append(job)
+        stdout = io.StringIO()
+        handlers = {}
+
+        def fake_signal(signum, handler):
+            handlers[signum] = handler
+            return None
+
+        def trigger_ctrl_z():
+            job.wait_called = True
+            handlers[utils.signal.SIGTSTP](utils.signal.SIGTSTP, None)
+
+        job.wait = trigger_ctrl_z
+
+        with patch("lshell.builtincmd.signal.getsignal", return_value=None), patch(
+            "lshell.builtincmd.signal.signal", side_effect=fake_signal
+        ):
+            with redirect_stdout(stdout):
+                ret = builtincmd.cmd_bg_fg("fg", "1")
+
+        self.assertEqual(ret, 0)
+        self.assertTrue(job.wait_called)
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 1)
+        self.assertIn("Stopped", stdout.getvalue())
+        self.assertEqual(mock_killpg.call_count, 2)
+
+    @patch("lshell.utils.os.getpgid", return_value=4242)
+    @patch("lshell.utils.os.killpg")
+    def test_exec_cmd_ctrl_z_restores_handlers_and_deduplicates_job(
+        self, _mock_killpg, _mock_getpgid
+    ):
+        """exec_cmd should restore original handlers and avoid duplicate job entries."""
+        fake_proc = FakeProcess(pid=9876, trigger_suspend=True)
+        builtincmd.BACKGROUND_JOBS.append(fake_proc)
+        signal_handlers = {}
+        initial_sigtstp = object()
+        initial_sigcont = object()
+
+        def fake_getsignal(signum):
+            if signum == utils.signal.SIGTSTP:
+                return initial_sigtstp
+            if signum == utils.signal.SIGCONT:
+                return initial_sigcont
+            return None
+
+        def fake_signal(signum, handler):
+            signal_handlers[signum] = handler
+            return None
+
+        fake_proc._signal_handlers = signal_handlers
+        with patch("lshell.utils.signal.getsignal", side_effect=fake_getsignal), patch(
+            "lshell.utils.signal.signal", side_effect=fake_signal
+        ), patch("lshell.utils.subprocess.Popen", return_value=fake_proc):
+            ret = utils.exec_cmd("tail -f blabla")
+
+        self.assertEqual(ret, 0)
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 1)
+        self.assertIs(signal_handlers[utils.signal.SIGTSTP], initial_sigtstp)
+        self.assertIs(signal_handlers[utils.signal.SIGCONT], initial_sigcont)
 
     def test_cmd_jobs_displays_symbols(self):
         """Render job list with expected current and previous markers."""

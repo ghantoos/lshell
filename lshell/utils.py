@@ -586,8 +586,12 @@ def exec_cmd(cmd, background=False, extra_env=None):
         """Handle SIGTSTP (Ctrl+Z) by sending the process to the background."""
         if proc and proc.poll() is None:  # Ensure process is running
             os.killpg(os.getpgid(proc.pid), signal.SIGSTOP)
-            builtincmd.BACKGROUND_JOBS.append(proc)  # Add process to background jobs
-            job_id = len(builtincmd.BACKGROUND_JOBS)
+            # Keep one job entry per process to avoid duplicates on repeated suspend/resume.
+            if proc in builtincmd.BACKGROUND_JOBS:
+                job_id = builtincmd.BACKGROUND_JOBS.index(proc) + 1
+            else:
+                builtincmd.BACKGROUND_JOBS.append(proc)
+                job_id = len(builtincmd.BACKGROUND_JOBS)
             sys.stdout.write(f"\n[{job_id}]+  Stopped        {cmd}\n")
             sys.stdout.flush()
             raise CtrlZException()  # Raise custom exception for SIGTSTP handling
@@ -596,6 +600,9 @@ def exec_cmd(cmd, background=False, extra_env=None):
         """Handle SIGCONT to resume a stopped job in the foreground."""
         if proc and proc.poll() is None:
             os.killpg(os.getpgid(proc.pid), signal.SIGCONT)
+
+    previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
+    previous_sigcont_handler = signal.getsignal(signal.SIGCONT)
 
     try:
         # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
@@ -635,6 +642,9 @@ def exec_cmd(cmd, background=False, extra_env=None):
         if proc and proc.poll() is None:
             os.killpg(os.getpgid(proc.pid), signal.SIGINT)
         retcode = 130
+    finally:
+        signal.signal(signal.SIGTSTP, previous_sigtstp_handler)
+        signal.signal(signal.SIGCONT, previous_sigcont_handler)
 
     return retcode
 

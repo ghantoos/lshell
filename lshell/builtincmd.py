@@ -259,7 +259,29 @@ def cmd_bg_fg(job_type, job_id):
         job = BACKGROUND_JOBS[job_id - 1]
         if job.poll() is None:
             if job_type == "fg":
+                class CtrlZForeground(Exception):
+                    """Raised when the foreground job is suspended with Ctrl+Z."""
+
+                    pass
+
+                def handle_sigtstp(signum, frame):
+                    """Suspend the foreground job and keep/update its jobs list entry."""
+                    if job.poll() is None:
+                        os.killpg(os.getpgid(job.pid), signal.SIGSTOP)
+                        if job in BACKGROUND_JOBS:
+                            current_job_id = BACKGROUND_JOBS.index(job) + 1
+                        else:
+                            BACKGROUND_JOBS.append(job)
+                            current_job_id = len(BACKGROUND_JOBS)
+                        sys.stdout.write(
+                            f"\n[{current_job_id}]+  Stopped        {_job_command(job)}\n"
+                        )
+                        sys.stdout.flush()
+                    raise CtrlZForeground()
+
+                previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
                 try:
+                    signal.signal(signal.SIGTSTP, handle_sigtstp)
                     print(_job_command(job))
                     # Bring it to the foreground and wait
                     os.killpg(os.getpgid(job.pid), signal.SIGCONT)
@@ -268,10 +290,14 @@ def cmd_bg_fg(job_type, job_id):
                     if job.poll() is not None:
                         BACKGROUND_JOBS.pop(job_id - 1)
                     return 0
+                except CtrlZForeground:
+                    return 0
                 except KeyboardInterrupt:
                     os.killpg(os.getpgid(job.pid), signal.SIGINT)
                     BACKGROUND_JOBS.pop(job_id - 1)
                     return 130
+                finally:
+                    signal.signal(signal.SIGTSTP, previous_sigtstp_handler)
             # bg not supported at the moment
             # elif job_type == "bg":
             #     print(f"lshell: bg not supported")

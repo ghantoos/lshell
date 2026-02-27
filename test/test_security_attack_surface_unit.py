@@ -1,0 +1,217 @@
+"""Security-focused unit tests for parser/auth edge cases."""
+
+import io
+import os
+import unittest
+from contextlib import redirect_stderr
+from unittest.mock import patch
+
+from lshell.checkconfig import CheckConfig
+from lshell import sec
+from lshell import utils
+
+TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
+CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
+
+
+class DummyLog:
+    """Lightweight logger used by parser execution tests."""
+
+    def __init__(self):
+        self.messages = []
+
+    def warn(self, message):
+        self.messages.append(("warn", message))
+
+    def info(self, message):
+        self.messages.append(("info", message))
+
+    def critical(self, message):
+        self.messages.append(("critical", message))
+
+
+class DummyShellContext:
+    """Minimal shell context consumed by utils.cmd_parse_execute."""
+
+    def __init__(self, conf):
+        self.conf = conf
+        self.log = DummyLog()
+
+    def do_help(self, _arg):
+        return 0
+
+    def do_exit(self, _arg=None):
+        return 0
+
+
+class TestAttackSurface(unittest.TestCase):
+    """Tests aimed at command-injection/bypass style edge cases."""
+
+    args = [f"--config={CONFIG}", "--quiet=1"]
+
+    def test_split_command_sequence_does_not_split_escaped_pipe(self):
+        line = r"echo a\|b | wc -c"
+        self.assertEqual(utils.split_command_sequence(line), [r"echo a\|b", "|", "wc -c"])
+
+    def test_split_command_sequence_allows_trailing_background(self):
+        self.assertEqual(utils.split_command_sequence("sleep 1 &"), ["sleep 1", "&"])
+
+    def test_split_command_sequence_rejects_operator_smuggling(self):
+        self.assertIsNone(utils.split_command_sequence("echo ok ||| echo pwn"))
+
+    def test_check_forbidden_chars_allows_double_ampersand_when_single_forbidden(self):
+        conf = CheckConfig(self.args + ["--forbidden=['&']", "--strict=0"]).returnconf()
+        ret, _conf = sec.check_forbidden_chars("echo ok && echo still_ok", conf)
+        self.assertEqual(ret, 0)
+
+    def test_check_forbidden_chars_blocks_single_ampersand(self):
+        conf = CheckConfig(self.args + ["--forbidden=['&']", "--strict=0"]).returnconf()
+        ret, _conf = sec.check_forbidden_chars("echo ok &", conf)
+        self.assertEqual(ret, 1)
+
+    def test_check_secure_assignment_prefix_keeps_exact_command_matching(self):
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo ok']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("A=1 echo ok", conf)[0], 0)
+        self.assertEqual(sec.check_secure("A=1 echo nope", conf)[0], 1)
+
+    def test_check_secure_assignment_prefix_with_sudo_still_checks_subcommand(self):
+        conf = CheckConfig(
+            self.args
+            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("A=1 sudo ls", conf)[0], 0)
+        self.assertEqual(sec.check_secure("A=1 sudo cat /etc/passwd", conf)[0], 1)
+
+    def test_check_secure_sudo_u_with_assignment_prefix_is_authorized(self):
+        conf = CheckConfig(
+            self.args
+            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("A=1 sudo -u root ls", conf)[0], 0)
+
+    def test_check_secure_sudo_u_missing_command_fails_closed(self):
+        conf = CheckConfig(
+            self.args
+            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("sudo -u root", conf)[0], 1)
+
+    def test_check_secure_rejects_control_char_in_line(self):
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        # Literal vertical-tab control char.
+        self.assertEqual(sec.check_secure("echo\x0btest", conf)[0], 1)
+
+    def test_check_secure_rejects_disallowed_command_substitution(self):
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[';','&','|','>','<']", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(cat /etc/passwd)", conf)[0], 1)
+        self.assertEqual(sec.check_secure("echo `cat /etc/passwd`", conf)[0], 1)
+
+    def test_cmd_parse_execute_rejects_unbalanced_syntax(self):
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret = utils.cmd_parse_execute('echo "oops', shell_context=shell)
+        self.assertEqual(ret, 1)
+        self.assertIn("*** unknown syntax:", stderr.getvalue())
+
+    @patch("lshell.utils.sec.check_forbidden_chars")
+    @patch("lshell.utils.sec.check_secure")
+    @patch("lshell.utils.sec.check_path")
+    @patch("lshell.utils.exec_cmd")
+    def test_cmd_parse_execute_short_circuit_skips_failed_and_branch(
+        self, mock_exec, mock_path, mock_secure, mock_forbidden
+    ):
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['false','skip1','skip2','echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        shell = DummyShellContext(conf)
+
+        mock_forbidden.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_secure.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_path.side_effect = lambda line, conf, strict=None: (0, conf)
+
+        def exec_side_effect(command, background=False):
+            if command == "false":
+                return 1
+            if command == "echo recovered":
+                return 0
+            return 99
+
+        mock_exec.side_effect = exec_side_effect
+
+        ret = utils.cmd_parse_execute(
+            "false && skip1 | skip2 || echo recovered", shell_context=shell
+        )
+
+        self.assertEqual(ret, 0)
+        executed = [call.args[0] for call in mock_exec.call_args_list]
+        self.assertEqual(executed, ["false", "echo recovered"])
+
+    @patch("lshell.utils.sec.check_forbidden_chars")
+    @patch("lshell.utils.sec.check_secure")
+    @patch("lshell.utils.sec.check_path")
+    @patch("lshell.utils.exec_cmd")
+    def test_cmd_parse_execute_assignment_only_updates_parent_env_without_exec(
+        self, mock_exec, mock_path, mock_secure, mock_forbidden
+    ):
+        conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+
+        mock_forbidden.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_secure.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_path.side_effect = lambda line, conf, strict=None: (0, conf)
+
+        original = os.environ.get("LSHELL_ATTACK_SURFACE")
+        try:
+            ret = utils.cmd_parse_execute(
+                "LSHELL_ATTACK_SURFACE=present", shell_context=shell
+            )
+            self.assertEqual(ret, 0)
+            self.assertEqual(os.environ.get("LSHELL_ATTACK_SURFACE"), "present")
+            mock_exec.assert_not_called()
+        finally:
+            if original is None:
+                os.environ.pop("LSHELL_ATTACK_SURFACE", None)
+            else:
+                os.environ["LSHELL_ATTACK_SURFACE"] = original
+
+    def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(self):
+        """Security expectation: assignment-only should not bypass env blacklist."""
+        conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+        original = os.environ.get("LD_PRELOAD")
+        try:
+            ret = utils.cmd_parse_execute("LD_PRELOAD=/tmp/evil.so", shell_context=shell)
+            self.assertNotEqual(
+                ret,
+                0,
+                msg="assignment-only LD_PRELOAD should be rejected in hardened behavior",
+            )
+            self.assertNotEqual(os.environ.get("LD_PRELOAD"), "/tmp/evil.so")
+        finally:
+            if original is None:
+                os.environ.pop("LD_PRELOAD", None)
+            else:
+                os.environ["LD_PRELOAD"] = original
+
+    @patch("lshell.utils.sec.check_forbidden_chars")
+    @patch("lshell.utils.exec_cmd")
+    def test_cmd_parse_execute_forbidden_chars_short_circuits_execution(
+        self, mock_exec, mock_forbidden
+    ):
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+        mock_forbidden.side_effect = lambda line, conf, strict=None: (1, conf)
+        ret = utils.cmd_parse_execute("echo should_not_run", shell_context=shell)
+        self.assertEqual(ret, 126)
+        mock_exec.assert_not_called()

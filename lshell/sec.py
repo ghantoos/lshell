@@ -249,6 +249,11 @@ def check_secure(line, conf, strict=None, ssh=None):
         if command == "sudo" and command_args_list:
             # allow the -u (user) flag
             if command_args_list[0] == "-u" and command_args_list:
+                if len(command_args_list) < 3:
+                    ret, conf = warn_count(
+                        "sudo command", oline, conf, strict=strict, ssh=ssh
+                    )
+                    return ret, conf
                 sudocmd = command_args_list[2]
             else:
                 sudocmd = command_args_list[0]

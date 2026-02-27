@@ -164,21 +164,19 @@ def cmd_cd(directory, conf):
 
 def check_background_jobs():
     """Check the status of background jobs and print a completion message if done."""
-    updated_jobs = []
+    active_jobs = []
     for idx, job in enumerate(BACKGROUND_JOBS, start=1):
         if job.poll() is None:
-            # Process is still running
-            updated_jobs.append((idx, job.args, job.pid))
-        else:
-            # Process has finished
-            status = "Done" if job.returncode == 0 else "Failed"
-            args = _job_command(job)
-            # only print if the job has not been interrupted by the user
-            if job.returncode != -2:
-                print(f"[{idx}]+  {status}                    {args}")
+            active_jobs.append(job)
+            continue
 
-            # Remove the job from the list of background jobs
-            BACKGROUND_JOBS.pop(idx - 1)
+        status = "Done" if job.returncode == 0 else "Failed"
+        args = _job_command(job)
+        # only print if the job has not been interrupted by the user
+        if job.returncode != -2:
+            print(f"[{idx}]+  {status}                    {args}")
+
+    BACKGROUND_JOBS[:] = active_jobs
 
 
 def get_job_status(job):
@@ -200,14 +198,18 @@ def _job_command(job):
 def jobs():
     """Return a list of background jobs."""
     joblist = []
-    for idx, job in enumerate(BACKGROUND_JOBS, start=1):
+    active_jobs = []
+    for job in BACKGROUND_JOBS:
+        if job.poll() is not None:
+            continue
+
+        active_jobs.append(job)
+        idx = len(active_jobs)
         status = get_job_status(job)
-        if status in ["Stopped", "Killed"]:
-            if job.poll() is not None:
-                BACKGROUND_JOBS.pop(idx - 1)
-                continue
         cmd = _job_command(job)
         joblist.append([idx, status, cmd])
+
+    BACKGROUND_JOBS[:] = active_jobs
     return joblist
 
 

@@ -401,3 +401,37 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
 
         self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 0)
         self.assertEqual(stdout.getvalue(), "")
+
+    def test_check_background_jobs_prunes_all_completed_entries(self):
+        """Completed jobs should all be removed without skipping entries."""
+        builtincmd.BACKGROUND_JOBS.extend(
+            [
+                FakeJob(poll_value=0, returncode=0, cmd="sleep 1"),
+                FakeJob(poll_value=1, returncode=1, cmd="sleep 2"),
+                FakeJob(poll_value=0, returncode=0, cmd="sleep 3"),
+            ]
+        )
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            builtincmd.check_background_jobs()
+
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 0)
+        output = stdout.getvalue()
+        self.assertEqual(output.count("Done"), 2)
+        self.assertEqual(output.count("Failed"), 1)
+
+    def test_jobs_prunes_finished_and_reindexes_running(self):
+        """jobs() should drop non-running jobs and reindex active ones from 1."""
+        builtincmd.BACKGROUND_JOBS.extend(
+            [
+                FakeJob(poll_value=0, returncode=0, cmd="done job"),
+                FakeJob(poll_value=1, returncode=1, cmd="failed job"),
+                FakeJob(poll_value=None, returncode=0, cmd="running job"),
+            ]
+        )
+
+        joblist = builtincmd.jobs()
+
+        self.assertEqual(joblist, [[1, "Stopped", "running job"]])
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 1)
+        self.assertEqual(builtincmd.BACKGROUND_JOBS[0].lshell_cmd, "running job")

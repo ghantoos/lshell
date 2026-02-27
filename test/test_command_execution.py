@@ -236,3 +236,33 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n")[1].strip()
         self.assertEqual(expected, result)
         self.do_exit(child)
+
+    def test_45_pipeline_is_shell_compatible(self):
+        """F45 | Pipeline should pass stdout between commands."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--forbidden \"-['|']\" --allowed \"+['printf', 'wc']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("printf foo | wc -c")
+        child.expect(PROMPT)
+        result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("3", result)
+        self.do_exit(child)
+
+    def test_46_redirection_is_shell_compatible(self):
+        """F46 | Redirections should be handled by shell semantics."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --path \"['/tmp']\" "
+            "--forbidden \"-['>','<','&']\" --allowed \"+['cat']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("ls does_not_exist >/tmp/lshell_redir_test 2>&1")
+        child.expect(PROMPT)
+        child.sendline("cat /tmp/lshell_redir_test")
+        child.expect(PROMPT)
+        result = child.before.decode("utf8").split("\n", 1)[1]
+        self.assertIn("does_not_exist", result)
+        self.do_exit(child)

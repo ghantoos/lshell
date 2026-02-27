@@ -13,6 +13,30 @@ import glob
 from lshell import utils
 
 
+def _is_assignment_word(word):
+    return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", word))
+
+
+def _split_command_for_auth(command_line):
+    """Return (command, args, full_command) for auth checks, skipping VAR=VALUE prefixes."""
+    try:
+        tokens = shlex.split(command_line, posix=True)
+    except ValueError:
+        return "", [], ""
+
+    index = 0
+    while index < len(tokens) and _is_assignment_word(tokens[index]):
+        index += 1
+
+    if index >= len(tokens):
+        return "", [], ""
+
+    command = tokens[index]
+    args = tokens[index + 1 :]
+    full_command = " ".join([command] + args).strip()
+    return command, args, full_command
+
+
 def warn_count(messagetype, command, conf, strict=None, ssh=None):
     """Update the warning_counter, log and display a warning to the user"""
 
@@ -217,13 +241,9 @@ def check_secure(line, conf, strict=None, ssh=None):
         # remove trailing parenthesis
         separate_line = re.sub(r"\)$", "", separate_line)
         separate_line = " ".join(separate_line.split())
-        splitcmd = separate_line.strip().split(" ")
-
-        # Extract the command and its arguments
-        command = splitcmd[0]
-        command_args_list = splitcmd[1:]
-        command_args_string = " ".join(command_args_list)
-        full_command = f"{command} {command_args_string}".strip()
+        command, command_args_list, full_command = _split_command_for_auth(
+            separate_line
+        )
 
         # in case of a sudo command, check in sudo_commands list if allowed
         if command == "sudo" and command_args_list:

@@ -99,6 +99,9 @@ This will:
 
 Commands that do not include arguments (e.g., `ls`) can be used with any arguments, while commands specified with arguments (e.g., `echo asd`) must be used exactly as specified.
 
+For local executables, add the relative path explicitly in `allowed` (for example `./deploy.sh`).  
+This also enables `./` command-name completion from the allowed local entries.
+
 #### User profiles
 
 A [default] profile is available for all users using lshell. Nevertheless,  you can create a [username] section or a [grp:groupname] section to customize users' preferences.

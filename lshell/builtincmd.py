@@ -173,7 +173,7 @@ def check_background_jobs():
         else:
             # Process has finished
             status = "Done" if job.returncode == 0 else "Failed"
-            args = " ".join(job.args)
+            args = _job_command(job)
             # only print if the job has not been interrupted by the user
             if job.returncode != -2:
                 print(f"[{idx}]+  {status}                    {args}")
@@ -193,6 +193,11 @@ def get_job_status(job):
     return status
 
 
+def _job_command(job):
+    """Return the original command line for a tracked job."""
+    return getattr(job, "lshell_cmd", " ".join(job.args))
+
+
 def jobs():
     """Return a list of background jobs."""
     global BACKGROUND_JOBS
@@ -203,7 +208,7 @@ def jobs():
             if job.poll() is not None:
                 BACKGROUND_JOBS.pop(idx - 1)
                 continue
-        cmd = " ".join(job.args)
+        cmd = _job_command(job)
         joblist.append([idx, status, cmd])
     return joblist
 
@@ -259,7 +264,7 @@ def cmd_bg_fg(job_type, job_id):
         if job.poll() is None:
             if job_type == "fg":
                 try:
-                    print(" ".join(job.args))
+                    print(_job_command(job))
                     # Bring it to the foreground and wait
                     os.killpg(os.getpgid(job.pid), signal.SIGCONT)
                     job.wait()

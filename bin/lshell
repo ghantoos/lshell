@@ -43,13 +43,20 @@ def main():
 
     signal.signal(signal.SIGTSTP, disable_ctrl_z)
 
+    cli = ShellCmd(userconf, args)
     try:
-        cli = ShellCmd(userconf, args)
-        cli.cmdloop()
-
-    except (KeyboardInterrupt, EOFError):
-        sys.stdout.write("\nExited on user request\n")
-        sys.exit(0)
+        while True:
+            try:
+                cli.cmdloop()
+                break
+            except KeyboardInterrupt:
+                # Keep interactive sessions alive when Ctrl+C races outside
+                # command-specific handlers.
+                sys.stdout.write("\n")
+                continue
+            except EOFError:
+                sys.stdout.write("\nExited on user request\n")
+                sys.exit(0)
     except LshellTimeOut:
         userconf["logpath"].error("Timer expired")
         sys.stdout.write("\nTime is up.\n")

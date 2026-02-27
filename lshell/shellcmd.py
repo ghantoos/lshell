@@ -1,4 +1,4 @@
-""" This module contains the main class of lshell, it is the class that is
+"""This module contains the main class of lshell, it is the class that is
 responsible for the command line interface. It inherits from the cmd.Cmd class
 from the Python standard library. It offers the default methods to add
 security checks, logging, etc.
@@ -85,10 +85,10 @@ class ShellCmd(cmd.Cmd, object):
         added a do_uname in the ShellCmd class!
         """
 
-        # expand environment variables in command line
-        self.g_cmd = os.path.expandvars(self.g_cmd)
-        self.g_line = os.path.expandvars(self.g_line)
-        self.g_arg = os.path.expandvars(self.g_arg)
+        # Expand only the full input line; command/arg are derived from it.
+        self.g_cmd = utils.expand_vars_quoted(self.g_cmd)
+        self.g_line = utils.expand_vars_quoted(self.g_line)
+        self.g_arg = utils.expand_vars_quoted(self.g_arg)
 
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
@@ -377,6 +377,9 @@ class ShellCmd(cmd.Cmd, object):
             # complete with directories
             elif command == "cd":
                 compfunc = completion.complete_change_dir
+            # complete local relative commands from allowed entries like ./foo
+            elif command.startswith("./"):
+                compfunc = completion.completenames
             # complete with files and directories
             elif (
                 len(line.split(" ")) > 1 and line.split(" ")[0] in self.conf["allowed"]
@@ -390,7 +393,11 @@ class ShellCmd(cmd.Cmd, object):
                     try:
                         compfunc = getattr(self, "complete_" + cmd)
                     except AttributeError:
-                        compfunc = completion.completedefault
+                        compfunc = (
+                            completion.completenames
+                            if cmd.startswith("./")
+                            else completion.completedefault
+                        )
                     # exception called when using './' completion
                     except IndexError:
                         compfunc = completion.completenames

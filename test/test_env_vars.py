@@ -156,3 +156,36 @@ class TestFunctions(unittest.TestCase):
         expected = "OK\r\n"
         self.assertEqual(expected, result)
         self.do_exit(child)
+
+    def test_50_single_quotes_do_not_expand_variables(self):
+        """F50 | Single-quoted variables should not be expanded."""
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['export']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("export A=VALUE")
+        child.expect(PROMPT)
+        child.sendline("echo '$A'")
+        child.expect(PROMPT)
+        result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("$A", result)
+        self.do_exit(child)
+
+    def test_51_inline_assignment_is_command_scoped(self):
+        """F51 | VAR=... cmd should not persist in parent shell."""
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['printenv']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("A=INLINE printenv A")
+        child.expect(PROMPT)
+        inline_result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("INLINE", inline_result)
+
+        child.sendline("printenv A")
+        child.expect(PROMPT)
+        persisted_result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("", persisted_result)
+        self.do_exit(child)

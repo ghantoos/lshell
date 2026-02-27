@@ -204,6 +204,74 @@ class TestAttackSurface(unittest.TestCase):
             else:
                 os.environ["LSHELL_ATTACK_SURFACE"] = original
 
+    @patch("lshell.utils.sec.check_forbidden_chars")
+    @patch("lshell.utils.sec.check_secure")
+    @patch("lshell.utils.sec.check_path")
+    @patch("lshell.utils.exec_cmd")
+    def test_cmd_parse_execute_allowed_shell_escape_skips_ld_preload(
+        self, mock_exec, mock_path, mock_secure, mock_forbidden
+    ):
+        """allowed_shell_escape commands should execute without LD_PRELOAD wrapping."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--allowed_shell_escape=['sudo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        conf["path_noexec"] = "/tmp/fake_noexec.so"
+        shell = DummyShellContext(conf)
+
+        mock_forbidden.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_secure.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_path.side_effect = lambda line, conf, strict=None: (0, conf)
+        mock_exec.return_value = 0
+
+        ret = utils.cmd_parse_execute("sudo ls", shell_context=shell)
+
+        self.assertEqual(ret, 0)
+        self.assertEqual(mock_exec.call_count, 1)
+        self.assertEqual(mock_exec.call_args.args[0], "sudo ls")
+        self.assertIsNone(
+            mock_exec.call_args.kwargs.get("extra_env"),
+            msg="allowed_shell_escape should bypass LD_PRELOAD injection",
+        )
+
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_sudo_not_wrapped_in_bash_c(
+        self, mock_popen, _mock_signal, _mock_getsignal
+    ):
+        """sudo commands should be executed directly, not through 'bash -c'."""
+
+        class FakeProc:
+            """Minimal subprocess fake for exec_cmd foreground path."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 12345
+                self.args = ["sudo", "ls"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                return None
+
+            def poll(self):
+                return 0
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("sudo ls")
+
+        self.assertEqual(ret, 0)
+        popen_args = mock_popen.call_args.args[0]
+        self.assertEqual(popen_args[0], "sudo")
+        self.assertNotEqual(popen_args[:2], ["bash", "-c"])
+
     def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(self):
         """Security expectation: assignment-only should not bypass env blacklist."""
         conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()

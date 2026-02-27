@@ -1,9 +1,9 @@
-""" This file contains all the variables used in lshell """
+"""This file contains all the variables used in lshell"""
 
 import sys
 import os
 
-__version__ = "0.10.10"
+__version__ = "1.0.0rc1"
 
 # Required config variable list per user
 required_config = ["allowed", "forbidden", "warning_counter"]

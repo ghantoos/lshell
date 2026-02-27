@@ -377,6 +377,9 @@ ignored (uses scp(1) from within session)
 .SH SHELL BUILTIN COMMANDS
 Here is the set of commands that are always available with lshell:
 .TP
+.I cd
+change directory
+.TP
 .I clear
 clears the terminal
 .TP
@@ -395,6 +398,18 @@ lists all allowed and forbidden path
 .TP
 . I lsudo
 lists all sudo allowed commands
+.TP
+.I jobs
+list background jobs
+.TP
+.I fg
+bring job to foreground
+.TP
+.I bg
+resume job in background (not currently supported)
+.TP
+.I exit, quit
+exit lshell
 
 .SH EXAMPLES
 .TP

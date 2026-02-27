@@ -554,6 +554,10 @@ def cmd_parse_execute(command_line, shell_context=None):
 def exec_cmd(cmd, background=False):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
+    exec_env = dict(os.environ)
+    # Prevent non-interactive shell startup file injection.
+    exec_env.pop("BASH_ENV", None)
+    exec_env.pop("ENV", None)
 
     class CtrlZException(Exception):
         """Custom exception to handle Ctrl+Z (SIGTSTP)."""
@@ -588,6 +592,7 @@ def exec_cmd(cmd, background=False):
                     stdout=sys.stdout,
                     stderr=sys.stderr,
                     preexec_fn=os.setsid,
+                    env=exec_env,
                 )
             proc.lshell_cmd = cmd
             # add to background jobs and return
@@ -596,7 +601,7 @@ def exec_cmd(cmd, background=False):
             print(f"[{job_id}] {cmd} (pid: {proc.pid})")
             retcode = 0
         else:
-            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid)
+            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid, env=exec_env)
             proc.lshell_cmd = cmd
             proc.communicate()
             retcode = proc.returncode if proc.returncode is not None else 0

@@ -90,32 +90,48 @@ def complete_change_dir(conf, text, line, begidx, endidx):
 def complete_list_dir(conf, text, line, begidx, endidx):
     """complete with files and directories"""
     results = []
-    tocomplete = line.split()[-1]
+    # Resolve the full token before cursor from the current line. This is
+    # required because readline uses "/" as a delimiter, so `text` may only
+    # contain the basename fragment after the last slash.
+    line_before_cursor = line[:endidx] if 0 <= endidx <= len(line) else line
+    if line_before_cursor and line_before_cursor[-1].isspace():
+        tocomplete = ""
+    else:
+        parts = line_before_cursor.split()
+        tocomplete = parts[-1] if parts else ""
+
+    # Fallback to readline-provided token when available.
+    if not tocomplete and text:
+        tocomplete = text
     # replace "~" with home path
     tocomplete = re.sub("^~", conf["home_path"], tocomplete)
+    directory = os.path.dirname(tocomplete) if os.path.dirname(tocomplete) else "."
+    prefix = os.path.basename(tocomplete)
+    if tocomplete.endswith("/"):
+        directory = tocomplete
+        prefix = ""
+
     try:
-        directory = os.path.realpath(tocomplete)
+        directory = os.path.realpath(directory)
     except OSError:
-        directory = os.getcwd()
+        return []
 
     if not os.path.isdir(directory):
-        directory = directory.rsplit("/", 1)[0]
-        if directory == "":
-            directory = "/"
-        if not os.path.isdir(directory):
-            directory = os.getcwd()
+        return []
 
     ret_check_path, conf = sec.check_path(directory, conf, completion=1)
     if ret_check_path == 0:
         # if path is secure, list subdirectories and files
         list_dir = os.listdir(directory)
         for instance in list_dir:
+            if not instance.startswith(prefix):
+                continue
             if os.path.isdir(os.path.join(directory, instance)):
                 instance = instance + "/"
             else:
                 instance = instance + " "
             results.append(instance)
         return results
-    else:
-        # if path is not secure, return nothing
-        return None
+
+    # if path is not secure, return nothing
+    return []

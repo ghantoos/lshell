@@ -8,6 +8,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 from lshell import builtincmd
+from lshell import completion
 from lshell import utils
 
 
@@ -109,6 +110,114 @@ class TestParserUtilities(unittest.TestCase):
         self.assertEqual(argument, "")
         self.assertEqual(split, ["A=1", "B=two"])
         self.assertEqual(assignments, [("A", "1"), ("B", "two")])
+
+    def test_complete_list_dir_filters_by_prefix(self):
+        """List completion should only return entries matching the typed prefix."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "blipdir"))
+            open(os.path.join(tmpdir, "blabla"), "w", encoding="utf-8").close()
+            open(os.path.join(tmpdir, "alpha"), "w", encoding="utf-8").close()
+            conf = {"home_path": tmpdir, "path": ["", ""]}
+            with patch("lshell.completion.os.getcwd", return_value=tmpdir), patch(
+                "lshell.completion.sec.check_path", return_value=(0, conf)
+            ):
+                result = completion.complete_list_dir(
+                    conf, "bl", "tail -f bl", 8, 10
+                )
+
+        self.assertIn("blipdir/", result)
+        self.assertIn("blabla ", result)
+        self.assertNotIn("alpha ", result)
+
+    def test_complete_list_dir_filters_for_prefixed_path(self):
+        """Completion should filter basenames when the token includes a directory path."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "blipdir"))
+            open(os.path.join(tmpdir, "blabla"), "w", encoding="utf-8").close()
+            open(os.path.join(tmpdir, "beta"), "w", encoding="utf-8").close()
+            token = os.path.join(tmpdir, "bl")
+            line = f"tail -f {token}"
+            begidx = line.rfind(token)
+            endidx = len(line)
+            conf = {"home_path": tmpdir, "path": ["", ""]}
+            with patch("lshell.completion.sec.check_path", return_value=(0, conf)):
+                result = completion.complete_list_dir(
+                    conf, token, line, begidx, endidx
+                )
+
+        self.assertIn("blipdir/", result)
+        self.assertIn("blabla ", result)
+        self.assertNotIn("beta ", result)
+
+    def test_complete_list_dir_empty_token_lists_current_directory(self):
+        """Trailing-space completion should list all entries in the working directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "lshell"))
+            open(os.path.join(tmpdir, "bla"), "w", encoding="utf-8").close()
+            open(os.path.join(tmpdir, "blabla"), "w", encoding="utf-8").close()
+            open(os.path.join(tmpdir, "123"), "w", encoding="utf-8").close()
+            conf = {"home_path": tmpdir, "path": ["", ""]}
+            with patch("lshell.completion.os.getcwd", return_value=tmpdir), patch(
+                "lshell.completion.sec.check_path", return_value=(0, conf)
+            ):
+                result = completion.complete_list_dir(
+                    conf, "", "tail -f ", 8, 8
+                )
+
+        self.assertIn("lshell/", result)
+        self.assertIn("bla ", result)
+        self.assertIn("blabla ", result)
+        self.assertIn("123 ", result)
+
+    def test_complete_list_dir_subdirectory_with_empty_text(self):
+        """Slash-delimited completion should list entries from the selected subdirectory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subdir = os.path.join(tmpdir, "lshell")
+            os.mkdir(subdir)
+            open(os.path.join(subdir, "README.md"), "w", encoding="utf-8").close()
+            os.mkdir(os.path.join(subdir, "test"))
+            open(os.path.join(tmpdir, ".bashrc"), "w", encoding="utf-8").close()
+            conf = {"home_path": tmpdir, "path": ["", ""]}
+            line = "tail -f lshell/"
+            begidx = len(line)
+            endidx = len(line)
+            with patch("lshell.completion.os.getcwd", return_value=tmpdir), patch(
+                "lshell.completion.sec.check_path", return_value=(0, conf)
+            ):
+                result = completion.complete_list_dir(conf, "", line, begidx, endidx)
+
+        self.assertIn("README.md ", result)
+        self.assertIn("test/", result)
+        self.assertNotIn(".bashrc ", result)
+
+    def test_complete_list_dir_subdirectory_prefix_completion(self):
+        """Path-prefix completion should resolve candidates from the subdirectory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subdir = os.path.join(tmpdir, "lshell")
+            os.mkdir(subdir)
+            os.mkdir(os.path.join(subdir, "rpm"))
+            os.mkdir(os.path.join(subdir, "source"))
+            open(os.path.join(subdir, "README.md"), "w", encoding="utf-8").close()
+            conf = {"home_path": tmpdir, "path": ["", ""]}
+            line = "tail -f lshell/rp"
+            begidx = len("tail -f lshell/")
+            endidx = len(line)
+            with patch("lshell.completion.os.getcwd", return_value=tmpdir), patch(
+                "lshell.completion.sec.check_path", return_value=(0, conf)
+            ):
+                result = completion.complete_list_dir(conf, "rp", line, begidx, endidx)
+
+        self.assertEqual(result, ["rpm/"])
+
+    def test_complete_list_dir_returns_empty_when_path_denied(self):
+        """Denied paths should return an empty completion list."""
+        conf = {"home_path": "/tmp", "path": ["", ""]}
+        with patch(
+            "lshell.completion.sec.check_path", return_value=(1, conf)
+        ), patch("lshell.completion.os.getcwd", return_value="/tmp"):
+            result = completion.complete_list_dir(conf, "bl", "tail -f bl", 8, 10)
+
+        self.assertEqual(result, [])
 
 
 class TestBuiltinsJobsAndSource(unittest.TestCase):

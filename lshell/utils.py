@@ -491,6 +491,19 @@ def cmd_parse_execute(command_line, shell_context=None):
             sys.stderr.write(f"*** unknown syntax: {full_command}\n")
             return 1
 
+        # Reject forbidden env-var assignments in command prefixes (e.g. PATH=... cmd).
+        # This keeps assignment-prefix behavior aligned with `export` restrictions.
+        for _executable_name, _argument, _split, assignments in parsed_parts:
+            for var_name, _var_value in assignments:
+                if var_name in variables.FORBIDDEN_ENVIRON:
+                    shell_context.log.critical(
+                        f"** forbidden environment variable '{var_name}'"
+                    )
+                    sys.stderr.write(
+                        f"*** forbidden environment variable: {var_name}\n"
+                    )
+                    return 126
+
         executable, argument, _, assignments = parsed_parts[0]
         if executable is None:
             shell_context.log.warn(f'INFO: unknown syntax -> "{current_item}"')

@@ -21,12 +21,15 @@ class DummyLog:
         self.messages = []
 
     def warn(self, message):
+        """Record warning-level messages."""
         self.messages.append(("warn", message))
 
     def info(self, message):
+        """Record info-level messages."""
         self.messages.append(("info", message))
 
     def critical(self, message):
+        """Record critical-level messages."""
         self.messages.append(("critical", message))
 
 
@@ -38,9 +41,11 @@ class DummyShellContext:
         self.log = DummyLog()
 
     def do_help(self, _arg):
+        """Emulate a successful help command."""
         return 0
 
     def do_exit(self, _arg=None):
+        """Emulate a successful exit command."""
         return 0
 
 
@@ -50,26 +55,32 @@ class TestAttackSurface(unittest.TestCase):
     args = [f"--config={CONFIG}", "--quiet=1"]
 
     def test_split_command_sequence_does_not_split_escaped_pipe(self):
+        """Treat escaped pipes as literal text in a command token."""
         line = r"echo a\|b | wc -c"
         self.assertEqual(utils.split_command_sequence(line), [r"echo a\|b", "|", "wc -c"])
 
     def test_split_command_sequence_allows_trailing_background(self):
+        """Allow a trailing background operator as a separate token."""
         self.assertEqual(utils.split_command_sequence("sleep 1 &"), ["sleep 1", "&"])
 
     def test_split_command_sequence_rejects_operator_smuggling(self):
+        """Reject malformed operator chains that should fail closed."""
         self.assertIsNone(utils.split_command_sequence("echo ok ||| echo pwn"))
 
     def test_check_forbidden_chars_allows_double_ampersand_when_single_forbidden(self):
+        """Permit && when only single & is forbidden by policy."""
         conf = CheckConfig(self.args + ["--forbidden=['&']", "--strict=0"]).returnconf()
         ret, _conf = sec.check_forbidden_chars("echo ok && echo still_ok", conf)
         self.assertEqual(ret, 0)
 
     def test_check_forbidden_chars_blocks_single_ampersand(self):
+        """Block single & when forbidden characters include ampersand."""
         conf = CheckConfig(self.args + ["--forbidden=['&']", "--strict=0"]).returnconf()
         ret, _conf = sec.check_forbidden_chars("echo ok &", conf)
         self.assertEqual(ret, 1)
 
     def test_check_secure_assignment_prefix_keeps_exact_command_matching(self):
+        """Enforce command allowlist even when prefixed by variable assignments."""
         conf = CheckConfig(
             self.args + ["--allowed=['echo ok']", "--forbidden=[]", "--strict=0"]
         ).returnconf()
@@ -77,6 +88,7 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("A=1 echo nope", conf)[0], 1)
 
     def test_check_secure_assignment_prefix_with_sudo_still_checks_subcommand(self):
+        """Validate sudo subcommands after assignment prefixes."""
         conf = CheckConfig(
             self.args
             + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
@@ -85,6 +97,7 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("A=1 sudo cat /etc/passwd", conf)[0], 1)
 
     def test_check_secure_sudo_u_with_assignment_prefix_is_authorized(self):
+        """Allow authorized sudo -u command with an assignment prefix."""
         conf = CheckConfig(
             self.args
             + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
@@ -92,6 +105,7 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("A=1 sudo -u root ls", conf)[0], 0)
 
     def test_check_secure_sudo_u_missing_command_fails_closed(self):
+        """Reject sudo -u when no subcommand is provided."""
         conf = CheckConfig(
             self.args
             + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
@@ -99,11 +113,13 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("sudo -u root", conf)[0], 1)
 
     def test_check_secure_rejects_control_char_in_line(self):
+        """Reject control characters embedded in command input."""
         conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
         # Literal vertical-tab control char.
         self.assertEqual(sec.check_secure("echo\x0btest", conf)[0], 1)
 
     def test_check_secure_rejects_disallowed_command_substitution(self):
+        """Reject substitution constructs that invoke disallowed commands."""
         conf = CheckConfig(
             self.args + ["--allowed=['echo']", "--forbidden=[';','&','|','>','<']", "--strict=0"]
         ).returnconf()
@@ -111,6 +127,7 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("echo `cat /etc/passwd`", conf)[0], 1)
 
     def test_cmd_parse_execute_rejects_unbalanced_syntax(self):
+        """Return an error when parser input has unbalanced syntax."""
         conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
         shell = DummyShellContext(conf)
         stderr = io.StringIO()
@@ -126,6 +143,7 @@ class TestAttackSurface(unittest.TestCase):
     def test_cmd_parse_execute_short_circuit_skips_failed_and_branch(
         self, mock_exec, mock_path, mock_secure, mock_forbidden
     ):
+        """Skip right-hand commands after failed && and execute || recovery."""
         conf = CheckConfig(
             self.args
             + [
@@ -164,6 +182,7 @@ class TestAttackSurface(unittest.TestCase):
     def test_cmd_parse_execute_assignment_only_updates_parent_env_without_exec(
         self, mock_exec, mock_path, mock_secure, mock_forbidden
     ):
+        """Apply assignment-only input to parent env without spawning a command."""
         conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()
         shell = DummyShellContext(conf)
 
@@ -209,6 +228,7 @@ class TestAttackSurface(unittest.TestCase):
     def test_cmd_parse_execute_forbidden_chars_short_circuits_execution(
         self, mock_exec, mock_forbidden
     ):
+        """Stop execution immediately when forbidden-char checks fail."""
         conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
         shell = DummyShellContext(conf)
         mock_forbidden.side_effect = lambda line, conf, strict=None: (1, conf)

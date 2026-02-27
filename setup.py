@@ -13,6 +13,7 @@ class CustomInstallCommand(install):
     """Customized setuptools install command to handle etc files."""
 
     def run(self):
+        """Install package files and copy default config under the target etc path."""
         # Call the standard install first
         install.run(self)
 

@@ -164,7 +164,6 @@ def cmd_cd(directory, conf):
 
 def check_background_jobs():
     """Check the status of background jobs and print a completion message if done."""
-    global BACKGROUND_JOBS
     updated_jobs = []
     for idx, job in enumerate(BACKGROUND_JOBS, start=1):
         if job.poll() is None:
@@ -200,7 +199,6 @@ def _job_command(job):
 
 def jobs():
     """Return a list of background jobs."""
-    global BACKGROUND_JOBS
     joblist = []
     for idx, job in enumerate(BACKGROUND_JOBS, start=1):
         status = get_job_status(job)
@@ -238,8 +236,6 @@ def cmd_jobs():
 
 def cmd_bg_fg(job_type, job_id):
     """Resume a backgrounded job."""
-
-    global BACKGROUND_JOBS
     if job_type == "bg":
         print("lshell: bg not supported")
         return 1

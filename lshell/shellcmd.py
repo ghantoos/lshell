@@ -218,10 +218,27 @@ class ShellCmd(cmd.Cmd, object):
                 # else warn and log
                 else:
                     self.ssh_warn("command over SSH", self.conf["ssh"])
-
             else:
-                # case of shell escapes
-                self.ssh_warn("shell escape", self.conf["ssh"])
+                # case of local shell escapes (e.g. pager/editor invoking
+                # the login shell with -c). Validate against normal policy.
+                self.conf["ssh"] = utils.get_aliases(
+                    self.conf["ssh"], self.conf["aliases"]
+                )
+                ret_check_secure, self.conf = sec.check_secure(
+                    self.conf["ssh"],
+                    self.conf,
+                    strict=self.conf["strict"],
+                )
+                if ret_check_secure:
+                    self.log.error(f'*** forbidden shell escape: "{self.conf["ssh"]}"')
+                    sys.exit(1)
+
+                self.log.error(f'Shell escape: "{self.conf["ssh"]}"')
+                retcode = utils.cmd_parse_execute(
+                    self.conf["ssh"], shell_context=self
+                )
+                self.log.error("Exited")
+                sys.exit(retcode)
             return retcode
 
     def ssh_warn(self, message, command="", key=""):

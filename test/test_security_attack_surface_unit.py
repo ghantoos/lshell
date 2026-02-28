@@ -7,6 +7,7 @@ from contextlib import redirect_stderr
 from unittest.mock import patch
 
 from lshell.checkconfig import CheckConfig
+from lshell.shellcmd import ShellCmd
 from lshell import sec
 from lshell import utils
 
@@ -54,6 +55,20 @@ class TestAttackSurface(unittest.TestCase):
 
     args = [f"--config={CONFIG}", "--quiet=1"]
 
+    def _without_ssh_env(self):
+        saved = {}
+        for key in ("SSH_CLIENT", "SSH_TTY", "SSH_ORIGINAL_COMMAND"):
+            saved[key] = os.environ.get(key)
+            os.environ.pop(key, None)
+        return saved
+
+    def _restore_ssh_env(self, saved):
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
     def test_split_command_sequence_does_not_split_escaped_pipe(self):
         """Treat escaped pipes as literal text in a command token."""
         line = r"echo a\|b | wc -c"
@@ -83,6 +98,46 @@ class TestAttackSurface(unittest.TestCase):
         """Reject allowed_shell_escape=all to avoid bypassing noexec globally."""
         with self.assertRaises(SystemExit):
             CheckConfig(self.args + ["--allowed_shell_escape='all'"]).returnconf()
+
+    def test_shell_escape_c_runs_allowed_command_when_not_over_ssh(self):
+        """Allow local -c shell escape for commands already authorized by policy."""
+        saved_env = self._without_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
+            conf["ssh"] = "ls"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with("ls", shell_context=unittest.mock.ANY)
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_shell_escape_c_blocks_disallowed_command_when_not_over_ssh(self):
+        """Block local -c shell escape when the command is not in allowed policy."""
+        saved_env = self._without_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
+            conf["ssh"] = "tail /etc/passwd"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
 
     def test_check_secure_assignment_prefix_keeps_exact_command_matching(self):
         """Enforce command allowlist even when prefixed by variable assignments."""

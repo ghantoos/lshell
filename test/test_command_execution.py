@@ -14,6 +14,7 @@ CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
+PROMPT_ANY_DIR = f"{USER}:.+\\$"
 
 
 class TestFunctions(unittest.TestCase):
@@ -272,6 +273,7 @@ class TestFunctions(unittest.TestCase):
         """F68 | Seeded interactive fuzzing should keep the shell responsive."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
+            "--path \"['/tmp']\" "
             '--forbidden "[]" '
             "--allowed \"+['printf','wc','cat','pwd','true','false','sleep']\""
         )
@@ -286,7 +288,7 @@ class TestFunctions(unittest.TestCase):
         ]
 
         def assert_prompt_and_no_traceback():
-            child.expect(PROMPT)
+            child.expect(PROMPT_ANY_DIR)
             output = child.before.decode("utf8", errors="replace")
             self.assertNotIn("Traceback (most recent call last)", output)
             self.assertNotIn("Exception:", output)
@@ -346,7 +348,17 @@ class TestFunctions(unittest.TestCase):
                     command = f"cat {temp_file}"
 
                 child.sendline(command)
-                assert_prompt_and_no_traceback()
+                state = child.expect([PROMPT_ANY_DIR, "> "])
+                if state == 0:
+                    output = child.before.decode("utf8", errors="replace")
+                    self.assertNotIn("Traceback (most recent call last)", output)
+                    self.assertNotIn("Exception:", output)
+                    self.assertNotIn("KeyboardInterrupt", output)
+                else:
+                    # Some payloads intentionally hit lshell's multiline quote
+                    # detector; Ctrl-C should always recover to the main prompt.
+                    child.sendcontrol("c")
+                    assert_prompt_and_no_traceback()
 
             child.sendline(f"cat {temp_file}")
             output = assert_prompt_and_no_traceback()
@@ -370,7 +382,7 @@ class TestFunctions(unittest.TestCase):
         temp_file = f"/tmp/lshell_matrix_{os.getpid()}.txt"
 
         def expect_clean_prompt():
-            child.expect(PROMPT)
+            child.expect(PROMPT_ANY_DIR)
             output = child.before.decode("utf8", errors="replace")
             self.assertNotIn("Traceback (most recent call last)", output)
             self.assertNotIn("Exception:", output)

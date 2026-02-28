@@ -69,6 +69,14 @@ class TestAttackSurface(unittest.TestCase):
             else:
                 os.environ[key] = value
 
+    def _with_forced_ssh_env(self):
+        saved = {}
+        for key in ("SSH_CLIENT", "SSH_TTY", "SSH_ORIGINAL_COMMAND"):
+            saved[key] = os.environ.get(key)
+        os.environ["SSH_CLIENT"] = "127.0.0.1 22 22"
+        os.environ.pop("SSH_TTY", None)
+        return saved
+
     def test_split_command_sequence_does_not_split_escaped_pipe(self):
         """Treat escaped pipes as literal text in a command token."""
         line = r"echo a\|b | wc -c"
@@ -125,6 +133,72 @@ class TestAttackSurface(unittest.TestCase):
         try:
             conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
             conf["ssh"] = "tail /etc/passwd"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_allows_command_present_in_overssh(self):
+        """Execute forced SSH command when it is explicitly in overssh list."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--allowed=['echo']", "--overssh=['ls']", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = "ls"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with("ls", shell_context=unittest.mock.ANY)
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_command_not_in_overssh(self):
+        """Deny forced SSH command even when it is present in normal allowed list."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--overssh=['echo']", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = "ls"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_forbidden_chars(self):
+        """Deny forced SSH command containing forbidden separators."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--overssh=['ls']", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = "ls; echo pwned"
             with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(

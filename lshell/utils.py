@@ -553,7 +553,13 @@ def cmd_parse_execute(command_line, shell_context=None):
             for (executable_name, _, _, _), part in zip(parsed_parts, pipeline_parts)
         ):
             extra_env = None
-            if "path_noexec" in shell_context.conf:
+            allowed_shell_escape = set(shell_context.conf.get("allowed_shell_escape", []))
+            uses_shell_escape = any(
+                executable_name in allowed_shell_escape
+                for (executable_name, _, _, _) in parsed_parts
+                if executable_name
+            )
+            if "path_noexec" in shell_context.conf and not uses_shell_escape:
                 extra_env = {"LD_PRELOAD": shell_context.conf["path_noexec"]}
             retcode = exec_cmd(
                 full_command, background=background, extra_env=extra_env
@@ -570,6 +576,7 @@ def cmd_parse_execute(command_line, shell_context=None):
 def exec_cmd(cmd, background=False, extra_env=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
+    detached_session = True
     exec_env = dict(os.environ)
     if extra_env:
         exec_env.update(extra_env)
@@ -585,7 +592,10 @@ def exec_cmd(cmd, background=False, extra_env=None):
     def handle_sigtstp(signum, frame):
         """Handle SIGTSTP (Ctrl+Z) by sending the process to the background."""
         if proc and proc.poll() is None:  # Ensure process is running
-            os.killpg(os.getpgid(proc.pid), signal.SIGSTOP)
+            if detached_session:
+                os.killpg(os.getpgid(proc.pid), signal.SIGSTOP)
+            else:
+                os.kill(proc.pid, signal.SIGSTOP)
             # Keep one job entry per process to avoid duplicates on repeated suspend/resume.
             if proc in builtincmd.BACKGROUND_JOBS:
                 job_id = builtincmd.BACKGROUND_JOBS.index(proc) + 1
@@ -599,7 +609,10 @@ def exec_cmd(cmd, background=False, extra_env=None):
     def handle_sigcont(signum, frame):
         """Handle SIGCONT to resume a stopped job in the foreground."""
         if proc and proc.poll() is None:
-            os.killpg(os.getpgid(proc.pid), signal.SIGCONT)
+            if detached_session:
+                os.killpg(os.getpgid(proc.pid), signal.SIGCONT)
+            else:
+                os.kill(proc.pid, signal.SIGCONT)
 
     previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
     previous_sigcont_handler = signal.getsignal(signal.SIGCONT)
@@ -609,16 +622,25 @@ def exec_cmd(cmd, background=False, extra_env=None):
         signal.signal(signal.SIGTSTP, handle_sigtstp)
         signal.signal(signal.SIGCONT, handle_sigcont)
         cmd_args = ["bash", "-c", cmd]
+        try:
+            split_cmd = shlex.split(cmd, posix=True)
+        except ValueError:
+            split_cmd = []
+        if split_cmd and split_cmd[0] == "sudo":
+            cmd_args = split_cmd
+            if not background:
+                detached_session = False
         if background:
             with open(os.devnull, "r") as devnull_in:
-                proc = subprocess.Popen(
-                    cmd_args,
-                    stdin=devnull_in,  # Redirect input to /dev/null
-                    stdout=sys.stdout,
-                    stderr=sys.stderr,
-                    preexec_fn=os.setsid,
-                    env=exec_env,
-                )
+                popen_kwargs = {
+                    "stdin": devnull_in,
+                    "stdout": sys.stdout,
+                    "stderr": sys.stderr,
+                    "env": exec_env,
+                }
+                if detached_session:
+                    popen_kwargs["preexec_fn"] = os.setsid
+                proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
             # add to background jobs and return
             builtincmd.BACKGROUND_JOBS.append(proc)
@@ -626,7 +648,10 @@ def exec_cmd(cmd, background=False, extra_env=None):
             print(f"[{job_id}] {cmd} (pid: {proc.pid})")
             retcode = 0
         else:
-            proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid, env=exec_env)
+            popen_kwargs = {"env": exec_env}
+            if detached_session:
+                popen_kwargs["preexec_fn"] = os.setsid
+            proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
             proc.communicate()
             retcode = proc.returncode if proc.returncode is not None else 0
@@ -640,7 +665,10 @@ def exec_cmd(cmd, background=False, extra_env=None):
         retcode = 0
     except KeyboardInterrupt:  # Handle Ctrl+C
         if proc and proc.poll() is None:
-            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            if detached_session:
+                os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            else:
+                os.kill(proc.pid, signal.SIGINT)
         retcode = 130
     finally:
         signal.signal(signal.SIGTSTP, previous_sigtstp_handler)

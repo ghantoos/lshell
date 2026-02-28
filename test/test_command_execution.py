@@ -272,7 +272,7 @@ class TestFunctions(unittest.TestCase):
         """F68 | Seeded interactive fuzzing should keep the shell responsive."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
-            "--forbidden \"[]\" "
+            '--forbidden "[]" '
             "--allowed \"+['printf','wc','cat','pwd','true','false','sleep']\""
         )
         rng = random.Random(6842)
@@ -363,7 +363,8 @@ class TestFunctions(unittest.TestCase):
         """F69 | Operator and expansion matrix should remain stable."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
-            "--forbidden \"[]\" "
+            "--path \"['/tmp']\" "
+            '--forbidden "[]" '
             "--allowed \"+['printf','wc','cat','pwd','true','false']\""
         )
         temp_file = f"/tmp/lshell_matrix_{os.getpid()}.txt"
@@ -407,7 +408,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_70_multiline_and_interrupt_storm(self):
         """F70 | Repeated multiline and Ctrl-C should recover cleanly."""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --strict 1 --forbidden \"[]\"")
+        child = pexpect.spawn(f'{LSHELL} --config {CONFIG} --strict 1 --forbidden "[]"')
 
         def expect_clean_prompt():
             child.expect(PROMPT)
@@ -446,7 +447,7 @@ class TestFunctions(unittest.TestCase):
         """F71 | History should retain randomized interactive command stream."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
-            "--forbidden \"[]\" "
+            '--forbidden "[]" '
             "--allowed \"+['printf','wc','pwd','true','false']\""
         )
         rng = random.Random(7101)
@@ -488,7 +489,7 @@ class TestFunctions(unittest.TestCase):
         """F72 | Background jobs should appear and then complete cleanly."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
-            "--forbidden \"[]\" "
+            '--forbidden "[]" '
             "--allowed \"+['sleep']\""
         )
 

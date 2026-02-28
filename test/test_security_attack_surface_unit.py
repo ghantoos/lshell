@@ -272,6 +272,41 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(popen_args[0], "sudo")
         self.assertNotEqual(popen_args[:2], ["bash", "-c"])
 
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_sudo_keeps_foreground_terminal(
+        self, mock_popen, _mock_signal, _mock_getsignal
+    ):
+        """sudo should not be detached from the controlling terminal."""
+
+        class FakeProc:
+            """Minimal subprocess fake for exec_cmd foreground path."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 12345
+                self.args = ["sudo", "ls"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                return None
+
+            def poll(self):
+                return 0
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("sudo ls")
+
+        self.assertEqual(ret, 0)
+        popen_kwargs = mock_popen.call_args.kwargs
+        self.assertNotIn(
+            "preexec_fn",
+            popen_kwargs,
+            msg="sudo should run in the current foreground session to keep tty access",
+        )
+
     def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(self):
         """Security expectation: assignment-only should not bypass env blacklist."""
         conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()

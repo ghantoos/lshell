@@ -580,9 +580,11 @@ class TestAttackSurface(unittest.TestCase):
                 self.lshell_cmd = ""
 
             def communicate(self):
+                """Simulate foreground process I/O completion."""
                 return None
 
             def poll(self):
+                """Simulate an already-finished subprocess."""
                 return 0
 
         mock_popen.return_value = FakeProc()
@@ -612,9 +614,11 @@ class TestAttackSurface(unittest.TestCase):
                 self.lshell_cmd = ""
 
             def communicate(self):
+                """Simulate foreground process I/O completion."""
                 return None
 
             def poll(self):
+                """Simulate an already-finished subprocess."""
                 return 0
 
         mock_popen.return_value = FakeProc()

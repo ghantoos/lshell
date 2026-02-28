@@ -79,6 +79,11 @@ class TestAttackSurface(unittest.TestCase):
         ret, _conf = sec.check_forbidden_chars("echo ok &", conf)
         self.assertEqual(ret, 1)
 
+    def test_checkconfig_rejects_allowed_shell_escape_all(self):
+        """Reject allowed_shell_escape=all to avoid bypassing noexec globally."""
+        with self.assertRaises(SystemExit):
+            CheckConfig(self.args + ["--allowed_shell_escape='all'"]).returnconf()
+
     def test_check_secure_assignment_prefix_keeps_exact_command_matching(self):
         """Enforce command allowlist even when prefixed by variable assignments."""
         conf = CheckConfig(

@@ -320,6 +320,12 @@ class CheckConfig:
         """this function is used to interpret the configuration +/-,
         'all' etc.
         """
+        def is_all_literal(raw_value):
+            """Return True when the config value denotes the literal 'all'."""
+            if not isinstance(raw_value, str):
+                return False
+            return raw_value.strip() in {"all", "'all'", '"all"'}
+
         # convert commandline options from dict to list of tuples, in order to
         # merge them with the output of the config parser
         conf = []
@@ -349,7 +355,12 @@ class CheckConfig:
                             self.conf_raw.update(
                                 self.minusplus(self.conf_raw, key, stuff)
                             )
-                        elif stuff == "'all'":
+                        elif is_all_literal(stuff):
+                            if key == "allowed_shell_escape":
+                                self.log.critical(
+                                    "CONF: 'allowed_shell_escape' cannot be set to 'all'"
+                                )
+                                sys.exit(1)
                             self.conf_raw.update({key: self.expand_all()})
                         elif stuff and key == "path":
                             liste = ["", ""]
@@ -364,6 +375,11 @@ class CheckConfig:
                 # case allowed is set to 'all'
                 elif key == "allowed" and split[0] == "'all'":
                     self.conf_raw.update({key: self.expand_all()})
+                elif key == "allowed_shell_escape" and is_all_literal(split[0]):
+                    self.log.critical(
+                        "CONF: 'allowed_shell_escape' cannot be set to 'all'"
+                    )
+                    sys.exit(1)
                 elif key == "path":
                     liste = ["", ""]
                     for path in self.myeval(value, "path"):

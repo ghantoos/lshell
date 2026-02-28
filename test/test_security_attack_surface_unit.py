@@ -213,6 +213,28 @@ class TestAttackSurface(unittest.TestCase):
         finally:
             self._restore_ssh_env(saved_env)
 
+    def test_cmdloop_executes_login_script_with_bash_script_invocation(self):
+        """Run configured login_script at shell startup, including 'bash <script>' syntax."""
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        conf["login_script"] = "bash test/testfiles/login_script.sh"
+        shell = ShellCmd(
+            conf,
+            args=[],
+            stdin=io.StringIO(),
+            stdout=io.StringIO(),
+            stderr=io.StringIO(),
+        )
+        shell.cmdqueue = ["exit"]
+
+        with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch("lshell.shellcmd.sys.exit", side_effect=SystemExit):
+                with self.assertRaises(SystemExit):
+                    shell.cmdloop()
+
+        mock_exec.assert_called_once_with(
+            "bash test/testfiles/login_script.sh", shell_context=shell
+        )
+
     def test_check_secure_assignment_prefix_keeps_exact_command_matching(self):
         """Enforce command allowlist even when prefixed by variable assignments."""
         conf = CheckConfig(
@@ -472,3 +494,28 @@ class TestAttackSurface(unittest.TestCase):
         ret = utils.cmd_parse_execute("echo should_not_run", shell_context=shell)
         self.assertEqual(ret, 126)
         mock_exec.assert_not_called()
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_allows_full_bash_script_command_for_login_script(
+        self, mock_exec
+    ):
+        """Authorize and execute bash script invocation when full command is allowlisted."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['bash test/testfiles/login_script.sh']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        shell = DummyShellContext(conf)
+
+        ret = utils.cmd_parse_execute(
+            "bash test/testfiles/login_script.sh", shell_context=shell
+        )
+
+        self.assertEqual(ret, 0)
+        self.assertEqual(mock_exec.call_count, 1)
+        self.assertEqual(
+            mock_exec.call_args.args[0], "bash test/testfiles/login_script.sh"
+        )

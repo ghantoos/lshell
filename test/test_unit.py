@@ -1,6 +1,7 @@
 """ Unit tests for lshell """
 
 import os
+import tempfile
 import unittest
 from getpass import getuser
 from time import strftime, gmtime
@@ -157,6 +158,26 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare
         return self.assertNotIn(";", userconf["forbidden"])
+
+    def test_21b_winscp_forces_scp_transfers_enabled(self):
+        """U21b | winscp should override scp_upload/scp_download to enabled."""
+        args = self.args + ["--scp_upload=0", "--scp_download=0", "--winscp=1"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertEqual(userconf["scp_upload"], 1)
+        self.assertEqual(userconf["scp_download"], 1)
+
+    def test_21c_winscp_ignores_scpforce(self):
+        """U21c | winscp should ignore scpforce setting."""
+        with tempfile.TemporaryDirectory() as forced_dir:
+            args = self.args + [f"--scpforce='{forced_dir}'", "--winscp=1"]
+            userconf = CheckConfig(args).returnconf()
+            self.assertNotIn("scpforce", userconf)
+
+    def test_21d_scp_transfer_flags_default_to_enabled(self):
+        """U21d | scp_upload/scp_download default values should be enabled."""
+        userconf = CheckConfig(self.args).returnconf()
+        self.assertEqual(userconf["scp_upload"], 1)
+        self.assertEqual(userconf["scp_download"], 1)
 
     def test_22_prompt_short_0(self):
         """U22 | short_prompt = 0 should show dir compared to home dir"""

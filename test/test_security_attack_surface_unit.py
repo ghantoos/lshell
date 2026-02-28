@@ -2,6 +2,7 @@
 
 import io
 import os
+import tempfile
 import unittest
 from contextlib import redirect_stderr
 from unittest.mock import patch
@@ -210,6 +211,171 @@ class TestAttackSurface(unittest.TestCase):
                     )
             self.assertEqual(cm.exception.code, 1)
             mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_sftp_when_disabled(self):
+        """Deny sftp-server sessions when sftp flag is disabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--sftp=0", "--strict=0"]).returnconf()
+            conf["ssh"] = "/usr/libexec/sftp-server"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_allows_sftp_when_enabled(self):
+        """Execute sftp-server sessions when sftp flag is enabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--sftp=1", "--strict=0"]).returnconf()
+            conf["ssh"] = "/usr/libexec/sftp-server"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with(
+                "/usr/libexec/sftp-server", shell_context=unittest.mock.ANY
+            )
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_scp_when_disabled_and_not_in_overssh(self):
+        """Deny scp transfer when global scp flag is disabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--scp=0", "--overssh=[]", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = f"scp -f {conf['home_path']}/artifact"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_allows_scp_from_overssh_even_if_scp_flag_disabled(self):
+        """Allow scp transfer when scp is present in overssh allowlist."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args
+                + ["--scp=0", "--overssh=['scp']", "--scp_download=1", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = f"scp -f {conf['home_path']}/artifact"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with(
+                f"scp -f {conf['home_path']}/artifact", shell_context=unittest.mock.ANY
+            )
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_scp_download_when_scp_download_disabled(self):
+        """Deny scp -f when scp_download flag is disabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--scp=1", "--scp_download=0", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = f"scp -f {conf['home_path']}/artifact"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_scp_upload_when_scp_upload_disabled(self):
+        """Deny scp -t when scp_upload flag is disabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--scp=1", "--scp_upload=0", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = f"scp -t {conf['home_path']}"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_applies_scpforce_to_upload_target(self):
+        """Rewrite scp -t target path to configured scpforce directory."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell_scpforce_") as forced_dir:
+                conf = CheckConfig(
+                    self.args
+                    + [
+                        "--scp=1",
+                        "--scp_upload=1",
+                        f"--scpforce='{forced_dir}'",
+                        "--strict=0",
+                    ]
+                ).returnconf()
+                conf["ssh"] = f"scp -t {conf['home_path']}"
+                with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                    with self.assertRaises(SystemExit) as cm:
+                        ShellCmd(
+                            conf,
+                            args=[],
+                            stdin=io.StringIO(),
+                            stdout=io.StringIO(),
+                            stderr=io.StringIO(),
+                        )
+                self.assertEqual(cm.exception.code, 0)
+                mock_exec.assert_called_once_with(
+                    f"scp -t {os.path.realpath(forced_dir)}",
+                    shell_context=unittest.mock.ANY,
+                )
         finally:
             self._restore_ssh_env(saved_env)
 

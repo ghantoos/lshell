@@ -689,6 +689,12 @@ class CheckConfig:
             self.conf["allowed"].extend(
                 ["scp", "env", "pwd", "groups", "unset", "unalias"]
             )
+            # WinSCP mode expects scp(1) transfers to be fully enabled.
+            self.conf["scp_upload"] = 1
+            self.conf["scp_download"] = 1
+            # scpforce applies only to forced SSH scp uploads and is ignored
+            # by WinSCP mode (which runs scp within session).
+            self.conf.pop("scpforce", None)
             # remove duplicate commands, in case added in the above extension
             self.conf["allowed"] = list(set(self.conf["allowed"]))
             # allow the use of semicolon

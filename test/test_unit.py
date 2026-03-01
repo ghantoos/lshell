@@ -362,3 +362,18 @@ class TestFunctions(unittest.TestCase):
         expected = f"{getuser()}:{currentpath}$ "
         prompt = updateprompt(currentpath, userconf)
         self.assertEqual(prompt, expected)
+
+    @patch("lshell.checkconfig.os.umask")
+    def test_41_umask_sets_process_mask(self, mock_umask):
+        """U41 | --umask should be parsed as octal and applied to process mask"""
+        args = self.args + ["--umask=0002"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertEqual(userconf["umask"], "0002")
+        mock_umask.assert_called_once_with(0o002)
+
+    def test_42_invalid_umask_value_raises(self):
+        """U42 | invalid umask value should exit with error"""
+        args = self.args + ["--umask=0088"]
+        with self.assertRaises(SystemExit) as exc:
+            CheckConfig(args).returnconf()
+        self.assertEqual(exc.exception.code, 1)

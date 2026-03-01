@@ -102,6 +102,32 @@ Commands that do not include arguments (e.g., `ls`) can be used with any argumen
 For local executables, add the relative path explicitly in `allowed` (for example `./deploy.sh`).  
 This also enables `./` command-name completion from the allowed local entries.
 
+#### Umask
+
+Use the `umask` configuration key to set the file mode creation mask for the lshell process:
+
+```
+umask : 0002
+```
+
+`umask` must be octal (`0000` to `0777`) and is applied when lshell starts.
+If you need a persistent session umask, configure `umask` in `lshell.conf` rather than relying on `login_script`, because `login_script` runs in a child shell process.
+
+Examples:
+
+- `umask : 0002` -> new files default to `664` and directories to `775`
+- `umask : 0022` -> new files default to `644` and directories to `755`
+- `umask : 0077` -> new files default to `600` and directories to `700`
+
+Quick validation in an lshell session:
+
+```bash
+umask
+touch test_file
+mkdir test_dir
+ls -ld test_file test_dir
+```
+
 #### User profiles
 
 A [default] profile is available for all users using lshell. Nevertheless,  you can create a [username] section or a [grp:groupname] section to customize users' preferences.

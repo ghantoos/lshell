@@ -572,6 +572,16 @@ class CheckConfig:
 
         self.conf["username"] = self.user
 
+        if "umask" in self.conf_raw:
+            umask_raw = str(self.conf_raw["umask"]).strip().strip("'\"")
+            if not re.fullmatch(r"[0-7]{1,4}", umask_raw):
+                self.log.critical(
+                    f"CONF: umask must be an octal value (0000-0777), got: {self.conf_raw['umask']}"
+                )
+                sys.exit(1)
+            self.conf["umask"] = umask_raw.zfill(4)
+            os.umask(int(self.conf["umask"], 8))
+
         if "home_path" in self.conf_raw:
             home_path = self.conf_raw["home_path"]
             home_path = home_path.replace("%u", self.conf["username"])

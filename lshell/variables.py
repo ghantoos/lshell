@@ -76,6 +76,7 @@ configparams = [
     "history_size=",
     "history_file=",
     "path_noexec=",
+    "umask=",
     "allowed_shell_escape=",
     "winscp=",
     "disable_exit=",

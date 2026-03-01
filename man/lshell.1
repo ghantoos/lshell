@@ -230,7 +230,9 @@ directory. A wildcard can be used:
 set the introduction to print at login
 .TP
 .I login_script
-define the script to run at user login
+define the script to run at user login. This script is executed in a child shell
+process, so shell state changes there (for example \fBumask\fR) do not persist
+in the lshell parent process.
 .TP
 .I passwd
 password of specific user (default is empty)
@@ -344,6 +346,19 @@ different user than the default root.
 .I timer
 a value in seconds for the session timer
 .TP
+.I umask
+set process umask for the lshell session. Value must be octal (0000 to 0777),
+for example \fB0002\fR.
+.RS
+\fB0002\fR -> files 664 / directories 775
+.RE
+.RS
+\fB0022\fR -> files 644 / directories 755
+.RE
+.RS
+\fB0077\fR -> files 600 / directories 700
+.RE
+.TP
 .I strict
 logging strictness. If set to 1, any unknown command is considered as \
 forbidden, and user's warning counter is decreased. If set to 0, command is \
@@ -428,6 +443,12 @@ lshell options are loaded from the configuration file
 .RS
 This will override the default options specified for configuration and/or log \
 file
+.RE
+.TP
+.B $ lshell --config /path/to/myconf.file --umask 0077
+.RS
+Runs lshell with a private session umask; new files default to 600 and
+directories to 700.
 .RE
 .TP
 .B $ ./test_script.lsh

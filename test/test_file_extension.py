@@ -47,7 +47,7 @@ class TestFunctions(unittest.TestCase):
         """F61 | allow extension and cat file with different extension"""
 
         command = f"cat {CONFIG}"
-        expected = f"*** forbidden file extension ['.conf']: cat {CONFIG}"
+        expected = f"*** forbidden file extension ['.conf']: \"cat {CONFIG}\""
 
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "

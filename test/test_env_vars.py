@@ -122,7 +122,7 @@ class TestFunctions(unittest.TestCase):
     def test_47_backticks(self):
         """F47 | Forbidden backticks should be reported"""
         expected = (
-            '*** forbidden character -> "`"\r\n'
+            '*** forbidden character: "`"\r\n'
             "*** You have 1 warning(s) left, before getting kicked out.\r\n"
             "This incident has been reported.\r\n"
         )
@@ -134,7 +134,7 @@ class TestFunctions(unittest.TestCase):
     def test_48_replace_backticks_with_dollar_parentheses(self):
         """F48 | Forbidden syntax $(command) should be reported"""
         expected = (
-            '*** forbidden character -> "$("\r\n'
+            '*** forbidden character: "$("\r\n'
             "*** You have 1 warning(s) left, before getting kicked out.\r\n"
             "This incident has been reported.\r\n"
         )
@@ -155,4 +155,37 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n", 1)[1]
         expected = "OK\r\n"
         self.assertEqual(expected, result)
+        self.do_exit(child)
+
+    def test_50_single_quotes_do_not_expand_variables(self):
+        """F50 | Single-quoted variables should not be expanded."""
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['export']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("export A=VALUE")
+        child.expect(PROMPT)
+        child.sendline("echo '$A'")
+        child.expect(PROMPT)
+        result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("$A", result)
+        self.do_exit(child)
+
+    def test_51_inline_assignment_is_command_scoped(self):
+        """F51 | VAR=... cmd should not persist in parent shell."""
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['printenv']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("A=INLINE printenv A")
+        child.expect(PROMPT)
+        inline_result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("INLINE", inline_result)
+
+        child.sendline("printenv A")
+        child.expect(PROMPT)
+        persisted_result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("", persisted_result)
         self.do_exit(child)

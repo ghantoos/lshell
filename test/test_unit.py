@@ -1,6 +1,7 @@
 """ Unit tests for lshell """
 
 import os
+import tempfile
 import unittest
 from getpass import getuser
 from time import strftime, gmtime
@@ -9,7 +10,6 @@ from unittest.mock import patch
 # import lshell specifics
 from lshell.checkconfig import CheckConfig
 from lshell.utils import get_aliases, updateprompt, parse_ps1, getpromptbase
-from lshell.variables import builtins_list
 from lshell import builtincmd
 from lshell import sec
 
@@ -100,7 +100,7 @@ class TestFunctions(unittest.TestCase):
         args = self.args + ["--sudo_commands=all"]
         userconf = CheckConfig(args).returnconf()
         # exclude internal and sudo(8) commands
-        exclude = builtins_list + ["sudo"]
+        exclude = builtincmd.builtins_list + ["sudo"]
         allowed = [x for x in userconf["allowed"] if x not in exclude]
         # sort lists to compare
         userconf["sudo_commands"].sort()
@@ -145,7 +145,7 @@ class TestFunctions(unittest.TestCase):
         args = self.args + ["--allowed=[]", "--winscp=1"]
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare, except 'export'
-        exclude = list(set(builtins_list) - set(["export"]))
+        exclude = list(set(builtincmd.builtins_list) - set(["export"]))
         expected = exclude + ["scp", "env", "pwd", "groups", "unset", "unalias"]
         expected.sort()
         allowed = userconf["allowed"]
@@ -158,6 +158,26 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         # sort lists to compare
         return self.assertNotIn(";", userconf["forbidden"])
+
+    def test_21b_winscp_forces_scp_transfers_enabled(self):
+        """U21b | winscp should override scp_upload/scp_download to enabled."""
+        args = self.args + ["--scp_upload=0", "--scp_download=0", "--winscp=1"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertEqual(userconf["scp_upload"], 1)
+        self.assertEqual(userconf["scp_download"], 1)
+
+    def test_21c_winscp_ignores_scpforce(self):
+        """U21c | winscp should ignore scpforce setting."""
+        with tempfile.TemporaryDirectory() as forced_dir:
+            args = self.args + [f"--scpforce='{forced_dir}'", "--winscp=1"]
+            userconf = CheckConfig(args).returnconf()
+            self.assertNotIn("scpforce", userconf)
+
+    def test_21d_scp_transfer_flags_default_to_enabled(self):
+        """U21d | scp_upload/scp_download default values should be enabled."""
+        userconf = CheckConfig(self.args).returnconf()
+        self.assertEqual(userconf["scp_upload"], 1)
+        self.assertEqual(userconf["scp_download"], 1)
 
     def test_22_prompt_short_0(self):
         """U22 | short_prompt = 0 should show dir compared to home dir"""

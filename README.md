@@ -99,6 +99,9 @@ This will:
 
 Commands that do not include arguments (e.g., `ls`) can be used with any arguments, while commands specified with arguments (e.g., `echo asd`) must be used exactly as specified.
 
+For local executables, add the relative path explicitly in `allowed` (for example `./deploy.sh`).  
+This also enables `./` command-name completion from the allowed local entries.
+
 #### User profiles
 
 A [default] profile is available for all users using lshell. Nevertheless,  you can create a [username] section or a [grp:groupname] section to customize users' preferences.
@@ -124,7 +127,10 @@ For example User 'foo' and user 'bar' both belong to the 'users' UNIX group:
 - User 'bar':
        - must be able to access /etc and /usr but not /usr/local
        - is allowed default commands plus 'ping' minus 'ls'
-       - strictness is set to 1 (meaning he is not allowed to type an unknown command)
+       - strictness is set to 1 (unknown syntax/commands decrement warning_counter)
+
+`warning_counter` is decremented on forbidden command/path/character attempts.
+When `strict` is enabled, unknown syntax is also counted.
 
 In this case, my configuration file will look something like this:
 
@@ -168,10 +174,10 @@ More information can be found in the manpage: `man -l man/lshell.1` or `man lshe
 
 ## Running Tests in Docker Containers
 
-You can run the tests in parallel across multiple Linux distributions using Docker Compose. This is helpful for ensuring compatibility and consistency across environments. The following command will launch test services for Ubuntu, Debian, Fedora, and Alpine distributions simultaneously:
+You can run the tests in parallel across multiple Linux distributions using Docker Compose. This is helpful for ensuring compatibility and consistency across environments. The following command will launch test services for Ubuntu, Debian, and Fedora distributions simultaneously:
 
 ```bash
-docker-compose up ubuntu_tests debian_tests fedora_tests alpine_tests
+docker-compose up ubuntu_tests debian_tests fedora_tests
 ```
 
 Each service will run in parallel and execute the `pytest`, `pylint`, and `flake8` tests specified in the docker-compose.yml.

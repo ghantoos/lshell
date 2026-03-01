@@ -1,4 +1,4 @@
-""" This module contains the main class of lshell, it is the class that is
+"""This module contains the main class of lshell, it is the class that is
 responsible for the command line interface. It inherits from the cmd.Cmd class
 from the Python standard library. It offers the default methods to add
 security checks, logging, etc.
@@ -45,7 +45,6 @@ class ShellCmd(cmd.Cmd, object):
         else:
             self.stderr = stderr
 
-        self.args = args
         self.conf = userconf
         self.log = self.conf["logpath"]
         self.kill_jobs_at_exit = False
@@ -68,6 +67,7 @@ class ShellCmd(cmd.Cmd, object):
         # initialize cli variables
         self.g_cmd = g_cmd
         self.g_line = g_line
+        self.args = args
 
         # initialize return code
         self.retcode = 0
@@ -85,10 +85,10 @@ class ShellCmd(cmd.Cmd, object):
         added a do_uname in the ShellCmd class!
         """
 
-        # expand environment variables in command line
-        self.g_cmd = os.path.expandvars(self.g_cmd)
-        self.g_line = os.path.expandvars(self.g_line)
-        self.g_arg = os.path.expandvars(self.g_arg)
+        # Expand only the full input line; command/arg are derived from it.
+        self.g_cmd = utils.expand_vars_quoted(self.g_cmd)
+        self.g_line = utils.expand_vars_quoted(self.g_line)
+        self.g_arg = utils.expand_vars_quoted(self.g_arg)
 
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
@@ -101,102 +101,21 @@ class ShellCmd(cmd.Cmd, object):
         if self.g_cmd in ["quit", "exit", "EOF"]:
             self.do_exit()
 
-        # check that commands/chars present in line are allowed/secure
-        ret_check_secure, self.conf = sec.check_secure(
-            self.g_line, self.conf, strict=self.conf["strict"]
-        )
-        if ret_check_secure == 1:
-            # see http://tldp.org/LDP/abs/html/exitcodes.html
-            self.retcode = 126
-            return object.__getattribute__(self, attr)
+        if self.conf["timer"] > 0:
+            self.mytimer(0)
 
-        # check that path present in line are allowed/secure
-        ret_check_path, self.conf = sec.check_path(
-            self.g_line, self.conf, strict=self.conf["strict"]
-        )
-        if ret_check_path == 1:
-            # see http://tldp.org/LDP/abs/html/exitcodes.html
-            self.retcode = 126
-            # in case request was sent by WinSCP, return error code has to be
-            # sent via an specific echo command
-            if self.conf["winscp"] and re.search(
-                "WinSCP: this is end-of-file", self.g_line
-            ):
-                utils.exec_cmd(f'echo "WinSCP: this is end-of-file: {self.retcode}"')
-            return object.__getattribute__(self, attr)
-        if self.g_cmd in self.conf["allowed"] or self.g_line in self.conf["allowed"]:
-            if self.conf["timer"] > 0:
-                self.mytimer(0)
-            self.g_arg = re.sub("^~$|^~/", f"{self.conf['home_path']}/", self.g_arg)
-            self.g_arg = re.sub(" ~/", f" {self.conf['home_path']}/", self.g_arg)
+        # replace $? with the exit code
+        self.g_line = utils.replace_exit_code(self.g_line, self.retcode)
 
-            # replace $? with the exit code
-            self.g_line = utils.replace_exit_code(self.g_line, self.retcode)
+        if isinstance(self.conf["aliases"], dict):
+            self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])
 
-            if isinstance(self.conf["aliases"], dict):
-                self.g_line = utils.get_aliases(self.g_line, self.conf["aliases"])
+        self.log.info(f'CMD: "{self.g_line}"')
 
-            self.log.info(f'CMD: "{self.g_line}"')
+        self.retcode = utils.cmd_parse_execute(self.g_line, shell_context=self)
 
-            if self.g_cmd == "cd":
-                # split cd <dir> and rest of command
-                cmd_split = re.split(r";|&&|&|\|\||\|", self.g_line, 1)
-                # in case the are commands following cd, first change the
-                # directory, then execute the command
-                if len(cmd_split) == 2:
-                    directory, command = cmd_split
-                    # only keep cd's argument
-                    directory = directory.split("cd", 1)[1].strip()
-                    # change directory then, if success, execute the rest of
-                    # the cmd line
-                    self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
-
-                    if self.retcode == 0:
-                        cmd_split = re.split(r";|&&|&|\|\||\|", command)
-                        for command in cmd_split:
-                            self.retcode = utils.cmd_parse_execute(
-                                command, shell_context=self
-                            )
-                else:
-                    # set directory to command line argument and change dir
-                    directory = self.g_arg
-                    self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
-
-            # built-in lpath function: list all allowed path
-            elif self.g_cmd == "lpath":
-                self.retcode = builtincmd.cmd_lpath(self.conf)
-            # built-in lsudo function: list all allowed sudo commands
-            elif self.g_cmd == "lsudo":
-                self.retcode = builtincmd.cmd_lsudo(self.conf)
-            # built-in history function: print command history
-            elif self.g_cmd == "history":
-                self.retcode = builtincmd.cmd_history(self.conf, self.log)
-            # built-in export function
-            elif self.g_cmd == "export":
-                self.retcode, var = builtincmd.cmd_export(self.g_line)
-                if self.retcode == 1:
-                    self.log.critical(f"** forbidden environment variable '{var}'")
-            elif self.g_cmd == "source":
-                self.retcode = builtincmd.cmd_source(self.g_arg)
-            elif self.g_cmd == "fg":
-                self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
-            elif self.g_cmd == "bg":
-                self.retcode = builtincmd.cmd_bg_fg(self.g_cmd, self.g_arg)
-            elif self.g_cmd == "jobs":
-                self.retcode = builtincmd.cmd_jobs()
-            # case 'cd' is in an alias e.g. {'toto':'cd /var/tmp'}
-            elif self.g_line[0:2] == "cd":
-                self.g_cmd = self.g_line.split()[0]
-                directory = " ".join(self.g_line.split()[1:])
-                self.retcode, self.conf = builtincmd.cmd_cd(directory, self.conf)
-
-            else:
-                self.retcode = utils.cmd_parse_execute(self.g_line, shell_context=self)
-
-        elif self.g_cmd not in ["", "?", "help", None]:
-            self.log.warn(f'INFO: unknown syntax -> "{self.g_line}"')
-            self.stderr.write(f"*** unknown syntax: {self.g_cmd}\n")
         self.g_cmd, self.g_arg, self.g_line = ["", "", ""]
+
         if self.conf["timer"] > 0:
             self.mytimer(self.conf["timer"])
         return object.__getattribute__(self, attr)
@@ -299,10 +218,27 @@ class ShellCmd(cmd.Cmd, object):
                 # else warn and log
                 else:
                     self.ssh_warn("command over SSH", self.conf["ssh"])
-
             else:
-                # case of shell escapes
-                self.ssh_warn("shell escape", self.conf["ssh"])
+                # case of local shell escapes (e.g. pager/editor invoking
+                # the login shell with -c). Validate against normal policy.
+                self.conf["ssh"] = utils.get_aliases(
+                    self.conf["ssh"], self.conf["aliases"]
+                )
+                ret_check_secure, self.conf = sec.check_secure(
+                    self.conf["ssh"],
+                    self.conf,
+                    strict=self.conf["strict"],
+                )
+                if ret_check_secure:
+                    self.log.error(f'*** forbidden shell escape: "{self.conf["ssh"]}"')
+                    sys.exit(1)
+
+                self.log.error(f'Shell escape: "{self.conf["ssh"]}"')
+                retcode = utils.cmd_parse_execute(
+                    self.conf["ssh"], shell_context=self
+                )
+                self.log.error("Exited")
+                sys.exit(retcode)
             return retcode
 
     def ssh_warn(self, message, command="", key=""):
@@ -458,6 +394,9 @@ class ShellCmd(cmd.Cmd, object):
             # complete with directories
             elif command == "cd":
                 compfunc = completion.complete_change_dir
+            # complete local relative commands from allowed entries like ./foo
+            elif command.startswith("./"):
+                compfunc = completion.completenames
             # complete with files and directories
             elif (
                 len(line.split(" ")) > 1 and line.split(" ")[0] in self.conf["allowed"]
@@ -471,7 +410,11 @@ class ShellCmd(cmd.Cmd, object):
                     try:
                         compfunc = getattr(self, "complete_" + cmd)
                     except AttributeError:
-                        compfunc = completion.completedefault
+                        compfunc = (
+                            completion.completenames
+                            if cmd.startswith("./")
+                            else completion.completedefault
+                        )
                     # exception called when using './' completion
                     except IndexError:
                         compfunc = completion.completenames

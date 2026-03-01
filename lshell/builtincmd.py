@@ -14,6 +14,21 @@ from lshell import utils
 # Store background jobs
 BACKGROUND_JOBS = []
 
+builtins_list = [
+    "cd",
+    "clear",
+    "exit",
+    "export",
+    "history",
+    "lpath",
+    "lsudo",
+    "help",
+    "fg",
+    "bg",
+    "jobs",
+    "source",
+]
+
 
 def cmd_lpath(conf):
     """lists allowed and forbidden path"""
@@ -149,22 +164,19 @@ def cmd_cd(directory, conf):
 
 def check_background_jobs():
     """Check the status of background jobs and print a completion message if done."""
-    global BACKGROUND_JOBS
-    updated_jobs = []
+    active_jobs = []
     for idx, job in enumerate(BACKGROUND_JOBS, start=1):
         if job.poll() is None:
-            # Process is still running
-            updated_jobs.append((idx, job.args, job.pid))
-        else:
-            # Process has finished
-            status = "Done" if job.returncode == 0 else "Failed"
-            args = " ".join(job.args)
-            # only print if the job has not been interrupted by the user
-            if job.returncode != -2:
-                print(f"[{idx}]+  {status}                    {args}")
+            active_jobs.append(job)
+            continue
 
-            # Remove the job from the list of background jobs
-            BACKGROUND_JOBS.pop(idx - 1)
+        status = "Done" if job.returncode == 0 else "Failed"
+        args = _job_command(job)
+        # only print if the job has not been interrupted by the user
+        if job.returncode != -2:
+            print(f"[{idx}]+  {status}                    {args}")
+
+    BACKGROUND_JOBS[:] = active_jobs
 
 
 def get_job_status(job):
@@ -178,18 +190,26 @@ def get_job_status(job):
     return status
 
 
+def _job_command(job):
+    """Return the original command line for a tracked job."""
+    return getattr(job, "lshell_cmd", " ".join(job.args))
+
+
 def jobs():
     """Return a list of background jobs."""
-    global BACKGROUND_JOBS
     joblist = []
-    for idx, job in enumerate(BACKGROUND_JOBS, start=1):
+    active_jobs = []
+    for job in BACKGROUND_JOBS:
+        if job.poll() is not None:
+            continue
+
+        active_jobs.append(job)
+        idx = len(active_jobs)
         status = get_job_status(job)
-        if status in ["Stopped", "Killed"]:
-            if job.poll() is not None:
-                BACKGROUND_JOBS.pop(idx - 1)
-                continue
-        cmd = " ".join(job.args)
+        cmd = _job_command(job)
         joblist.append([idx, status, cmd])
+
+    BACKGROUND_JOBS[:] = active_jobs
     return joblist
 
 
@@ -218,8 +238,6 @@ def cmd_jobs():
 
 def cmd_bg_fg(job_type, job_id):
     """Resume a backgrounded job."""
-
-    global BACKGROUND_JOBS
     if job_type == "bg":
         print("lshell: bg not supported")
         return 1
@@ -243,8 +261,30 @@ def cmd_bg_fg(job_type, job_id):
         job = BACKGROUND_JOBS[job_id - 1]
         if job.poll() is None:
             if job_type == "fg":
+                class CtrlZForeground(Exception):
+                    """Raised when the foreground job is suspended with Ctrl+Z."""
+
+                    pass
+
+                def handle_sigtstp(signum, frame):
+                    """Suspend the foreground job and keep/update its jobs list entry."""
+                    if job.poll() is None:
+                        os.killpg(os.getpgid(job.pid), signal.SIGSTOP)
+                        if job in BACKGROUND_JOBS:
+                            current_job_id = BACKGROUND_JOBS.index(job) + 1
+                        else:
+                            BACKGROUND_JOBS.append(job)
+                            current_job_id = len(BACKGROUND_JOBS)
+                        sys.stdout.write(
+                            f"\n[{current_job_id}]+  Stopped        {_job_command(job)}\n"
+                        )
+                        sys.stdout.flush()
+                    raise CtrlZForeground()
+
+                previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
                 try:
-                    print(" ".join(job.args))
+                    signal.signal(signal.SIGTSTP, handle_sigtstp)
+                    print(_job_command(job))
                     # Bring it to the foreground and wait
                     os.killpg(os.getpgid(job.pid), signal.SIGCONT)
                     job.wait()
@@ -252,10 +292,14 @@ def cmd_bg_fg(job_type, job_id):
                     if job.poll() is not None:
                         BACKGROUND_JOBS.pop(job_id - 1)
                     return 0
+                except CtrlZForeground:
+                    return 0
                 except KeyboardInterrupt:
                     os.killpg(os.getpgid(job.pid), signal.SIGINT)
                     BACKGROUND_JOBS.pop(job_id - 1)
                     return 130
+                finally:
+                    signal.signal(signal.SIGTSTP, previous_sigtstp_handler)
             # bg not supported at the moment
             # elif job_type == "bg":
             #     print(f"lshell: bg not supported")

@@ -70,7 +70,7 @@ class TestFunctions(unittest.TestCase):
     def test_07_builtin_cd_tilda(self):
         """F07 | built-in cd - tilda bug"""
         expected = (
-            '*** forbidden path -> "/etc/passwd"\r\n*** You have'
+            '*** forbidden path: "/etc/passwd"\r\n*** You have'
             " 1 warning(s) left, before getting kicked out.\r\nThis "
             "incident has been reported.\r\n"
         )
@@ -82,7 +82,7 @@ class TestFunctions(unittest.TestCase):
     def test_08_builtin_cd_quotes(self):
         """F08 | built-in - quotes in cd "/" """
         expected = (
-            '*** forbidden path -> "/"\r\n*** You have'
+            '*** forbidden path: "/"\r\n*** You have'
             " 1 warning(s) left, before getting kicked out.\r\nThis "
             "incident has been reported.\r\n"
         )
@@ -99,9 +99,7 @@ class TestFunctions(unittest.TestCase):
         expected = "2"
         child.sendline("cd nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         child.expect(PROMPT)
-        child.sendline("echo $?")
-        child.expect(PROMPT)
-        result = child.before.decode("utf8").split("\n")[1].strip()
+        result = child.before.decode("utf8").split("\n")[2].strip()
         self.assertEqual(expected, result)
         self.do_exit(child)
 

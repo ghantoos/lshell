@@ -13,6 +13,30 @@ import glob
 from lshell import utils
 
 
+def _is_assignment_word(word):
+    return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", word))
+
+
+def _split_command_for_auth(command_line):
+    """Return (command, args, full_command) for auth checks, skipping VAR=VALUE prefixes."""
+    try:
+        tokens = shlex.split(command_line, posix=True)
+    except ValueError:
+        return "", [], ""
+
+    index = 0
+    while index < len(tokens) and _is_assignment_word(tokens[index]):
+        index += 1
+
+    if index >= len(tokens):
+        return "", [], ""
+
+    command = tokens[index]
+    args = tokens[index + 1 :]
+    full_command = " ".join([command] + args).strip()
+    return command, args, full_command
+
+
 def warn_count(messagetype, command, conf, strict=None, ssh=None):
     """Update the warning_counter, log and display a warning to the user"""
 
@@ -21,24 +45,33 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
     if ssh:
         return 1, conf
 
-    if strict:
-        conf["warning_counter"] -= 1
-        if conf["warning_counter"] < 0:
-            log.critical(f'*** forbidden {messagetype} -> "{command}"')
-            log.critical("*** Kicked out")
-            sys.exit(1)
-        else:
-            log.critical(f'*** forbidden {messagetype} -> "{command}"')
-            sys.stderr.write(
-                f"*** You have {conf['warning_counter']} warning(s) left,"
-                " before getting kicked out.\n"
-            )
-            log.error(f"*** User warned, counter: {conf['warning_counter']}")
-            sys.stderr.write("This incident has been reported.\n")
-    elif not conf["quiet"]:
-        log.critical(f"*** forbidden {messagetype}: {command}")
+    conf["warning_counter"] -= 1
+    if conf["warning_counter"] < 0:
+        log.critical(f'*** forbidden {messagetype}: "{command}"')
+        log.critical("*** Kicked out")
+        sys.exit(1)
+
+    log.critical(f'*** forbidden {messagetype}: "{command}"')
+    sys.stderr.write(
+        f"*** You have {conf['warning_counter']} warning(s) left,"
+        " before getting kicked out.\n"
+    )
+    log.error(f"*** User warned, counter: {conf['warning_counter']}")
+    sys.stderr.write("This incident has been reported.\n")
 
     # Return 1 to indicate a warning was triggered.
+    return 1, conf
+
+
+def warn_unknown_syntax(command, conf, strict=None, ssh=None):
+    """Warn on unknown syntax, honoring strict-mode warning counting."""
+    if strict:
+        return warn_count("unknown syntax", command, conf, strict=strict, ssh=ssh)
+
+    log = conf["logpath"]
+    log.warning(f'INFO: unknown syntax -> "{command}"')
+    # Keep legacy UX: unknown syntax is always printed to stderr.
+    sys.stderr.write(f"*** unknown syntax: {command}\n")
     return 1, conf
 
 
@@ -106,6 +139,24 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
             os.chdir(conf["home_path"])
             conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
             return 1, conf
+    return 0, conf
+
+
+def check_forbidden_chars(line, conf, strict=None, ssh=None):
+    """Check if the line contains any forbidden
+    characters. If so, it calls warn_count.
+    """
+    for item in conf["forbidden"]:
+        # keep compatibility with historical behavior from check_secure:
+        # allow "&&" and "||" even when single "&" or "|" are forbidden.
+        if item in ["&", "|"]:
+            escaped_item = re.escape(item)
+            if re.search(rf"(?<!{escaped_item}){escaped_item}(?!{escaped_item})", line):
+                ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
+                return ret, conf
+        elif item in line:
+            ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
+            return ret, conf
     return 0, conf
 
 
@@ -199,18 +250,19 @@ def check_secure(line, conf, strict=None, ssh=None):
         # remove trailing parenthesis
         separate_line = re.sub(r"\)$", "", separate_line)
         separate_line = " ".join(separate_line.split())
-        splitcmd = separate_line.strip().split(" ")
-
-        # Extract the command and its arguments
-        command = splitcmd[0]
-        command_args_list = splitcmd[1:]
-        command_args_string = " ".join(command_args_list)
-        full_command = f"{command} {command_args_string}".strip()
+        command, command_args_list, full_command = _split_command_for_auth(
+            separate_line
+        )
 
         # in case of a sudo command, check in sudo_commands list if allowed
         if command == "sudo" and command_args_list:
             # allow the -u (user) flag
             if command_args_list[0] == "-u" and command_args_list:
+                if len(command_args_list) < 3:
+                    ret, conf = warn_count(
+                        "sudo command", oline, conf, strict=strict, ssh=ssh
+                    )
+                    return ret, conf
                 sudocmd = command_args_list[2]
             else:
                 sudocmd = command_args_list[0]
@@ -235,7 +287,10 @@ def check_secure(line, conf, strict=None, ssh=None):
             and command not in conf["allowed"]
             and command
         ):
-            ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
+            if strict:
+                ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
+            else:
+                ret, conf = warn_unknown_syntax(full_command, conf, strict=strict, ssh=ssh)
             return ret, conf
 
         # Check if the command contains any forbidden extensions

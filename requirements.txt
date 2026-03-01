@@ -2,3 +2,4 @@ configparser
 logging
 readline
 pexpect
+pyparsing

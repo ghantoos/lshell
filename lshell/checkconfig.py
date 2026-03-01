@@ -11,16 +11,37 @@ import logging
 import grp
 import time
 import glob
+import subprocess
 from logging.handlers import SysLogHandler
 
 # import lshell specifics
 from lshell import utils
 from lshell import variables
-from lshell.builtincmd import cmd_source
+from lshell import builtincmd
 
 
 class CheckConfig:
     """Check the configuration file."""
+
+    def noexec_library_usable(self, path_noexec):
+        """Return True when a noexec library can be safely preloaded."""
+        probe_env = dict(os.environ)
+        probe_env["LD_PRELOAD"] = path_noexec
+        probe_env.pop("BASH_ENV", None)
+        probe_env.pop("ENV", None)
+
+        try:
+            probe = subprocess.run(
+                ["bash", "-c", "/usr/bin/true"],
+                env=probe_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            return False
+
+        return probe.returncode == 0
 
     def __init__(self, args, refresh=None, stdin=None, stdout=None, stderr=None):
         """Force the calling of the methods below"""
@@ -123,7 +144,7 @@ class CheckConfig:
         # Check paths to files that contain env vars
         if "env_vars_files" in self.conf:
             for envfile in self.conf["env_vars_files"]:
-                cmd_source(envfile)
+                builtincmd.cmd_source(envfile)
 
     def check_config_file(self, file):
         """This method checks the existence of the given configuration
@@ -299,6 +320,12 @@ class CheckConfig:
         """this function is used to interpret the configuration +/-,
         'all' etc.
         """
+        def is_all_literal(raw_value):
+            """Return True when the config value denotes the literal 'all'."""
+            if not isinstance(raw_value, str):
+                return False
+            return raw_value.strip() in {"all", "'all'", '"all"'}
+
         # convert commandline options from dict to list of tuples, in order to
         # merge them with the output of the config parser
         conf = []
@@ -328,7 +355,12 @@ class CheckConfig:
                             self.conf_raw.update(
                                 self.minusplus(self.conf_raw, key, stuff)
                             )
-                        elif stuff == "'all'":
+                        elif is_all_literal(stuff):
+                            if key == "allowed_shell_escape":
+                                self.log.critical(
+                                    "CONF: 'allowed_shell_escape' cannot be set to 'all'"
+                                )
+                                sys.exit(1)
                             self.conf_raw.update({key: self.expand_all()})
                         elif stuff and key == "path":
                             liste = ["", ""]
@@ -343,6 +375,11 @@ class CheckConfig:
                 # case allowed is set to 'all'
                 elif key == "allowed" and split[0] == "'all'":
                     self.conf_raw.update({key: self.expand_all()})
+                elif key == "allowed_shell_escape" and is_all_literal(split[0]):
+                    self.log.critical(
+                        "CONF: 'allowed_shell_escape' cannot be set to 'all'"
+                    )
+                    sys.exit(1)
                 elif key == "path":
                     liste = ["", ""]
                     for path in self.myeval(value, "path"):
@@ -618,7 +655,7 @@ class CheckConfig:
                 sys.exit(1)
 
         # append default commands to allowed list
-        self.conf["allowed"] += list(set(variables.builtins_list) - set(["export"]))
+        self.conf["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf["sudo_commands"]:
@@ -638,7 +675,7 @@ class CheckConfig:
         # case sudo_commands set to 'all', expand to all 'allowed' commands
         if "sudo_commands" in self.conf_raw and self.conf_raw["sudo_commands"] == "all":
             # exclude native commands and sudo(8)
-            exclude = variables.builtins_list + ["sudo"]
+            exclude = builtincmd.builtins_list + ["sudo"]
             self.conf["sudo_commands"] = [
                 x for x in self.conf["allowed"] if x not in exclude
             ]
@@ -652,6 +689,12 @@ class CheckConfig:
             self.conf["allowed"].extend(
                 ["scp", "env", "pwd", "groups", "unset", "unalias"]
             )
+            # WinSCP mode expects scp(1) transfers to be fully enabled.
+            self.conf["scp_upload"] = 1
+            self.conf["scp_download"] = 1
+            # scpforce applies only to forced SSH scp uploads and is ignored
+            # by WinSCP mode (which runs scp within session).
+            self.conf.pop("scpforce", None)
             # remove duplicate commands, in case added in the above extension
             self.conf["allowed"] = list(set(self.conf["allowed"]))
             # allow the use of semicolon
@@ -698,6 +741,14 @@ class CheckConfig:
                     break
 
         # in case the library was found, set the LD_PRELOAD aliases
+        if self.conf.get("path_noexec") and not self.noexec_library_usable(
+            self.conf["path_noexec"]
+        ):
+            self.log.error(
+                f"Error: disabling incompatible noexec library: {self.conf['path_noexec']}"
+            )
+            self.conf.pop("path_noexec", None)
+
         if not self.conf.get("path_noexec"):
             # if sudo_noexec.so file is not found,  write error in log file,
             # but don't exit tp  prevent strict dependency on sudo noexec lib

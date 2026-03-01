@@ -1,18 +1,17 @@
 """Functional tests for lshell command execution"""
 
 import os
+import random
 import unittest
 from getpass import getuser
 import pexpect
-
-# pylint: disable=C0411
-from test import test_utils
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
+PROMPT_ANY_DIR = f"{USER}:.+\\$"
 
 
 class TestFunctions(unittest.TestCase):
@@ -52,13 +51,10 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
-        else:
-            expected_1 = (
-                "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
-                "No such file or directory"
-            )
+        expected_1 = (
+            "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
+            "No such file or directory"
+        )
         expected_2 = "blabla"
         expected_3 = "0"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo blabla; echo $?")
@@ -77,15 +73,11 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
-            expected_2 = "1"
-        else:
-            expected_1 = (
-                "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
-                "No such file or directory"
-            )
-            expected_2 = "2"
+        expected_1 = (
+            "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
+            "No such file or directory"
+        )
+        expected_2 = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n")
@@ -100,10 +92,7 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            expected = "1"
-        else:
-            expected = "2"
+        expected = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55")
         child.expect(PROMPT)
         child.sendline("echo $?")
@@ -114,7 +103,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_24_cd_and_command(self):
         """F24 | cd && command should not be interpreted by internal function"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} --forbidden \"-['&']\"")
         child.expect(PROMPT)
 
         expected = "OK"
@@ -139,7 +128,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_34_ls_and_echo_ok(self):
         """Test: ls && echo OK"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['&']\"")
         child.expect(PROMPT)
 
         child.sendline("ls && echo OK")
@@ -152,7 +141,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_35_ls_non_existing_directory_or_echo_ok(self):
         """Test: ls non_existing_directory || echo OK"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['|']\"")
         child.expect(PROMPT)
 
         child.sendline("ls non_existing_directory || echo OK")
@@ -183,7 +172,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden command: echo"
+        expected = "*** unknown syntax: echo qwe"
 
         child.sendline("echo qwe")
         child.expect(PROMPT)
@@ -198,7 +187,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden command: echo"
+        expected = "*** unknown syntax: echo asds"
 
         child.sendline("echo asds")
         child.expect(PROMPT)
@@ -213,7 +202,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden command: echo"
+        expected = "*** unknown syntax: echo"
 
         child.sendline("echo")
         child.expect(PROMPT)
@@ -236,3 +225,194 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n")[1].strip()
         self.assertEqual(expected, result)
         self.do_exit(child)
+
+    def test_45_pipeline_is_shell_compatible(self):
+        """F45 | Pipeline should pass stdout between commands."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--forbidden \"-['|']\" --allowed \"+['printf', 'wc']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("printf foo | wc -c")
+        child.expect(PROMPT)
+        result = child.before.decode("utf8").split("\n", 1)[1].strip()
+        self.assertEqual("3", result)
+        self.do_exit(child)
+
+    def test_46_redirection_is_shell_compatible(self):
+        """F46 | Redirections should be handled by shell semantics."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --path \"['/tmp']\" "
+            "--forbidden \"-['>','<','&']\" --allowed \"+['cat']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("ls does_not_exist >/tmp/lshell_redir_test 2>&1")
+        child.expect(PROMPT)
+        child.sendline("cat /tmp/lshell_redir_test")
+        child.expect(PROMPT)
+        result = child.before.decode("utf8").split("\n", 1)[1]
+        self.assertIn("does_not_exist", result)
+        self.do_exit(child)
+
+    def test_69_operator_matrix_fuzz(self):
+        """F69 | Operator and expansion matrix should remain stable."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 "
+            "--path \"['/tmp']\" "
+            '--forbidden "[]" '
+            "--allowed \"+['printf','wc','cat','pwd','true','false']\""
+        )
+        temp_file = f"/tmp/lshell_matrix_{os.getpid()}.txt"
+
+        def expect_clean_prompt():
+            child.expect(PROMPT_ANY_DIR)
+            output = child.before.decode("utf8", errors="replace")
+            self.assertNotIn("Traceback (most recent call last)", output)
+            self.assertNotIn("Exception:", output)
+            return output
+
+        try:
+            child.expect(PROMPT)
+            matrix = [
+                ("echo MATRIX_START", ["MATRIX_START"]),
+                ("echo 'a b c' | wc -w", ["3"]),
+                ("printf matrix | wc -c", ["6"]),
+                (f"echo one > {temp_file}", []),
+                (f"echo two >> {temp_file}", []),
+                (f"cat {temp_file}", ["one", "two"]),
+                ("true && echo branch_true", ["branch_true"]),
+                ("false || echo branch_false", ["branch_false"]),
+                ("cd /tmp && pwd", ["/tmp"]),
+                ("echo $(printf nested_ok)", ["nested_ok"]),
+                ('NAME=ALPHA echo "$NAME"', ["ALPHA"]),
+                ("echo ${HOME}", ["/"]),
+            ]
+
+            for command, expected_bits in matrix:
+                child.sendline(command)
+                output = expect_clean_prompt()
+                for expected in expected_bits:
+                    self.assertIn(expected, output)
+
+            self.do_exit(child)
+        finally:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            if child.isalive():
+                child.close()
+
+    def test_70_multiline_and_interrupt_storm(self):
+        """F70 | Repeated multiline and Ctrl-C should recover cleanly."""
+        child = pexpect.spawn(f'{LSHELL} --config {CONFIG} --strict 1 --forbidden "[]"')
+
+        def expect_clean_prompt():
+            child.expect(PROMPT)
+            output = child.before.decode("utf8", errors="replace")
+            self.assertNotIn("Traceback (most recent call last)", output)
+            self.assertNotIn("Exception:", output)
+            return output
+
+        try:
+            child.expect(PROMPT)
+            for idx in range(10):
+                child.sendline(f"echo iteration_{idx} \\")
+                child.expect(">")
+                if idx % 2 == 0:
+                    child.sendcontrol("c")
+                    expect_clean_prompt()
+                else:
+                    child.sendline(f'"tail_{idx}"')
+                    output = expect_clean_prompt()
+                    self.assertIn(f"iteration_{idx} tail_{idx}", output)
+
+            child.sendline('echo "unterminated')
+            child.expect(">")
+            child.sendcontrol("c")
+            expect_clean_prompt()
+
+            child.sendline("echo AFTER_STORM")
+            output = expect_clean_prompt()
+            self.assertIn("AFTER_STORM", output)
+            self.do_exit(child)
+        finally:
+            if child.isalive():
+                child.close()
+
+    def test_71_history_randomized_session_consistency(self):
+        """F71 | History should retain randomized interactive command stream."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 "
+            '--forbidden "[]" '
+            "--allowed \"+['printf','wc','pwd','true','false']\""
+        )
+        rng = random.Random(7101)
+        executed_commands = []
+
+        def expect_clean_prompt():
+            child.expect(PROMPT)
+            output = child.before.decode("utf8", errors="replace")
+            self.assertNotIn("Traceback (most recent call last)", output)
+            self.assertNotIn("Exception:", output)
+            return output
+
+        try:
+            child.expect(PROMPT)
+            command_pool = [
+                "pwd",
+                "true && echo HIST_TRUE",
+                "false || echo HIST_FALSE",
+                "echo plain_text",
+                "printf abc | wc -c",
+            ]
+            for _ in range(25):
+                command = rng.choice(command_pool)
+                executed_commands.append(command)
+                child.sendline(command)
+                expect_clean_prompt()
+
+            child.sendline("history")
+            history_out = expect_clean_prompt()
+            for command in executed_commands[-8:]:
+                self.assertIn(command, history_out)
+
+            self.do_exit(child)
+        finally:
+            if child.isalive():
+                child.close()
+
+    def test_72_background_job_lifecycle(self):
+        """F72 | Background jobs should appear and then complete cleanly."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 "
+            '--forbidden "[]" '
+            "--allowed \"+['sleep']\""
+        )
+
+        def expect_clean_prompt():
+            child.expect(PROMPT)
+            output = child.before.decode("utf8", errors="replace")
+            self.assertNotIn("Traceback (most recent call last)", output)
+            self.assertNotIn("Exception:", output)
+            return output
+
+        try:
+            child.expect(PROMPT)
+            child.sendline("sleep 1 &")
+            expect_clean_prompt()
+
+            child.sendline("jobs")
+            jobs_before = expect_clean_prompt()
+            self.assertIn("sleep 1", jobs_before)
+
+            child.sendline("sleep 2")
+            expect_clean_prompt()
+
+            child.sendline("jobs")
+            jobs_after = expect_clean_prompt()
+            self.assertNotIn("sleep 1", jobs_after)
+            self.do_exit(child)
+        finally:
+            if child.isalive():
+                child.close()

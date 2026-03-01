@@ -115,7 +115,11 @@ class TestExplain(unittest.TestCase):
             "policy": {"username": "bleh"},
             "trace": [
                 {"key": "forbidden", "section": "default", "source": "/tmp/a.conf"},
-                {"key": "warning_counter", "section": "default", "source": "/tmp/a.conf"},
+                {
+                    "key": "warning_counter",
+                    "section": "default",
+                    "source": "/tmp/a.conf",
+                },
                 {"key": "umask", "section": "bleh", "source": "/tmp/b.conf"},
             ],
         }
@@ -171,7 +175,9 @@ class TestExplain(unittest.TestCase):
 
         grouped = explain._build_grouped_rows(result)
         self.assertEqual(list(grouped.keys()), ["default", "user:bleh"])
-        self.assertEqual([r["key"] for r in grouped["default"]], ["allowed", "forbidden"])
+        self.assertEqual(
+            [r["key"] for r in grouped["default"]], ["allowed", "forbidden"]
+        )
         self.assertEqual([r["key"] for r in grouped["user:bleh"]], ["umask"])
 
     @patch("lshell.explain.grp.getgrall")
@@ -239,6 +245,7 @@ class TestExplain(unittest.TestCase):
 
     def test_builtin_policy_show_dispatches_from_utils(self):
         """EX10 | builtin dispatcher calls shell_context.do_policy_show."""
+
         class DummyContext:
             """Minimal shell context stub for builtin dispatcher tests."""
 

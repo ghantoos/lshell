@@ -176,13 +176,13 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
         source = key_sources.get((section, key))
         split = [""]
         if isinstance(value, str):
-            split = re.split(r"([\+\-\s]+\[[^\]]+\])", value.replace(" ", ""))
+            split = re.split(r"((?:\+|-)\s*\[[^\]]+\])", value)
 
         previous = conf_raw.get(key)
 
         if len(split) > 1 and key in LIST_KEYS:
             for token in split:
-                if not token:
+                if not token.strip():
                     continue
                 if token.startswith("-") or token.startswith("+"):
                     conf_raw.update(_minusplus(conf_raw, key, token))
@@ -249,7 +249,7 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
                         }
                     )
                     previous = conf_raw.get(key)
-        elif key == "allowed" and split[0] == "'all'":
+        elif key == "allowed" and split[0].strip() == "'all'":
             conf_raw.update({key: _expand_all()})
             trace.append(
                 {

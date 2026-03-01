@@ -74,7 +74,7 @@ class TestFunctions(unittest.TestCase):
         # - either Ctrl+V Ctrl+J inserts a literal newline and `bash` is echoed,
         # - or control-char filtering rejects it.
         self.assertTrue(
-            "bash\r" in result or "*** forbidden control char:" in result,
+            "bash\r" in result or "lshell: forbidden control char:" in result,
             msg=f"unexpected output for Ctrl+V Ctrl+J flow: {result!r}",
         )
         self.do_exit(child)
@@ -86,7 +86,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = '*** forbidden control char: "echo\x0b() bash"\r'
+        expected = 'lshell: forbidden control char: "echo\x0b() bash"\r'
         child.send("echo")
         child.sendcontrol("v")
         child.sendcontrol("k")

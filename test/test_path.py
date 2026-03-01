@@ -31,9 +31,8 @@ class TestFunctions(unittest.TestCase):
     def test_05_external_echo_forbidden_syntax(self):
         """F05 | echo forbidden syntax $(bleh)"""
         expected = (
-            '*** forbidden character: "$("\r\n*** You '
-            "have 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
+            'lshell: forbidden character: "$("\r\n'
+            "lshell: warning: 1 violation remaining before session termination\r\n"
         )
         self.child.sendline("echo $(uptime)")
         self.child.expect(PROMPT)
@@ -43,9 +42,8 @@ class TestFunctions(unittest.TestCase):
     def test_09_external_forbidden_path(self):
         """F09 | external command forbidden path - ls /root"""
         expected = (
-            '*** forbidden path: "/root/"\r\n*** You have'
-            " 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
+            'lshell: forbidden path: "/root/"\r\n'
+            "lshell: warning: 1 violation remaining before session termination\r\n"
         )
         self.child.sendline("ls ~root")
         self.child.expect(PROMPT)
@@ -55,9 +53,8 @@ class TestFunctions(unittest.TestCase):
     def test_10_builtin_cd_forbidden_path(self):
         """F10 | built-in command forbidden path - cd ~root"""
         expected = (
-            '*** forbidden path: "/root/"\r\n*** You have'
-            " 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
+            'lshell: forbidden path: "/root/"\r\n'
+            "lshell: warning: 1 violation remaining before session termination\r\n"
         )
         self.child.sendline("cd ~root")
         self.child.expect(PROMPT)
@@ -67,9 +64,8 @@ class TestFunctions(unittest.TestCase):
     def test_11_etc_passwd_1(self):
         """F11 | /etc/passwd: empty variable 'ls "$a"/etc/passwd'"""
         expected = (
-            '*** forbidden path: "/etc/passwd"\r\n*** You have'
-            " 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
+            'lshell: forbidden path: "/etc/passwd"\r\n'
+            "lshell: warning: 1 violation remaining before session termination\r\n"
         )
         self.child.sendline('ls "$a"/etc/passwd')
         self.child.expect(PROMPT)
@@ -97,9 +93,8 @@ class TestFunctions(unittest.TestCase):
     def test_13b_etc_passwd_4(self):
         """F13(b) | /etc/passwd: empty variable 'ls -l ../../etc/passwd'"""
         expected = (
-            '*** forbidden path: "/etc/passwd"\r\n*** You have'
-            " 1 warning(s) left, before getting kicked out.\r\nThis "
-            "incident has been reported.\r\n"
+            'lshell: forbidden path: "/etc/passwd"\r\n'
+            "lshell: warning: 1 violation remaining before session termination\r\n"
         )
         self.child.sendline("ls -l ../../etc/passwd")
         self.child.expect(PROMPT)
@@ -115,7 +110,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = '*** forbidden path: "/var/"'
+        expected = 'lshell: forbidden path: "/var/"'
         child.sendline("cd /")
         child.expect(f"{USER}:/\\$")
         child.sendline("cd var")

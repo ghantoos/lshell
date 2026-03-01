@@ -41,23 +41,28 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
     """Update the warning_counter, log and display a warning to the user"""
 
     log = conf["logpath"]
+    if messagetype == "unknown syntax":
+        primary_message = f"lshell: unknown syntax: {command}"
+    else:
+        primary_message = f'lshell: forbidden {messagetype}: "{command}"'
 
     if ssh:
         return 1, conf
 
     conf["warning_counter"] -= 1
     if conf["warning_counter"] < 0:
-        log.critical(f'*** forbidden {messagetype}: "{command}"')
-        log.critical("*** Kicked out")
+        log.critical(primary_message)
+        log.critical("lshell: session terminated: warning limit exceeded")
         sys.exit(1)
 
-    log.critical(f'*** forbidden {messagetype}: "{command}"')
+    log.critical(primary_message)
+    remaining = conf["warning_counter"]
+    violation_label = "violation" if remaining == 1 else "violations"
     sys.stderr.write(
-        f"*** You have {conf['warning_counter']} warning(s) left,"
-        " before getting kicked out.\n"
+        f"lshell: warning: {remaining} {violation_label}"
+        " remaining before session termination\n"
     )
-    log.error(f"*** User warned, counter: {conf['warning_counter']}")
-    sys.stderr.write("This incident has been reported.\n")
+    log.error(f"lshell: user warned, counter: {remaining}")
 
     # Return 1 to indicate a warning was triggered.
     return 1, conf
@@ -71,7 +76,7 @@ def warn_unknown_syntax(command, conf, strict=None, ssh=None):
     log = conf["logpath"]
     log.warning(f'INFO: unknown syntax -> "{command}"')
     # Keep legacy UX: unknown syntax is always printed to stderr.
-    sys.stderr.write(f"*** unknown syntax: {command}\n")
+    sys.stderr.write(f"lshell: unknown syntax: {command}\n")
     return 1, conf
 
 

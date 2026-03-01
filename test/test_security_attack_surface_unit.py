@@ -433,7 +433,7 @@ class TestAttackSurface(unittest.TestCase):
             ret, conf = sec.check_secure("no_such_allowed_command", conf, strict=0)
         self.assertEqual(ret, 1)
         self.assertEqual(conf["warning_counter"], starting_counter)
-        self.assertIn("*** unknown syntax: no_such_allowed_command", stderr.getvalue())
+        self.assertIn("lshell: unknown syntax: no_such_allowed_command", stderr.getvalue())
 
     def test_check_secure_unknown_command_decrements_counter_when_strict(self):
         """Count disallowed commands as forbidden actions when strict mode is enabled."""
@@ -447,7 +447,7 @@ class TestAttackSurface(unittest.TestCase):
             ret, conf = sec.check_secure("no_such_allowed_command", conf, strict=1)
         self.assertEqual(ret, 1)
         self.assertEqual(conf["warning_counter"], starting_counter - 1)
-        self.assertIn("warning(s) left", stderr.getvalue())
+        self.assertIn("lshell: warning:", stderr.getvalue())
 
     def test_check_secure_assignment_prefix_with_sudo_still_checks_subcommand(self):
         """Validate sudo subcommands after assignment prefixes."""
@@ -498,7 +498,7 @@ class TestAttackSurface(unittest.TestCase):
             ret = utils.cmd_parse_execute('echo "oops', shell_context=shell)
         self.assertEqual(ret, 1)
         self.assertEqual(conf["warning_counter"], starting_counter)
-        self.assertIn("*** unknown syntax:", stderr.getvalue())
+        self.assertIn("lshell: unknown syntax:", stderr.getvalue())
 
     def test_cmd_parse_execute_unbalanced_syntax_decrements_counter_in_strict_mode(self):
         """In strict mode, unknown syntax should consume warning counter."""
@@ -510,7 +510,7 @@ class TestAttackSurface(unittest.TestCase):
             ret = utils.cmd_parse_execute('echo "oops', shell_context=shell)
         self.assertEqual(ret, 126)
         self.assertEqual(conf["warning_counter"], starting_counter - 1)
-        self.assertIn("warning(s) left", stderr.getvalue())
+        self.assertIn("lshell: warning:", stderr.getvalue())
 
     def test_cmd_parse_execute_malformed_operator_decrements_counter_in_strict_mode(self):
         """In strict mode, malformed operators should consume warning counter."""
@@ -522,7 +522,7 @@ class TestAttackSurface(unittest.TestCase):
             ret = utils.cmd_parse_execute("echo ok ||| echo pwn", shell_context=shell)
         self.assertEqual(ret, 126)
         self.assertEqual(conf["warning_counter"], starting_counter - 1)
-        self.assertIn("warning(s) left", stderr.getvalue())
+        self.assertIn("lshell: warning:", stderr.getvalue())
 
     @patch("lshell.utils.sec.check_forbidden_chars")
     @patch("lshell.utils.sec.check_secure")

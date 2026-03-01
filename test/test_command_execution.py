@@ -172,7 +172,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** unknown syntax: echo qwe"
+        expected = "lshell: unknown syntax: echo qwe"
 
         child.sendline("echo qwe")
         child.expect(PROMPT)
@@ -187,7 +187,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** unknown syntax: echo asds"
+        expected = "lshell: unknown syntax: echo asds"
 
         child.sendline("echo asds")
         child.expect(PROMPT)
@@ -202,7 +202,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** unknown syntax: echo"
+        expected = "lshell: unknown syntax: echo"
 
         child.sendline("echo")
         child.expect(PROMPT)

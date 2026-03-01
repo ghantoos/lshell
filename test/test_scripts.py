@@ -67,16 +67,14 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" "$@"
 
         # Expected output
         expected_output = """test\r
-*** unknown syntax: dig google.com\r
-*** forbidden path: "/tmp/"\r
-*** You have 1 warning(s) left, before getting kicked out.\r
-This incident has been reported.\r
+lshell: unknown syntax: dig google.com\r
+lshell: forbidden path: "/tmp/"\r
+lshell: warning: 1 violation remaining before session termination\r
 FREEDOM\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-*** forbidden path: "/"\r
-*** You have 0 warning(s) left, before getting kicked out.\r
-This incident has been reported."""
+lshell: forbidden path: "/"\r
+lshell: warning: 0 violations remaining before session termination"""
 
         # Wait for the script to finish executing
         child.expect(pexpect.EOF)
@@ -125,17 +123,15 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" --strict 1 "$@"
 
         # Expected output
         expected_output = """test\r
-*** forbidden command: "dig"\r
-*** You have 1 warning(s) left, before getting kicked out.\r
-This incident has been reported.\r
-*** forbidden path: "/tmp/"\r
-*** You have 0 warning(s) left, before getting kicked out.\r
-This incident has been reported.\r
+lshell: forbidden command: "dig"\r
+lshell: warning: 1 violation remaining before session termination\r
+lshell: forbidden path: "/tmp/"\r
+lshell: warning: 0 violations remaining before session termination\r
 FREEDOM\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-*** forbidden path: "/"\r
-*** Kicked out"""
+lshell: forbidden path: "/"\r
+lshell: session terminated: warning limit exceeded"""
 
         # Wait for the script to finish executing
         child.expect(pexpect.EOF)

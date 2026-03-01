@@ -25,7 +25,7 @@ class TestFunctions(unittest.TestCase):
         """F55 | allow all commands minus the list"""
 
         command = "echo 1"
-        expected = "*** unknown syntax: echo 1"
+        expected = "lshell: unknown syntax: echo 1"
 
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} " '--allowed \'"all" - ["echo"]'
@@ -44,7 +44,7 @@ class TestFunctions(unittest.TestCase):
         command1 = "cd /usr/"
         expected1 = f"{USER}:/usr\\$"
         command2 = "cd /usr/local"
-        expected2 = '*** forbidden path: "/usr/local/"'
+        expected2 = 'lshell: forbidden path: "/usr/local/"'
 
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
@@ -64,7 +64,7 @@ class TestFunctions(unittest.TestCase):
         """F57 | overssh minus command list"""
         command = "echo 1"
         expected = (
-            '*** forbidden char/command over SSH: "echo 1"\r\n'
+            'lshell: forbidden char/command over SSH: "echo 1"\r\n'
             "This incident has been reported."
         )
 
@@ -87,7 +87,7 @@ class TestFunctions(unittest.TestCase):
     def test_58_allowed_plus_minus_list(self):
         """F58 | allow plus list minus list"""
         command = "echo 1"
-        expected = "*** unknown syntax: echo 1"
+        expected = "lshell: unknown syntax: echo 1"
 
         child = pexpect.spawn(
             f"{LSHELL} "
@@ -123,7 +123,7 @@ class TestFunctions(unittest.TestCase):
         """F59b | fixed forbidden list"""
 
         command = "echo 1 ; echo 2"
-        expected = '*** forbidden character: ";"'
+        expected = 'lshell: forbidden character: ";"'
 
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} " "--forbidden '[\";\"]'")
         child.expect(PROMPT)

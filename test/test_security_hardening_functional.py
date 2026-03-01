@@ -81,7 +81,7 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0)
-        self.assertIn('*** forbidden character: ">"', result.stdout + result.stderr)
+        self.assertIn('lshell: forbidden character: ">"', result.stdout + result.stderr)
         self.assertIn("AFTER", result.stdout)
         self.assertFalse(os.path.exists(output_path))
 
@@ -93,7 +93,7 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         combined = result.stdout + result.stderr
-        self.assertIn("*** unknown syntax:", combined)
+        self.assertIn("lshell: unknown syntax:", combined)
         self.assertIn("SAFE", combined)
         self.assertNotIn("TWO", result.stdout)
 

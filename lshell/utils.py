@@ -380,7 +380,9 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     elif executable == "export":
         retcode, var = builtincmd.cmd_export(full_command)
         if retcode == 1:
-            shell_context.log.critical(f"** forbidden environment variable '{var}'")
+            shell_context.log.critical(
+                f"lshell: forbidden environment variable: {var}"
+            )
     elif executable == "source":
         retcode = builtincmd.cmd_source(argument)
     elif executable == "fg":
@@ -504,10 +506,10 @@ def cmd_parse_execute(command_line, shell_context=None):
             for var_name, _var_value in assignments:
                 if var_name in variables.FORBIDDEN_ENVIRON:
                     shell_context.log.critical(
-                        f"** forbidden environment variable '{var_name}'"
+                        f"lshell: forbidden environment variable: {var_name}"
                     )
                     sys.stderr.write(
-                        f"*** forbidden environment variable: {var_name}\n"
+                        f"lshell: forbidden environment variable: {var_name}\n"
                     )
                     return 126
 

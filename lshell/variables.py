@@ -3,7 +3,7 @@
 import sys
 import os
 
-__version__ = "1.0.0rc2"
+__version__ = "1.0.0rc3"
 
 # Required config variable list per user
 required_config = ["allowed", "forbidden", "warning_counter"]

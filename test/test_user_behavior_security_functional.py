@@ -49,12 +49,12 @@ class TestUserBehaviorSecurityFunctional(unittest.TestCase):
         child = self._spawn_shell("--strict 1 --warning_counter 2 --quiet 0")
         try:
             first_probe = self._run_command(child, "echo SAFE; echo PWN")
-            self.assertIn('*** forbidden character: ";"', first_probe)
-            self.assertIn("1 warning(s) left", first_probe)
+            self.assertIn('lshell: forbidden character: ";"', first_probe)
+            self.assertIn("lshell: warning: 1 violation", first_probe)
 
             second_probe = self._run_command(child, "id")
-            self.assertIn('*** forbidden command: "id"', second_probe)
-            self.assertIn("0 warning(s) left", second_probe)
+            self.assertIn('lshell: forbidden command: "id"', second_probe)
+            self.assertIn("lshell: warning: 0 violations", second_probe)
 
             child.sendline("id")
             child.expect(pexpect.EOF)
@@ -68,7 +68,7 @@ class TestUserBehaviorSecurityFunctional(unittest.TestCase):
         child = self._spawn_shell("--strict 0 --forbidden \"[]\" --allowed \"+['id']\"")
         try:
             hijack_attempt = self._run_command(child, "PATH=/tmp id")
-            self.assertIn("*** forbidden environment variable: PATH", hijack_attempt)
+            self.assertIn("lshell: forbidden environment variable: PATH", hijack_attempt)
 
             still_usable = self._run_command(child, "echo still_here")
             self.assertIn("still_here", still_usable)
@@ -81,7 +81,7 @@ class TestUserBehaviorSecurityFunctional(unittest.TestCase):
         child = self._spawn_shell("--strict 0 --forbidden \"[]\" --allowed \"+['printf']\"")
         try:
             smuggling_attempt = self._run_command(child, "printf SAFE ||| printf PWNED")
-            self.assertIn("*** unknown syntax:", smuggling_attempt)
+            self.assertIn("lshell: unknown syntax:", smuggling_attempt)
             self.assertFalse(
                 self._contains_standalone_line(smuggling_attempt, "PWNED"),
                 msg="payload output should not execute for malformed operator chains",

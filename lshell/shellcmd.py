@@ -251,10 +251,10 @@ class ShellCmd(cmd.Cmd, object):
     def ssh_warn(self, message, command="", key=""):
         """log and warn if forbidden action over SSH"""
         if key == "scp":
-            self.log.critical(f"*** forbidden {message}")
-            self.log.error(f"*** SCP command: {command}")
+            self.log.critical(f"lshell: forbidden {message}")
+            self.log.error(f"lshell: SCP command: {command}")
         else:
-            self.log.critical(f'*** forbidden {message}: "{command}"')
+            self.log.critical(f'lshell: forbidden {message}: "{command}"')
         sys.stderr.write("This incident has been reported.\n")
         self.log.error("Exited")
         sys.exit(1)

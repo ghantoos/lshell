@@ -63,6 +63,147 @@ services:
       - PYTHONPATH=/app
 
   #################################################
+  ## Test PyPI latest release / pre-release      ##
+  #################################################
+  debian-pypi:
+    build:
+      context: .
+      dockerfile: Dockerfile.pypi
+      args:
+        DISTRO: "debian:latest"
+    image: lshell-debian-pypi
+    container_name: lshell-debian-pypi
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: >
+      bash -lc "TARGET_VER=$(python3 -c \"import json, urllib.request; from pip._vendor.packaging.version import parse as V; data=json.load(urllib.request.urlopen('https://pypi.org/pypi/limited-shell/json')); versions=[V(v) for v, files in data['releases'].items() if files and not V(v).is_prerelease]; print(max(versions))\") &&
+      echo \"Installing latest stable: $${TARGET_VER}\" &&
+      VENV=/tmp/lshell-pypi-venv &&
+      rm -rf \"$${VENV}\" &&
+      python3 -m venv \"$${VENV}\" &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir --upgrade pip &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir \"limited-shell==$${TARGET_VER}\" &&
+      \"$${VENV}/bin/python\" -c 'import lshell.variables as v; print(\"lshell version:\", v.__version__)' &&
+      exec \"$${VENV}/bin/lshell\" --config /app/etc/lshell.conf"
+
+  debian-pypi-pre:
+    build:
+      context: .
+      dockerfile: Dockerfile.pypi
+      args:
+        DISTRO: "debian:latest"
+    image: lshell-debian-pypi-pre
+    container_name: lshell-debian-pypi-pre
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: >
+      bash -lc "TARGET_VER=$(python3 -c \"import json, urllib.request; from pip._vendor.packaging.version import parse as V; data=json.load(urllib.request.urlopen('https://pypi.org/pypi/limited-shell/json')); versions=[V(v) for v, files in data['releases'].items() if files and V(v).is_prerelease]; print(max(versions))\") &&
+      echo \"Installing latest pre-release: $${TARGET_VER}\" &&
+      VENV=/tmp/lshell-pypi-venv &&
+      rm -rf \"$${VENV}\" &&
+      python3 -m venv \"$${VENV}\" &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir --upgrade pip &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir \"limited-shell==$${TARGET_VER}\" &&
+      \"$${VENV}/bin/python\" -c 'import lshell.variables as v; print(\"lshell version:\", v.__version__)' &&
+      exec \"$${VENV}/bin/lshell\" --config /app/etc/lshell.conf"
+
+  ubuntu-pypi:
+    build:
+      context: .
+      dockerfile: Dockerfile.pypi
+      args:
+        DISTRO: "ubuntu:latest"
+    image: lshell-ubuntu-pypi
+    container_name: lshell-ubuntu-pypi
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: >
+      bash -lc "TARGET_VER=$(python3 -c \"import json, urllib.request; from pip._vendor.packaging.version import parse as V; data=json.load(urllib.request.urlopen('https://pypi.org/pypi/limited-shell/json')); versions=[V(v) for v, files in data['releases'].items() if files and not V(v).is_prerelease]; print(max(versions))\") &&
+      echo \"Installing latest stable: $${TARGET_VER}\" &&
+      VENV=/tmp/lshell-pypi-venv &&
+      rm -rf \"$${VENV}\" &&
+      python3 -m venv \"$${VENV}\" &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir --upgrade pip &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir \"limited-shell==$${TARGET_VER}\" &&
+      \"$${VENV}/bin/python\" -c 'import lshell.variables as v; print(\"lshell version:\", v.__version__)' &&
+      exec \"$${VENV}/bin/lshell\" --config /app/etc/lshell.conf"
+
+  ubuntu-pypi-pre:
+    build:
+      context: .
+      dockerfile: Dockerfile.pypi
+      args:
+        DISTRO: "ubuntu:latest"
+    image: lshell-ubuntu-pypi-pre
+    container_name: lshell-ubuntu-pypi-pre
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: >
+      bash -lc "TARGET_VER=$(python3 -c \"import json, urllib.request; from pip._vendor.packaging.version import parse as V; data=json.load(urllib.request.urlopen('https://pypi.org/pypi/limited-shell/json')); versions=[V(v) for v, files in data['releases'].items() if files and V(v).is_prerelease]; print(max(versions))\") &&
+      echo \"Installing latest pre-release: $${TARGET_VER}\" &&
+      VENV=/tmp/lshell-pypi-venv &&
+      rm -rf \"$${VENV}\" &&
+      python3 -m venv \"$${VENV}\" &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir --upgrade pip &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir \"limited-shell==$${TARGET_VER}\" &&
+      \"$${VENV}/bin/python\" -c 'import lshell.variables as v; print(\"lshell version:\", v.__version__)' &&
+      exec \"$${VENV}/bin/lshell\" --config /app/etc/lshell.conf"
+
+  fedora-pypi:
+    build:
+      context: .
+      dockerfile: Dockerfile.pypi
+      args:
+        DISTRO: "fedora:latest"
+    image: lshell-fedora-pypi
+    container_name: lshell-fedora-pypi
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: >
+      bash -lc "TARGET_VER=$(python3 -c \"import json, urllib.request; from pip._vendor.packaging.version import parse as V; data=json.load(urllib.request.urlopen('https://pypi.org/pypi/limited-shell/json')); versions=[V(v) for v, files in data['releases'].items() if files and not V(v).is_prerelease]; print(max(versions))\") &&
+      echo \"Installing latest stable: $${TARGET_VER}\" &&
+      VENV=/tmp/lshell-pypi-venv &&
+      rm -rf \"$${VENV}\" &&
+      python3 -m venv \"$${VENV}\" &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir --upgrade pip &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir \"limited-shell==$${TARGET_VER}\" &&
+      \"$${VENV}/bin/python\" -c 'import lshell.variables as v; print(\"lshell version:\", v.__version__)' &&
+      exec \"$${VENV}/bin/lshell\" --config /app/etc/lshell.conf"
+
+  fedora-pypi-pre:
+    build:
+      context: .
+      dockerfile: Dockerfile.pypi
+      args:
+        DISTRO: "fedora:latest"
+    image: lshell-fedora-pypi-pre
+    container_name: lshell-fedora-pypi-pre
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: >
+      bash -lc "TARGET_VER=$(python3 -c \"import json, urllib.request; from pip._vendor.packaging.version import parse as V; data=json.load(urllib.request.urlopen('https://pypi.org/pypi/limited-shell/json')); versions=[V(v) for v, files in data['releases'].items() if files and V(v).is_prerelease]; print(max(versions))\") &&
+      echo \"Installing latest pre-release: $${TARGET_VER}\" &&
+      VENV=/tmp/lshell-pypi-venv &&
+      rm -rf \"$${VENV}\" &&
+      python3 -m venv \"$${VENV}\" &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir --upgrade pip &&
+      \"$${VENV}/bin/pip\" install --no-cache-dir \"limited-shell==$${TARGET_VER}\" &&
+      \"$${VENV}/bin/python\" -c 'import lshell.variables as v; print(\"lshell version:\", v.__version__)' &&
+      exec \"$${VENV}/bin/lshell\" --config /app/etc/lshell.conf"
+
+  #################################################
   ## Run linting and tests for each distribution ##
   #################################################
   ubuntu_tests:

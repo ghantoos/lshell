@@ -1,0 +1,39 @@
+# Define the base image dynamically using build argument
+ARG DISTRO=ubuntu:latest
+FROM ${DISTRO} AS base
+
+# Install dependencies based on the distribution
+RUN \
+    # For Debian/Ubuntu
+    if [ -f /etc/debian_version ]; then \
+        apt-get update && \
+        apt-get install -y python3 python3-pip python3-venv git flake8 pylint python3-pytest python3-pexpect python3-setuptools python3-pyparsing vim procps sudo && \
+        apt-get clean; \
+        useradd -m -d /home/testuser -s /bin/bash testuser; \
+        echo 'testuser:password' | chpasswd; \
+        echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
+    # For Fedora
+    elif [ -f /etc/fedora-release ]; then \
+        dnf install -y python3 python3-pip python3-pytest git flake8 pylint python3-pexpect python3-setuptools python3-pyparsing vim sudo; \
+        useradd -m -d /home/testuser -s /bin/bash testuser; \
+        echo 'testuser:password' | chpasswd; \
+        echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
+    # For CentOS
+    elif [ -f /etc/centos-release ]; then \
+        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
+        yum install -y python3 python3-pip python3-pytest git vim sudo && \
+        yum install -y python3-devel gcc && \
+        python3 -m pip install flake8 pylint pexpect setuptools pyparsing; \
+        yum clean all; \
+        useradd -m -d /home/testuser -s /bin/bash testuser; \
+        echo 'testuser:password' | chpasswd; \
+        echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
+    fi
+
+# Keep same user/workdir defaults as the main Dockerfile
+RUN mkdir /home/testuser/lshell && chown -R testuser:testuser /home/testuser/lshell
+WORKDIR /home/testuser/lshell
+ENV PYTHONPATH=/home/testuser/lshell
+USER testuser
+CMD ["bash"]

@@ -240,11 +240,15 @@ class TestExplain(unittest.TestCase):
     def test_builtin_policy_show_dispatches_from_utils(self):
         """EX10 | builtin dispatcher calls shell_context.do_policy_show."""
         class DummyContext:
+            """Minimal shell context stub for builtin dispatcher tests."""
+
             def __init__(self):
+                """Initialize stub fields used by handle_builtin_command."""
                 self.conf = {}
                 self.called = None
 
             def do_policy_show(self, arg):
+                """Record argument and mimic a successful builtin call."""
                 self.called = arg
                 return 0
 

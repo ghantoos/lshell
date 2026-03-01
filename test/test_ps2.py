@@ -83,8 +83,10 @@ class TestFunctions(unittest.TestCase):
         # Step 2: Enter `echo FREEDOM! && help () sh && help`
         expected_output = (
             "1\r\nFREEDOM!\r\n"
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  policy-path  policy-show  policy-sudo  source\r\n"
-            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  policy-path  policy-show  policy-sudo  source"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  "
+            "ls  lsudo  policy-path  policy-show  policy-sudo  source\r\n"
+            "bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  "
+            "ls  lsudo  policy-path  policy-show  policy-sudo  source"
         )
         child.sendline("echo 1; \\")
         child.expect(">")

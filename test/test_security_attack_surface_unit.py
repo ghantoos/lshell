@@ -699,6 +699,87 @@ class TestAttackSurface(unittest.TestCase):
             msg="sudo should run in the current foreground session to keep tty access",
         )
 
+    @patch("lshell.utils.os.killpg")
+    @patch("lshell.utils.os.kill")
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_keyboard_interrupt_sudo_signals_pid_not_process_group(
+        self,
+        mock_popen,
+        _mock_signal,
+        _mock_getsignal,
+        mock_kill,
+        mock_killpg,
+    ):
+        """On Ctrl+C, sudo command should receive SIGINT directly by PID."""
+
+        class FakeProc:
+            """Simulate a running foreground process interrupted by Ctrl+C."""
+
+            def __init__(self):
+                self.returncode = None
+                self.pid = 4242
+                self.args = ["sudo", "ls"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Raise keyboard interrupt while waiting for process I/O."""
+                raise KeyboardInterrupt
+
+            def poll(self):
+                """Report process still running to trigger signal handling."""
+                return None
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("sudo ls")
+
+        self.assertEqual(ret, 130)
+        mock_kill.assert_called_once_with(4242, utils.signal.SIGINT)
+        mock_killpg.assert_not_called()
+
+    @patch("lshell.utils.os.getpgid", return_value=7777)
+    @patch("lshell.utils.os.killpg")
+    @patch("lshell.utils.os.kill")
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_keyboard_interrupt_non_sudo_signals_process_group(
+        self,
+        mock_popen,
+        _mock_signal,
+        _mock_getsignal,
+        _mock_kill,
+        mock_killpg,
+        _mock_getpgid,
+    ):
+        """On Ctrl+C, regular commands should receive SIGINT at process-group level."""
+
+        class FakeProc:
+            """Simulate a detached foreground process interrupted by Ctrl+C."""
+
+            def __init__(self):
+                self.returncode = None
+                self.pid = 5252
+                self.args = ["bash", "-c", "sleep 60"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Raise keyboard interrupt while waiting for process I/O."""
+                raise KeyboardInterrupt
+
+            def poll(self):
+                """Report process still running to trigger signal handling."""
+                return None
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("sleep 60")
+
+        self.assertEqual(ret, 130)
+        mock_killpg.assert_called_once_with(7777, utils.signal.SIGINT)
+
     def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(self):
         """Security expectation: assignment-only should not bypass env blacklist."""
         conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()

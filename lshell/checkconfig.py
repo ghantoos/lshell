@@ -693,6 +693,23 @@ class CheckConfig:
         # sort lsudo commands
         self.conf["sudo_commands"].sort()
 
+        # Enable colored `ls` output by default while preserving explicit aliases.
+        ls_color_alias = None
+        self.conf["_auto_ls_alias"] = False
+        if sys.platform.startswith("linux"):
+            ls_color_alias = "ls --color=auto"
+        elif sys.platform == "darwin" or "bsd" in sys.platform:
+            ls_color_alias = "ls -G"
+
+        if (
+            ls_color_alias
+            and "ls" in self.conf["allowed"]
+            and isinstance(self.conf.get("aliases"), dict)
+            and "ls" not in self.conf["aliases"]
+        ):
+            self.conf["aliases"]["ls"] = ls_color_alias
+            self.conf["_auto_ls_alias"] = True
+
         # in case winscp is set, load the needed configuration
         if "winscp" in self.conf and self.conf["winscp"] == 1:
             # add minimum commands required for WinSCP to work

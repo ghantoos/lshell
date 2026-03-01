@@ -126,6 +126,13 @@ class ShellCmd(cmd.Cmd, object):
         SCP or not, and    acts as requested. : )
         """
 
+        def _aliases_for_ssh_command():
+            aliases = self.conf["aliases"]
+            if self.conf.get("_auto_ls_alias") and isinstance(aliases, dict):
+                aliases = dict(aliases)
+                aliases.pop("ls", None)
+            return aliases
+
         if "ssh" in self.conf:
             if "SSH_CLIENT" in os.environ and "SSH_TTY" not in os.environ:
                 # check if sftp is requested and allowed
@@ -193,7 +200,7 @@ class ShellCmd(cmd.Cmd, object):
                 elif self.conf["ssh"]:
                     # replace aliases
                     self.conf["ssh"] = utils.get_aliases(
-                        self.conf["ssh"], self.conf["aliases"]
+                        self.conf["ssh"], _aliases_for_ssh_command()
                     )
                     # if command is not "secure", exit
                     ret_check_secure, self.conf = sec.check_secure(
@@ -222,7 +229,7 @@ class ShellCmd(cmd.Cmd, object):
                 # case of local shell escapes (e.g. pager/editor invoking
                 # the login shell with -c). Validate against normal policy.
                 self.conf["ssh"] = utils.get_aliases(
-                    self.conf["ssh"], self.conf["aliases"]
+                    self.conf["ssh"], _aliases_for_ssh_command()
                 )
                 ret_check_secure, self.conf = sec.check_secure(
                     self.conf["ssh"],

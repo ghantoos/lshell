@@ -1,6 +1,7 @@
 """ Unit tests for lshell """
 
 import os
+import sys
 import tempfile
 import unittest
 from getpass import getuser
@@ -377,3 +378,19 @@ class TestFunctions(unittest.TestCase):
         with self.assertRaises(SystemExit) as exc:
             CheckConfig(args).returnconf()
         self.assertEqual(exc.exception.code, 1)
+
+    def test_43_default_ls_alias_enables_auto_color(self):
+        """U43 | default config should alias ls to a platform color option."""
+        userconf = CheckConfig(self.args).returnconf()
+        expected = None
+        if sys.platform.startswith("linux"):
+            expected = "ls --color=auto"
+        elif sys.platform == "darwin" or "bsd" in sys.platform:
+            expected = "ls -G"
+        self.assertEqual(userconf["aliases"].get("ls"), expected)
+
+    def test_44_explicit_ls_alias_is_preserved(self):
+        """U44 | explicit ls alias should not be overwritten."""
+        args = self.args + ["--aliases={'ls':'ls -lh'}"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertEqual(userconf["aliases"].get("ls"), "ls -lh")

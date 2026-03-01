@@ -6,8 +6,6 @@ import subprocess
 from getpass import getuser
 import pexpect  # pylint: disable=wrong-import-order
 
-from test.test_utils import is_alpine_linux
-
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
@@ -59,10 +57,7 @@ class TestFunctions(unittest.TestCase):
         open(file2, "w").close()
 
         # test dir list
-        if is_alpine_linux():
-            command = "ls -a -d ~/*/"
-        else:
-            command = "find . -maxdepth 1 -type d -printf '%f/\n'"
+        command = "find . -maxdepth 1 -type d -printf '%f/\n'"
         p_dir_list = subprocess.Popen(
             command,
             shell=True,
@@ -72,11 +67,7 @@ class TestFunctions(unittest.TestCase):
         stdout_p_dir_list = p_dir_list.stdout
         expected = stdout_p_dir_list.read().decode("utf8").strip().split()
         # Normalize expected to relative paths
-        if is_alpine_linux():
-            # Remove the `/home/<user>/` prefix for Alpine Linux
-            expected = {os.path.basename(path.rstrip("/")) + "/" for path in expected}
-        else:
-            expected = set(expected)
+        expected = set(expected)
         expected = set(expected)
         expected.discard("./")
 
@@ -112,10 +103,7 @@ class TestFunctions(unittest.TestCase):
         open(file2, "w").close()
 
         # test file list
-        if is_alpine_linux():
-            command = "ls -a -p ~/"
-        else:
-            command = "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'"
+        command = "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'"
         p_file_list = subprocess.Popen(
             command,
             shell=True,
@@ -126,10 +114,6 @@ class TestFunctions(unittest.TestCase):
         expected = stdout_p_file_list.read().decode("utf8").strip().split()
         expected = set(expected)
         expected.discard("/")
-        # alpine specific because of `ls -a -p`
-        if is_alpine_linux():
-            expected.discard("./")
-            expected.discard("../")
 
         self.child.sendline("ls ~/\t\t")
         self.child.expect(PROMPT)
@@ -165,10 +149,7 @@ class TestFunctions(unittest.TestCase):
         open(file2, "w").close()
 
         # test file list
-        if is_alpine_linux():
-            command = "ls -a -p ~/"
-        else:
-            command = "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'"
+        command = "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'"
         p_file_list = subprocess.Popen(
             command,
             shell=True,
@@ -179,10 +160,6 @@ class TestFunctions(unittest.TestCase):
         expected = stdout_p_file_list.read().decode("utf8").strip().split()
         expected = set(expected)
         expected.discard("/")
-        # alpine specific because of `ls -a -p`
-        if is_alpine_linux():
-            expected.discard("./")
-            expected.discard("../")
 
         self.child.sendline("ls -l ~/\t\t")
         self.child.expect(PROMPT)

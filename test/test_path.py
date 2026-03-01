@@ -5,9 +5,6 @@ import unittest
 from getpass import getuser
 import pexpect
 
-# pylint: disable=C0411
-from test import test_utils
-
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
@@ -81,12 +78,9 @@ class TestFunctions(unittest.TestCase):
 
     def test_12_etc_passwd_2(self):
         """F12 | /etc/passwd: empty variable 'ls -l .*./.*./etc/passwd'"""
-        if test_utils.is_alpine_linux():
-            expected = "ls: .*./.*./etc/passwd: No such file or directory\r\n"
-        else:
-            expected = (
-                "ls: cannot access '.*./.*./etc/passwd': No such file or directory\r\n"
-            )
+        expected = (
+            "ls: cannot access '.*./.*./etc/passwd': No such file or directory\r\n"
+        )
         self.child.sendline("ls -l .*./.*./etc/passwd")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
@@ -94,12 +88,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_13a_etc_passwd_3(self):
         """F13(a) | /etc/passwd: empty variable 'ls -l .?/.?/etc/passwd'"""
-        if test_utils.is_alpine_linux():
-            expected = "ls: .?/.?/etc/passwd: No such file or directory\r\n"
-        else:
-            expected = (
-                "ls: cannot access '.?/.?/etc/passwd': No such file or directory\r\n"
-            )
+        expected = "ls: cannot access '.?/.?/etc/passwd': No such file or directory\r\n"
         self.child.sendline("ls -l .?/.?/etc/passwd")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]

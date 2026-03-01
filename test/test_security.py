@@ -5,9 +5,6 @@ import unittest
 from getpass import getuser
 import pexpect
 
-# pylint: disable=C0411
-from test import test_utils
-
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
@@ -100,12 +97,8 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            command = "awk 'BEGIN {system(\"/bin/sh\")}'"
-            expected = '*** forbidden path: "/bin/busybox"'
-        else:
-            command = "awk 'BEGIN {system(\"/usr/bin/bash\")}'"
-            expected = '*** forbidden path: "/usr/bin/bash"'
+        command = "awk 'BEGIN {system(\"/usr/bin/bash\")}'"
+        expected = '*** forbidden path: "/usr/bin/bash"'
         child.sendline(command)
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n")[1].strip()

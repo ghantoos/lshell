@@ -62,22 +62,6 @@ services:
     environment:
       - PYTHONPATH=/app
 
-  alpine:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        DISTRO: "alpine:latest"
-    image: lshell-alpine
-    container_name: lshell-alpine
-    entrypoint: ["lshell", "--config", "/app/etc/lshell.conf"]
-    command: ""
-    volumes:
-      - .:/app
-    environment:
-      - PYTHONPATH=/app
-
-
   #################################################
   ## Run linting and tests for each distribution ##
   #################################################
@@ -130,19 +114,6 @@ services:
         DISTRO: "centos:8"
     container_name: centos_tests
     command: "sh -c 'pytest-3; pylint lshell; pyflake lshell'"
-    volumes:
-      - .:/app
-    environment:
-      - PYTHONPATH=/app
-
-  alpine_tests:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        DISTRO: "alpine:latest"
-    container_name: alpine_tests
-    command: "sh -c 'pytest; pylint lshell; flake8 lshell'"
     volumes:
       - .:/app
     environment:

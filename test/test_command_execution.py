@@ -6,9 +6,6 @@ import unittest
 from getpass import getuser
 import pexpect
 
-# pylint: disable=C0411
-from test import test_utils
-
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
@@ -54,13 +51,10 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
-        else:
-            expected_1 = (
-                "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
-                "No such file or directory"
-            )
+        expected_1 = (
+            "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
+            "No such file or directory"
+        )
         expected_2 = "blabla"
         expected_3 = "0"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo blabla; echo $?")
@@ -79,15 +73,11 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            expected_1 = "ls: nRVmmn8RGypVneYIp8HxyVAvaEaD55: No such file or directory"
-            expected_2 = "1"
-        else:
-            expected_1 = (
-                "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
-                "No such file or directory"
-            )
-            expected_2 = "2"
+        expected_1 = (
+            "ls: cannot access 'nRVmmn8RGypVneYIp8HxyVAvaEaD55': "
+            "No such file or directory"
+        )
+        expected_2 = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55; echo $?")
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n")
@@ -102,10 +92,7 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
 
-        if test_utils.is_alpine_linux():
-            expected = "1"
-        else:
-            expected = "2"
+        expected = "2"
         child.sendline("ls nRVmmn8RGypVneYIp8HxyVAvaEaD55")
         child.expect(PROMPT)
         child.sendline("echo $?")

@@ -30,12 +30,6 @@ RUN \
         useradd -m -d /home/testuser -s /bin/bash testuser; \
         echo 'testuser:password' | chpasswd; \
         echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
-    # For Alpine
-    elif [ -f /etc/alpine-release ]; then \
-        apk add --no-cache --upgrade python3 py3-pip py3-pytest py3-flake8 py3-pylint py3-pexpect py3-setuptools py3-pyparsing grep vim sudo; \
-        addgroup -S testuser && adduser -S testuser -G testuser; \
-        echo 'testuser:password' | chpasswd; \
-        echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
     fi
 
 # Set permissions for the user to access /app

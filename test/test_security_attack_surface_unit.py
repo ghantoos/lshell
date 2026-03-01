@@ -699,6 +699,77 @@ class TestAttackSurface(unittest.TestCase):
             msg="sudo should run in the current foreground session to keep tty access",
         )
 
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_su_not_wrapped_in_bash_c(
+        self, mock_popen, _mock_signal, _mock_getsignal
+    ):
+        """su commands should be executed directly, not through 'bash -c'."""
+
+        class FakeProc:
+            """Minimal subprocess fake for exec_cmd foreground path."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 12345
+                self.args = ["su", "-"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Simulate foreground process I/O completion."""
+                return None
+
+            def poll(self):
+                """Simulate an already-finished subprocess."""
+                return 0
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("su -")
+
+        self.assertEqual(ret, 0)
+        popen_args = mock_popen.call_args.args[0]
+        self.assertEqual(popen_args[0], "su")
+        self.assertNotEqual(popen_args[:2], ["bash", "-c"])
+
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_su_keeps_foreground_terminal(
+        self, mock_popen, _mock_signal, _mock_getsignal
+    ):
+        """su should not be detached from the controlling terminal."""
+
+        class FakeProc:
+            """Minimal subprocess fake for exec_cmd foreground path."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 12345
+                self.args = ["su", "-"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Simulate foreground process I/O completion."""
+                return None
+
+            def poll(self):
+                """Simulate an already-finished subprocess."""
+                return 0
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("su -")
+
+        self.assertEqual(ret, 0)
+        popen_kwargs = mock_popen.call_args.kwargs
+        self.assertNotIn(
+            "preexec_fn",
+            popen_kwargs,
+            msg="su should run in the current foreground session to keep tty access",
+        )
+
     @patch("lshell.utils.os.killpg")
     @patch("lshell.utils.os.kill")
     @patch("lshell.utils.signal.getsignal", return_value=None)

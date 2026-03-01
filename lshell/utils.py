@@ -631,7 +631,7 @@ def exec_cmd(cmd, background=False, extra_env=None):
             split_cmd = shlex.split(cmd, posix=True)
         except ValueError:
             split_cmd = []
-        if split_cmd and split_cmd[0] == "sudo":
+        if split_cmd and split_cmd[0] in ("sudo", "su"):
             cmd_args = split_cmd
             if not background:
                 detached_session = False

@@ -86,7 +86,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden control char: echo\x0b() bash\r"
+        expected = '*** forbidden control char: "echo\x0b() bash"\r'
         child.send("echo")
         child.sendcontrol("v")
         child.sendcontrol("k")

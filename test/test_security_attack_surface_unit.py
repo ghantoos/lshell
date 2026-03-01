@@ -100,8 +100,20 @@ class TestAttackSurface(unittest.TestCase):
     def test_check_forbidden_chars_blocks_single_ampersand(self):
         """Block single & when forbidden characters include ampersand."""
         conf = CheckConfig(self.args + ["--forbidden=['&']", "--strict=0"]).returnconf()
+        starting_counter = conf["warning_counter"]
         ret, _conf = sec.check_forbidden_chars("echo ok &", conf)
         self.assertEqual(ret, 1)
+        self.assertEqual(_conf["warning_counter"], starting_counter - 1)
+
+    def test_check_path_forbidden_decrements_counter_even_when_not_strict(self):
+        """Forbidden path should consume warning counter regardless of strict mode."""
+        conf = CheckConfig(
+            self.args + ["--path=['/home', '/var']", "--strict=0"]
+        ).returnconf()
+        starting_counter = conf["warning_counter"]
+        ret, _conf = sec.check_path("cd /tmp", conf, strict=0)
+        self.assertEqual(ret, 1)
+        self.assertEqual(_conf["warning_counter"], starting_counter - 1)
 
     def test_checkconfig_rejects_allowed_shell_escape_all(self):
         """Reject allowed_shell_escape=all to avoid bypassing noexec globally."""
@@ -409,6 +421,34 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("A=1 echo ok", conf)[0], 0)
         self.assertEqual(sec.check_secure("A=1 echo nope", conf)[0], 1)
 
+    def test_check_secure_unknown_command_does_not_decrement_counter_when_not_strict(self):
+        """Treat disallowed commands as unknown syntax when strict mode is disabled."""
+        conf = CheckConfig(
+            self.args
+            + ["--allowed=['echo']", "--forbidden=[]", "--strict=0", "--quiet=0"]
+        ).returnconf()
+        starting_counter = conf["warning_counter"]
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret, conf = sec.check_secure("no_such_allowed_command", conf, strict=0)
+        self.assertEqual(ret, 1)
+        self.assertEqual(conf["warning_counter"], starting_counter)
+        self.assertIn("*** unknown syntax: no_such_allowed_command", stderr.getvalue())
+
+    def test_check_secure_unknown_command_decrements_counter_when_strict(self):
+        """Count disallowed commands as forbidden actions when strict mode is enabled."""
+        conf = CheckConfig(
+            self.args
+            + ["--allowed=['echo']", "--forbidden=[]", "--strict=1", "--quiet=0"]
+        ).returnconf()
+        starting_counter = conf["warning_counter"]
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret, conf = sec.check_secure("no_such_allowed_command", conf, strict=1)
+        self.assertEqual(ret, 1)
+        self.assertEqual(conf["warning_counter"], starting_counter - 1)
+        self.assertIn("warning(s) left", stderr.getvalue())
+
     def test_check_secure_assignment_prefix_with_sudo_still_checks_subcommand(self):
         """Validate sudo subcommands after assignment prefixes."""
         conf = CheckConfig(
@@ -452,11 +492,37 @@ class TestAttackSurface(unittest.TestCase):
         """Return an error when parser input has unbalanced syntax."""
         conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
         shell = DummyShellContext(conf)
+        starting_counter = conf["warning_counter"]
         stderr = io.StringIO()
         with redirect_stderr(stderr):
             ret = utils.cmd_parse_execute('echo "oops', shell_context=shell)
         self.assertEqual(ret, 1)
+        self.assertEqual(conf["warning_counter"], starting_counter)
         self.assertIn("*** unknown syntax:", stderr.getvalue())
+
+    def test_cmd_parse_execute_unbalanced_syntax_decrements_counter_in_strict_mode(self):
+        """In strict mode, unknown syntax should consume warning counter."""
+        conf = CheckConfig(self.args + ["--strict=1", "--quiet=0"]).returnconf()
+        shell = DummyShellContext(conf)
+        starting_counter = conf["warning_counter"]
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret = utils.cmd_parse_execute('echo "oops', shell_context=shell)
+        self.assertEqual(ret, 126)
+        self.assertEqual(conf["warning_counter"], starting_counter - 1)
+        self.assertIn("warning(s) left", stderr.getvalue())
+
+    def test_cmd_parse_execute_malformed_operator_decrements_counter_in_strict_mode(self):
+        """In strict mode, malformed operators should consume warning counter."""
+        conf = CheckConfig(self.args + ["--strict=1", "--quiet=0"]).returnconf()
+        shell = DummyShellContext(conf)
+        starting_counter = conf["warning_counter"]
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret = utils.cmd_parse_execute("echo ok ||| echo pwn", shell_context=shell)
+        self.assertEqual(ret, 126)
+        self.assertEqual(conf["warning_counter"], starting_counter - 1)
+        self.assertIn("warning(s) left", stderr.getvalue())
 
     @patch("lshell.utils.sec.check_forbidden_chars")
     @patch("lshell.utils.sec.check_secure")

@@ -67,12 +67,16 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" "$@"
 
         # Expected output
         expected_output = """test\r
-*** forbidden command: dig\r
-*** forbidden path: /tmp/\r
+*** unknown syntax: dig google.com\r
+*** forbidden path: "/tmp/"\r
+*** You have 1 warning(s) left, before getting kicked out.\r
+This incident has been reported.\r
 FREEDOM\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-*** forbidden path: /"""
+*** forbidden path: "/"\r
+*** You have 0 warning(s) left, before getting kicked out.\r
+This incident has been reported."""
 
         # Wait for the script to finish executing
         child.expect(pexpect.EOF)
@@ -121,16 +125,16 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" --strict 1 "$@"
 
         # Expected output
         expected_output = """test\r
-*** forbidden command -> "dig"\r
+*** forbidden command: "dig"\r
 *** You have 1 warning(s) left, before getting kicked out.\r
 This incident has been reported.\r
-*** forbidden path -> "/tmp/"\r
+*** forbidden path: "/tmp/"\r
 *** You have 0 warning(s) left, before getting kicked out.\r
 This incident has been reported.\r
 FREEDOM\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
 bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-*** forbidden path -> "/"\r
+*** forbidden path: "/"\r
 *** Kicked out"""
 
         # Wait for the script to finish executing

@@ -122,7 +122,7 @@ class TestFunctions(unittest.TestCase):
     def test_47_backticks(self):
         """F47 | Forbidden backticks should be reported"""
         expected = (
-            '*** forbidden character -> "`"\r\n'
+            '*** forbidden character: "`"\r\n'
             "*** You have 1 warning(s) left, before getting kicked out.\r\n"
             "This incident has been reported.\r\n"
         )
@@ -134,7 +134,7 @@ class TestFunctions(unittest.TestCase):
     def test_48_replace_backticks_with_dollar_parentheses(self):
         """F48 | Forbidden syntax $(command) should be reported"""
         expected = (
-            '*** forbidden character -> "$("\r\n'
+            '*** forbidden character: "$("\r\n'
             "*** You have 1 warning(s) left, before getting kicked out.\r\n"
             "This incident has been reported.\r\n"
         )

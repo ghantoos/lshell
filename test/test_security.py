@@ -102,10 +102,10 @@ class TestFunctions(unittest.TestCase):
 
         if test_utils.is_alpine_linux():
             command = "awk 'BEGIN {system(\"/bin/sh\")}'"
-            expected = "*** forbidden path: /bin/busybox"
+            expected = '*** forbidden path: "/bin/busybox"'
         else:
             command = "awk 'BEGIN {system(\"/usr/bin/bash\")}'"
-            expected = "*** forbidden path: /usr/bin/bash"
+            expected = '*** forbidden path: "/usr/bin/bash"'
         child.sendline(command)
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n")[1].strip()

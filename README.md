@@ -127,7 +127,10 @@ For example User 'foo' and user 'bar' both belong to the 'users' UNIX group:
 - User 'bar':
        - must be able to access /etc and /usr but not /usr/local
        - is allowed default commands plus 'ping' minus 'ls'
-       - strictness is set to 1 (meaning he is not allowed to type an unknown command)
+       - strictness is set to 1 (unknown syntax/commands decrement warning_counter)
+
+`warning_counter` is decremented on forbidden command/path/character attempts.
+When `strict` is enabled, unknown syntax is also counted.
 
 In this case, my configuration file will look something like this:
 

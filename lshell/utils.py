@@ -395,11 +395,20 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
 
 def cmd_parse_execute(command_line, shell_context=None):
     """Parse and execute a shell command line"""
+    def _handle_unknown_syntax(unknown_command):
+        ret, shell_context.conf = sec.warn_unknown_syntax(
+            unknown_command,
+            shell_context.conf,
+            strict=shell_context.conf["strict"],
+        )
+        if ret == 1 and shell_context.conf["strict"]:
+            # Keep strict-mode behavior aligned with forbidden actions.
+            return 126
+        return 1
+
     command_sequence = split_command_sequence(command_line)
     if command_sequence is None:
-        shell_context.log.warn(f'INFO: unknown syntax -> "{command_line}"')
-        sys.stderr.write(f"*** unknown syntax: {command_line}\n")
-        return 1
+        return _handle_unknown_syntax(command_line)
 
     # Initialize return code
     retcode = 0
@@ -487,9 +496,7 @@ def cmd_parse_execute(command_line, shell_context=None):
 
         parsed_parts = [_parse_command(part) for part in pipeline_parts]
         if any(part[0] is None for part in parsed_parts):
-            shell_context.log.warn(f'INFO: unknown syntax -> "{full_command}"')
-            sys.stderr.write(f"*** unknown syntax: {full_command}\n")
-            return 1
+            return _handle_unknown_syntax(full_command)
 
         # Reject forbidden env-var assignments in command prefixes (e.g. PATH=... cmd).
         # This keeps assignment-prefix behavior aligned with `export` restrictions.
@@ -506,9 +513,7 @@ def cmd_parse_execute(command_line, shell_context=None):
 
         executable, argument, _, assignments = parsed_parts[0]
         if executable is None:
-            shell_context.log.warn(f'INFO: unknown syntax -> "{current_item}"')
-            sys.stderr.write(f"*** unknown syntax: {current_item}\n")
-            return 1
+            return _handle_unknown_syntax(current_item)
 
         # Assignment-only command: persist in current shell environment.
         if not executable and assignments:
@@ -565,8 +570,8 @@ def cmd_parse_execute(command_line, shell_context=None):
                 full_command, background=background, extra_env=extra_env
             )
         else:
-            shell_context.log.warn(f'INFO: unknown syntax -> "{full_command}"')
-            sys.stderr.write(f"*** unknown syntax: {full_command}\n")
+            retcode = _handle_unknown_syntax(full_command)
+            return retcode
 
         i = j + (2 if background else 1)
 

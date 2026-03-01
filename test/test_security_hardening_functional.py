@@ -81,7 +81,7 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0)
-        self.assertIn("*** forbidden character: >", result.stdout + result.stderr)
+        self.assertIn('*** forbidden character: ">"', result.stdout + result.stderr)
         self.assertIn("AFTER", result.stdout)
         self.assertFalse(os.path.exists(output_path))
 

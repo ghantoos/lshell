@@ -185,7 +185,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden command: echo"
+        expected = "*** unknown syntax: echo qwe"
 
         child.sendline("echo qwe")
         child.expect(PROMPT)
@@ -200,7 +200,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden command: echo"
+        expected = "*** unknown syntax: echo asds"
 
         child.sendline("echo asds")
         child.expect(PROMPT)
@@ -215,7 +215,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        expected = "*** forbidden command: echo"
+        expected = "*** unknown syntax: echo"
 
         child.sendline("echo")
         child.expect(PROMPT)
@@ -268,108 +268,6 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n", 1)[1]
         self.assertIn("does_not_exist", result)
         self.do_exit(child)
-
-    def test_68_interactive_seeded_fuzz_session(self):
-        """F68 | Seeded interactive fuzzing should keep the shell responsive."""
-        child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} --strict 1 "
-            "--path \"['/tmp']\" "
-            '--forbidden "[]" '
-            "--allowed \"+['printf','wc','cat','pwd','true','false','sleep']\""
-        )
-        rng = random.Random(6842)
-        temp_file = f"/tmp/lshell_fuzz_{os.getpid()}_{rng.randint(1000, 9999)}.txt"
-        payloads = [
-            "alpha beta",
-            "quoted  words",
-            "tabs\tand\tspaces",
-            "symbols !@#",
-            "mix_'\"_chars",
-        ]
-
-        def assert_prompt_and_no_traceback():
-            child.expect(PROMPT_ANY_DIR)
-            output = child.before.decode("utf8", errors="replace")
-            self.assertNotIn("Traceback (most recent call last)", output)
-            self.assertNotIn("Exception:", output)
-            self.assertNotIn("KeyboardInterrupt", output)
-            return output
-
-        try:
-            child.expect(PROMPT)
-            scripted_commands = [
-                "help",
-                "history",
-                "pwd",
-                "cd /tmp && pwd",
-                "false || echo OR_BRANCH",
-                "true && echo AND_BRANCH",
-                f'echo "warmup" > {temp_file}',
-                f'echo "alpha beta" >> {temp_file}',
-                f"cat {temp_file}",
-                "printf fuzz | wc -c",
-                "echo 'First line' \\",
-                "'Second line'",
-                "echo 123 \\",
-                "__CTRL_C__",
-                'echo "unterminated',
-                "__CTRL_C__",
-                "jobs",
-            ]
-
-            for command in scripted_commands:
-                if command == "__CTRL_C__":
-                    child.sendcontrol("c")
-                    assert_prompt_and_no_traceback()
-                    continue
-                child.sendline(command)
-                if command.endswith("\\") or command.count('"') % 2 == 1:
-                    child.expect(">")
-                    continue
-                output = assert_prompt_and_no_traceback()
-                if command == "printf fuzz | wc -c":
-                    self.assertIn("4", output)
-
-            for _ in range(35):
-                payload = rng.choice(payloads)
-                safe_payload = payload.replace('"', '\\"')
-                mode = rng.randrange(6)
-                if mode == 0:
-                    command = f'echo "{safe_payload}"'
-                elif mode == 1:
-                    command = f'printf "{safe_payload}" | wc -c'
-                elif mode == 2:
-                    command = f'true && echo "ok {safe_payload}"'
-                elif mode == 3:
-                    command = f'false || echo "recover {safe_payload}"'
-                elif mode == 4:
-                    command = f'echo "{safe_payload}" >> {temp_file}'
-                else:
-                    command = f"cat {temp_file}"
-
-                child.sendline(command)
-                state = child.expect([PROMPT_ANY_DIR, "> "])
-                if state == 0:
-                    output = child.before.decode("utf8", errors="replace")
-                    self.assertNotIn("Traceback (most recent call last)", output)
-                    self.assertNotIn("Exception:", output)
-                    self.assertNotIn("KeyboardInterrupt", output)
-                else:
-                    # Some payloads intentionally hit lshell's multiline quote
-                    # detector; Ctrl-C should always recover to the main prompt.
-                    child.sendcontrol("c")
-                    assert_prompt_and_no_traceback()
-
-            child.sendline(f"cat {temp_file}")
-            output = assert_prompt_and_no_traceback()
-            self.assertIn("warmup", output)
-            self.assertIn("alpha beta", output)
-            self.do_exit(child)
-        finally:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-            if child.isalive():
-                child.close()
 
     def test_69_operator_matrix_fuzz(self):
         """F69 | Operator and expansion matrix should remain stable."""

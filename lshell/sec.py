@@ -45,24 +45,33 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
     if ssh:
         return 1, conf
 
-    if strict:
-        conf["warning_counter"] -= 1
-        if conf["warning_counter"] < 0:
-            log.critical(f'*** forbidden {messagetype} -> "{command}"')
-            log.critical("*** Kicked out")
-            sys.exit(1)
-        else:
-            log.critical(f'*** forbidden {messagetype} -> "{command}"')
-            sys.stderr.write(
-                f"*** You have {conf['warning_counter']} warning(s) left,"
-                " before getting kicked out.\n"
-            )
-            log.error(f"*** User warned, counter: {conf['warning_counter']}")
-            sys.stderr.write("This incident has been reported.\n")
-    elif not conf["quiet"]:
-        log.critical(f"*** forbidden {messagetype}: {command}")
+    conf["warning_counter"] -= 1
+    if conf["warning_counter"] < 0:
+        log.critical(f'*** forbidden {messagetype}: "{command}"')
+        log.critical("*** Kicked out")
+        sys.exit(1)
+
+    log.critical(f'*** forbidden {messagetype}: "{command}"')
+    sys.stderr.write(
+        f"*** You have {conf['warning_counter']} warning(s) left,"
+        " before getting kicked out.\n"
+    )
+    log.error(f"*** User warned, counter: {conf['warning_counter']}")
+    sys.stderr.write("This incident has been reported.\n")
 
     # Return 1 to indicate a warning was triggered.
+    return 1, conf
+
+
+def warn_unknown_syntax(command, conf, strict=None, ssh=None):
+    """Warn on unknown syntax, honoring strict-mode warning counting."""
+    if strict:
+        return warn_count("unknown syntax", command, conf, strict=strict, ssh=ssh)
+
+    log = conf["logpath"]
+    log.warning(f'INFO: unknown syntax -> "{command}"')
+    # Keep legacy UX: unknown syntax is always printed to stderr.
+    sys.stderr.write(f"*** unknown syntax: {command}\n")
     return 1, conf
 
 
@@ -278,7 +287,10 @@ def check_secure(line, conf, strict=None, ssh=None):
             and command not in conf["allowed"]
             and command
         ):
-            ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
+            if strict:
+                ret, conf = warn_count("command", command, conf, strict=strict, ssh=ssh)
+            else:
+                ret, conf = warn_unknown_syntax(full_command, conf, strict=strict, ssh=ssh)
             return ret, conf
 
         # Check if the command contains any forbidden extensions

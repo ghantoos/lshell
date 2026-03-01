@@ -9,6 +9,9 @@ lshell \- Limited Shell
 .SH SYNOPSIS
 .B lshell 
 [\fIOPTIONS\fR]
+.br
+.B lshell policy-show
+[\fIOPTIONS\fR]
 
 .SH DESCRIPTION
 \fBlshell\fR provides a limited shell configured per user via a configuration file.
@@ -39,6 +42,23 @@ Show help message
 .TP
 .B \--version
 Show version
+.TP
+.B policy-show
+Run admin diagnostics mode. Use with:
+.RS
+.TP
+.B \--user \fI<NAME>\fR
+target username
+.TP
+.B \--group \fI<NAME>\fR
+target group (repeatable)
+.TP
+.B \--command \fI<CMD>\fR
+command to evaluate against final policy
+.TP
+.B \--json
+print diagnostics as JSON
+.RE
 
 .SH CONFIGURATION
 You can configure lshell through its configuration file:
@@ -390,6 +410,11 @@ ignored (uses scp(1) from within session)
 .BR \ \ \ \ allowed     :
 +['scp', 'env', 'pwd', 'groups', 'unset', 'unalias']
 .RE
+.TP
+.I policy_commands
+enable/disable policy introspection builtins. If set to 1 (default), users can
+run \fBpolicy-show\fR, \fBpolicy-path\fR, \fBpolicy-sudo\fR (and aliases
+\fBlpath\fR, \fBlsudo\fR). If set to 0, these commands are hidden.
 
 .SH SHELL BUILTIN COMMANDS
 Here is the set of commands that are always available with lshell:
@@ -410,11 +435,20 @@ print the list of allowed commands
 .I history
 print the commands history
 .TP
-.I lpath
+.I policy-show [command]
+show resolved policy values. If a command is provided, also show allow/deny decision.
+.TP
+.I policy-path
 lists all allowed and forbidden path
 .TP
-.I lsudo
+.I policy-sudo
 lists all sudo allowed commands
+.TP
+.I lpath
+alias for \fBpolicy-path\fR
+.TP
+.I lsudo
+alias for \fBpolicy-sudo\fR
 .TP
 .I jobs
 list background jobs

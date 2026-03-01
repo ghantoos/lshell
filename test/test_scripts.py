@@ -71,8 +71,8 @@ lshell: unknown syntax: dig google.com\r
 lshell: forbidden path: "/tmp/"\r
 lshell: warning: 1 violation remaining before session termination\r
 FREEDOM\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  policy-path  policy-show  policy-sudo  source\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  policy-path  policy-show  policy-sudo  source\r
 lshell: forbidden path: "/"\r
 lshell: warning: 0 violations remaining before session termination"""
 
@@ -128,8 +128,8 @@ lshell: warning: 1 violation remaining before session termination\r
 lshell: forbidden path: "/tmp/"\r
 lshell: warning: 0 violations remaining before session termination\r
 FREEDOM\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  policy-path  policy-show  policy-sudo  source\r
+bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  policy-path  policy-show  policy-sudo  source\r
 lshell: forbidden path: "/"\r
 lshell: session terminated: warning limit exceeded"""
 

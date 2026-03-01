@@ -535,6 +535,7 @@ class CheckConfig:
             "login_script",
             "winscp",
             "disable_exit",
+            "policy_commands",
             "quiet",
         ]:
             try:
@@ -554,6 +555,8 @@ class CheckConfig:
                     self.conf[item] = []
                 elif item in ["history_size"]:
                     self.conf[item] = -1
+                elif item in ["policy_commands"]:
+                    self.conf[item] = 1
                 # default scp is allowed
                 elif item in ["scp_upload", "scp_download"]:
                     self.conf[item] = 1
@@ -666,6 +669,14 @@ class CheckConfig:
 
         # append default commands to allowed list
         self.conf["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
+
+        # Optionally hide policy introspection commands from users.
+        if self.conf.get("policy_commands") != 1:
+            self.conf["allowed"] = [
+                cmd
+                for cmd in self.conf["allowed"]
+                if cmd not in builtincmd.POLICY_COMMANDS
+            ]
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf["sudo_commands"]:

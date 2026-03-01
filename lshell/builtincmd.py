@@ -14,12 +14,23 @@ from lshell import utils
 # Store background jobs
 BACKGROUND_JOBS = []
 
+POLICY_COMMANDS = [
+    "policy-show",
+    "policy-path",
+    "policy-sudo",
+    "lpath",
+    "lsudo",
+]
+
 builtins_list = [
     "cd",
     "clear",
     "exit",
     "export",
     "history",
+    "policy-show",
+    "policy-path",
+    "policy-sudo",
     "lpath",
     "lsudo",
     "help",

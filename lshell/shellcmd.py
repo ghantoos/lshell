@@ -17,6 +17,7 @@ from lshell import utils
 from lshell import builtincmd
 from lshell import sec
 from lshell import completion
+from lshell import explain as explain_mode
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -493,6 +494,30 @@ class ShellCmd(cmd.Cmd, object):
         list_tmp = list(dict.fromkeys(self.completenames("", "")).keys())
         list_tmp.sort()
         self.columnize(list_tmp)
+
+    def do_policy_show(self, arg=None):
+        """Show resolved policy values and optional decision for a command."""
+        command_line = (arg or "").strip() or None
+        username = self.conf.get("username")
+        groups = explain_mode._resolve_user_groups(username, [])
+        try:
+            result = explain_mode.resolve_policy(
+                self.conf["configfile"],
+                username,
+                groups,
+            )
+        except ValueError as exception:
+            self.stderr.write(f"Error: {exception}\n")
+            return 1
+
+        decision = None
+        if command_line:
+            decision = explain_mode.explain_command(command_line, result["policy"])
+
+        explain_mode.print_user_view(result, command_line, decision)
+        if decision is None:
+            return 0
+        return 0 if decision["allowed"] else 2
 
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""

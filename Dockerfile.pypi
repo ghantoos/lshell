@@ -9,14 +9,16 @@ RUN \
         apt-get update && \
         apt-get install -y python3 python3-pip python3-venv git flake8 pylint python3-pytest python3-pexpect python3-setuptools python3-pyparsing vim procps sudo && \
         apt-get clean; \
-        useradd -m -d /home/testuser -s /bin/bash testuser; \
+        groupadd -f testuser; \
+        useradd -m -d /home/testuser -s /bin/bash -g testuser testuser; \
         echo 'root:password' | chpasswd; \
         echo 'testuser:password' | chpasswd; \
         echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
     # For Fedora
     elif [ -f /etc/fedora-release ]; then \
         dnf install -y python3 python3-pip python3-pytest git flake8 pylint python3-pexpect python3-setuptools python3-pyparsing vim sudo; \
-        useradd -m -d /home/testuser -s /bin/bash testuser; \
+        groupadd -f testuser; \
+        useradd -m -d /home/testuser -s /bin/bash -g testuser testuser; \
         echo 'root:password' | chpasswd; \
         echo 'testuser:password' | chpasswd; \
         echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \
@@ -28,7 +30,8 @@ RUN \
         yum install -y python3-devel gcc && \
         python3 -m pip install flake8 pylint pexpect setuptools pyparsing; \
         yum clean all; \
-        useradd -m -d /home/testuser -s /bin/bash testuser; \
+        groupadd -f testuser; \
+        useradd -m -d /home/testuser -s /bin/bash -g testuser testuser; \
         echo 'root:password' | chpasswd; \
         echo 'testuser:password' | chpasswd; \
         echo 'testuser ALL=(ALL:ALL) ALL' > /etc/sudoers.d/testuser && chmod 0440 /etc/sudoers.d/testuser; \

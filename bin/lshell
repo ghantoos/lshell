@@ -24,11 +24,15 @@ import sys
 import signal
 
 from lshell.checkconfig import CheckConfig
+from lshell import explain as explain_mode
 from lshell.shellcmd import ShellCmd, LshellTimeOut
 
 
 def main():
     """main function"""
+    if len(sys.argv) > 1 and sys.argv[1] == "policy-show":
+        sys.exit(explain_mode.main(sys.argv[2:]))
+
     # set SHELL and get LSHELL_ARGS env variables
     os.environ["SHELL"] = os.path.realpath(sys.argv[0])
     if "LSHELL_ARGS" in os.environ:

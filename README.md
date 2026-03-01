@@ -37,6 +37,43 @@ pip uninstall limited-shell
 lshell --config /path/to/lshell.conf
 ```
 
+### Admin diagnostics (`lshell policy-show`)
+
+Explain effective policy resolution for a target user/group set and a command:
+
+```bash
+lshell policy-show \
+  --config /path/to/lshell.conf \
+  --user deploy \
+  --group ops \
+  --group release \
+  --command "sudo systemctl restart nginx"
+```
+
+- prints precedence resolution (`default -> groups -> user`)
+- lists included config files (`include_dir`)
+- shows key-level overrides and final merged policy
+- returns command decision (`ALLOW` / `DENY`) with reason
+
+### Interactive policy builtins
+
+Inside an `lshell` session:
+
+- `policy-show [<command...>]`: show resolved values and optionally check a command
+- `policy-path`: show allowed/denied paths
+- `policy-sudo`: show allowed sudo commands
+
+Backward-compatible aliases:
+
+- `lpath` -> `policy-path`
+- `lsudo` -> `policy-sudo`
+
+You can hide these policy commands from users with:
+
+```ini
+policy_commands : 0
+```
+
 Default config location:
 
 - Linux: `/etc/lshell.conf`

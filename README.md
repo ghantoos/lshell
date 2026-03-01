@@ -5,121 +5,142 @@
 
 # lshell
 
-lshell is a limited shell coded in Python, that lets you restrict a user's environment to limited sets of commands, choose to enable/disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user's commands, implement timing restriction, and more.
-
+`lshell` is a Python-based limited shell. It is designed to restrict a user to a defined command set, enforce path and character restrictions, control SSH command behavior (`scp`, `sftp`, `rsync`, ...), and log activity.
 
 ## Installation
 
-### Install via pip
-
-To install `limited-shell` directly via `pip`, use the following command:
+### Install from PyPI
 
 ```bash
 pip install limited-shell
 ```
 
-This will install limited-shell from PyPI along with all its dependencies.
-
-To uninstall, you can run:
+### Build and install from source
 
 ```bash
-pip uninstall limited-shell
-```
-
-### Build from source and install locally
-
-If you'd like to build and install limited-shell from the source code (useful if you're making modifications or testing new features), you can follow these steps:
-
-```
 python3 -m pip install build --user
 python3 -m build
 pip install . --break-system-packages
 ```
 
-### Uninstall lshell
-
-To uninstall, you can run:
+### Uninstall
 
 ```bash
 pip uninstall limited-shell
 ```
 
 ## Usage
-### Via binary
-To launch lshell, just execute lshell specifying the location of your configuration file:
+
+### Run lshell
 
 ```bash
-lshell --config /path/to/configuration/file
+lshell --config /path/to/lshell.conf
 ```
 
-### Using `lshell` in Scripts
+Default config location:
 
-You can use `lshell` directly within a script by specifying the lshell path in the shebang. Ensure your script has a `.lsh` extension to indicate it is for lshell, and make sure to include the shebang `#!/usr/bin/lshell` at the top of your script.
+- Linux: `/etc/lshell.conf`
+- *BSD: `/usr/{pkg,local}/etc/lshell.conf`
 
-For example:
+You can also override configuration values from CLI:
+
+```bash
+lshell --config /path/to/lshell.conf --log /var/log/lshell --umask 0077
+```
+
+### Use lshell in scripts
+
+Use the lshell shebang and keep the `.lsh` extension:
 
 ```bash
 #!/usr/bin/lshell
 echo "test"
 ```
 
+## System setup
 
-## Configuration
-### User shell configuration
-In order to log a user, you will have to add them to the lshell group:
+### Add user to `lshell` group (for log access)
 
 ```bash
 usermod -aG lshell username
 ```
 
-In order to configure a user account to use lshell by default, you must: 
+### Set lshell as login shell
+
+Linux:
 
 ```bash
 chsh -s /usr/bin/lshell user_name
 ```
 
-You might need to ensure that lshell is listed in /etc/shells.
+*BSD:
 
-### lshell.conf
-
-#### Allowed list
-lshell.conf presents a template configuration file. See `etc/lshell.conf` or the man file for more information.
-
-You can allow commands specifying commands with exact arguments in the `allowed` list. This means you can define specific commands along with their arguments that are permitted. Commands without arguments can also be specified, allowing any arguments to be passed.
-
-For example:
+```bash
+chsh -s /usr/{pkg,local}/bin/lshell user_name
 ```
+
+Make sure lshell is present in `/etc/shells`.
+
+## Configuration
+
+The main template is [`etc/lshell.conf`](etc/lshell.conf). Full reference is available in the man page.
+
+### Section model and precedence
+
+Supported section types:
+
+- `[global]` for global lshell settings
+- `[default]` for all users
+- `[username]` for a specific user
+- `[grp:groupname]` for a UNIX group
+
+Precedence order:
+
+1. User section
+2. Group section
+3. Default section
+
+### `allowed`: exact vs generic commands
+
+`allowed` accepts command names and exact command lines.
+
+```ini
 allowed: ['ls', 'echo asd', 'telnet localhost']
 ```
 
-This will:
-- Allow the `ls` command with any arguments.
-- Allow `echo asd` but will reject `echo` with any other arguments (e.g., `echo qwe` will be rejected).
-- Allow `telnet localhost`, but not `telnet` with other hosts (e.g., `telnet 192.168.0.1` will be rejected).
+- `ls` allows `ls` with any arguments.
+- `echo asd` allows only that exact command line.
+- `telnet localhost` allows only `localhost` as host.
 
-Commands that do not include arguments (e.g., `ls`) can be used with any arguments, while commands specified with arguments (e.g., `echo asd`) must be used exactly as specified.
+For local executables, add explicit relative paths (for example `./deploy.sh`).
 
-For local executables, add the relative path explicitly in `allowed` (for example `./deploy.sh`).  
-This also enables `./` command-name completion from the allowed local entries.
+### `warning_counter` and `strict`
 
-#### Umask
+`warning_counter` is decremented on forbidden command/path/character attempts.
+When `strict = 1`, unknown syntax/commands also decrement `warning_counter`.
 
-Use the `umask` configuration key to set the file mode creation mask for the lshell process:
+### Security-related settings
 
-```
+- `path_noexec`: if available, lshell uses `sudo_noexec.so` to reduce command escape vectors.
+- `allowed_shell_escape`: explicit list of commands allowed to run child programs. Do not set it to `'all'`.
+- `allowed_file_extensions`: optional allow-list for file extensions passed in command lines.
+
+### `umask`
+
+Set a persistent session umask in config:
+
+```ini
 umask : 0002
 ```
 
-`umask` must be octal (`0000` to `0777`) and is applied when lshell starts.
-If you need a persistent session umask, configure `umask` in `lshell.conf` rather than relying on `login_script`, because `login_script` runs in a child shell process.
+- `0002` -> files `664`, directories `775`
+- `0022` -> files `644`, directories `755`
+- `0077` -> files `600`, directories `700`
 
-Examples:
+`umask` must be octal (`0000` to `0777`).  
+If you set umask in `login_script`, it does not persist because `login_script` runs in a child shell.
 
-- `umask : 0002` -> new files default to `664` and directories to `775`
-- `umask : 0022` -> new files default to `644` and directories to `755`
-- `umask : 0077` -> new files default to `600` and directories to `700`
-
-Quick validation in an lshell session:
+Quick check inside an lshell session:
 
 ```bash
 umask
@@ -128,88 +149,60 @@ mkdir test_dir
 ls -ld test_file test_dir
 ```
 
-#### User profiles
+### Example configuration
 
-A [default] profile is available for all users using lshell. Nevertheless,  you can create a [username] section or a [grp:groupname] section to customize users' preferences.
+For users `foo` and `bar` in UNIX group `users`:
 
-Order of priority when loading preferences is the following:
+```ini
+# CONFIGURATION START
+[global]
+logpath         : /var/log/lshell/
+loglevel        : 2
 
-1. User configuration
-2. Group configuration
-3. Default configuration
+[default]
+allowed         : ['ls','pwd']
+forbidden       : [';', '&', '|']
+warning_counter : 2
+timer           : 0
+path            : ['/etc', '/usr']
+env_path        : '/sbin:/usr/foo'
+scp             : 1
+sftp            : 1
+overssh         : ['rsync','ls']
+aliases         : {'ls':'ls --color=auto','ll':'ls -l'}
 
-The primary goal of lshell, is to be able to create shell accounts with ssh access and restrict their environment to a couple a needed commands and path.
+[grp:users]
+warning_counter : 5
+overssh         : - ['ls']
 
-#### Example
+[foo]
+allowed         : 'all' - ['su']
+path            : ['/var', '/usr'] - ['/usr/local']
+home_path       : '/home/users'
 
-For example User 'foo' and user 'bar' both belong to the 'users' UNIX group:
-
-- User 'foo': 
-       - must be able to access /usr and /var but not /usr/local
-       - use all commands in their PATH except 'su'
-       - has a warning counter set to 5
-       - has their home path set to '/home/users'
-
-- User 'bar':
-       - must be able to access /etc and /usr but not /usr/local
-       - is allowed default commands plus 'ping' minus 'ls'
-       - strictness is set to 1 (unknown syntax/commands decrement warning_counter)
-
-`warning_counter` is decremented on forbidden command/path/character attempts.
-When `strict` is enabled, unknown syntax is also counted.
-
-In this case, my configuration file will look something like this:
-
-    # CONFIGURATION START
-    [global]
-    logpath         : /var/log/lshell/
-    loglevel        : 2
-
-    [default]
-    allowed         : ['ls','pwd']
-    forbidden       : [';', '&', '|'] 
-    warning_counter : 2
-    timer           : 0
-    path            : ['/etc', '/usr']
-    env_path        : ':/sbin:/usr/foo'
-    scp             : 1 # or 0
-    sftp            : 1 # or 0
-    overssh         : ['rsync','ls']
-    aliases         : {'ls':'ls --color=auto','ll':'ls -l'}
-
-    [grp:users]
-    warning_counter : 5
-    overssh         : - ['ls']
-
-    [foo]
-    allowed         : 'all' - ['su']
-    path            : ['/var', '/usr'] - ['/usr/local']
-    home_path       : '/home/users'
-
-    [bar]
-    allowed         : + ['ping'] - ['ls'] 
-    path            : - ['/usr/local']
-    strict          : 1
-    scpforce        : '/home/bar/uploads/'
-    # CONFIGURATION END
-
-## More information
-
-More information can be found in the manpage: `man -l man/lshell.1` or `man lshell`.
-
-
-## Running Tests in Docker Containers
-
-You can run the tests in parallel across multiple Linux distributions using Docker Compose. This is helpful for ensuring compatibility and consistency across environments. The following command will launch test services for Ubuntu, Debian, and Fedora distributions simultaneously:
-
-```bash
-docker-compose up ubuntu_tests debian_tests fedora_tests
+[bar]
+allowed         : + ['ping'] - ['ls']
+path            : - ['/usr/local']
+strict          : 1
+scpforce        : '/home/bar/uploads/'
+# CONFIGURATION END
 ```
 
-Each service will run in parallel and execute the `pytest`, `pylint`, and `flake8` tests specified in the docker-compose.yml.
+## Testing with Docker Compose
 
-## Contributions
+Run tests on multiple distributions in parallel:
 
-To contribute, open an issue or send a pull request.
+```bash
+docker compose up ubuntu_tests debian_tests fedora_tests
+```
 
-Please use github for all requests: https://github.com/ghantoos/lshell/issues
+This runs `pytest`, `pylint`, and `flake8` in the configured test services.
+
+## Documentation
+
+- `man lshell` (installed)
+- `man ./man/lshell.1` (from repository)
+
+## Contributing
+
+Open an issue or pull request: https://github.com/ghantoos/lshell/issues

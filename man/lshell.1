@@ -9,6 +9,9 @@ lshell \- Limited Shell
 .SH SYNOPSIS
 .B lshell 
 [\fIOPTIONS\fR]
+.br
+.B lshell validate
+[\fIOPTIONS\fR] [\fIlshell-overrides\fR]
 
 .SH DESCRIPTION
 \fBlshell\fR provides a limited shell configured per user via a configuration file.
@@ -39,6 +42,9 @@ Show help message
 .TP
 .B \--version
 Show version
+.TP
+.B validate
+Run configuration validation and exit (does not open an interactive shell)
 
 .SH CONFIGURATION
 You can configure lshell through its configuration file:
@@ -52,6 +58,16 @@ On *BSD  \-> /usr/{pkg,local}/etc/lshell.conf
 .LP
 .RE
 .fi
+
+.SH VALIDATION
+Use \fBlshell validate\fR to validate configuration structure and effective policy.
+This command is intended for CI/CD and pre-deployment checks.
+.TP
+.B \--strict-warnings
+Return non-zero when warnings are found.
+.TP
+.B Exit codes
+0 = valid without warnings, 2 = valid with warnings, 1 = invalid configuration
 The configuration is dynamically reloaded. This means you can edit the
 configuration and all connected users will automatically load it. In
 case you are using multiple configuration files (see include_dir), you will

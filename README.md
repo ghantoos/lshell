@@ -48,6 +48,24 @@ You can also override configuration values from CLI:
 lshell --config /path/to/lshell.conf --log /var/log/lshell --umask 0077
 ```
 
+### Validate configuration (CI-friendly)
+
+```bash
+lshell validate --config /path/to/lshell.conf
+```
+
+Exit codes:
+
+- `0`: valid, no warnings
+- `2`: valid with warnings
+- `1`: invalid configuration (or warnings when `--strict-warnings` is used)
+
+Use strict mode in CI:
+
+```bash
+lshell validate --strict-warnings --config /path/to/lshell.conf
+```
+
 ### Use lshell in scripts
 
 Use the lshell shebang and keep the `.lsh` extension:

@@ -33,6 +33,10 @@ USAGE = f"""Usage: lshell [OPTIONS]
   --<param> <value> : where <param> is *any* config file parameter
   -h, --help        : Show this help message
   --version         : Show version
+
+Validation:
+  lshell validate [OPTIONS] [lshell-overrides]
+  --strict-warnings : Return non-zero if warnings exist
 """
 
 # Intro Text

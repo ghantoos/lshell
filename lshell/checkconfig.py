@@ -43,7 +43,9 @@ class CheckConfig:
 
         return probe.returncode == 0
 
-    def __init__(self, args, refresh=None, stdin=None, stdout=None, stderr=None):
+    def __init__(
+        self, args, refresh=None, stdin=None, stdout=None, stderr=None, validate_mode=False
+    ):
         """Force the calling of the methods below"""
         if stdin is None:
             self.stdin = sys.stdin
@@ -59,6 +61,7 @@ class CheckConfig:
             self.stderr = stderr
 
         self.refresh = refresh
+        self.validate_mode = validate_mode
         self.conf = {}
         self.conf, self.arguments = self.getoptions(args, self.conf)
         configfile = self.conf["configfile"]
@@ -67,11 +70,13 @@ class CheckConfig:
         self.check_config_file(configfile)
         self.get_global()
         self.check_log()
-        self.check_script()
+        if not self.validate_mode:
+            self.check_script()
         self.get_config()
         self.check_user_integrity()
         self.get_config_user()
-        self.check_env()
+        if not self.validate_mode:
+            self.check_env()
         self.set_noexec()
 
     def check_config_file_exists(self, configfile):
@@ -249,6 +254,11 @@ class CheckConfig:
             logfilename = logfilename.replace("%u", getuser())
         else:
             logfilename = getuser()
+
+        if self.validate_mode:
+            self.conf["logpath"] = logger
+            self.log = logger
+            return
 
         if self.conf["loglevel"] > 0:
             try:
@@ -580,7 +590,8 @@ class CheckConfig:
                 )
                 sys.exit(1)
             self.conf["umask"] = umask_raw.zfill(4)
-            os.umask(int(self.conf["umask"], 8))
+            if not self.validate_mode:
+                os.umask(int(self.conf["umask"], 8))
 
         if "home_path" in self.conf_raw:
             home_path = self.conf_raw["home_path"]
@@ -626,7 +637,7 @@ class CheckConfig:
 
         if os.path.isdir(self.conf["home_path"]):
             # change dir to home when initially loading the configuration
-            if self.refresh is None:
+            if self.refresh is None and not self.validate_mode:
                 os.chdir(self.conf["home_path"])
             # if reloading the configuration, do not change directory
             else:
@@ -659,7 +670,8 @@ class CheckConfig:
             if all(
                 c in string.ascii_letters + string.digits + "/:-_." for c in new_path
             ) and not new_path.startswith(":"):
-                os.environ["PATH"] = new_path
+                if not self.validate_mode:
+                    os.environ["PATH"] = new_path
             else:
                 print(f"CONF: env_path must be a valid $PATH: {self.conf['env_path']}")
                 sys.exit(1)
@@ -675,7 +687,8 @@ class CheckConfig:
         if self.conf["allowed_cmd_path"]:
             for path in self.conf["allowed_cmd_path"]:
                 # add path to PATH env variable
-                os.environ["PATH"] += f":{path}"
+                if not self.validate_mode:
+                    os.environ["PATH"] += f":{path}"
                 # find executable file, and add them to allowed commands
                 for item in os.listdir(path):
                     cmd = os.path.join(path, item)

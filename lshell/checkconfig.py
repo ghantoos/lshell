@@ -18,6 +18,7 @@ from logging.handlers import SysLogHandler
 from lshell import utils
 from lshell import variables
 from lshell import builtincmd
+from lshell import configschema
 
 
 class CheckConfig:
@@ -77,7 +78,7 @@ class CheckConfig:
     def check_config_file_exists(self, configfile):
         """Check if the configuration file exists, else exit with error"""
         if not os.path.exists(configfile):
-            self.stderr.write("Error: Config file doesn't exist\n")
+            self.stderr.write("lshell: config file doesn't exist\n")
             utils.usage()
 
     def check_script(self):
@@ -103,7 +104,7 @@ class CheckConfig:
         try:
             optlist, args = getopt.getopt(arguments, "hc:", variables.configparams)
         except getopt.GetoptError:
-            self.stderr.write("Missing or unknown argument(s)\n")
+            self.stderr.write("lshell: missing or unknown argument(s)\n")
             utils.usage()
 
         for option, value in optlist:
@@ -151,7 +152,7 @@ class CheckConfig:
         file passed via command line arguments
         """
         if not os.path.exists(file):
-            self.stderr.write("Error: Config file doesn't exist\n")
+            self.stderr.write("lshell: config file doesn't exist\n")
             utils.usage()
         else:
             self.config = configparser.ConfigParser(interpolation=None)
@@ -164,11 +165,11 @@ class CheckConfig:
             configparser.MissingSectionHeaderError,
             configparser.ParsingError,
         ) as argument:
-            self.stderr.write(f"ERR: {argument}\n")
+            self.stderr.write(f"lshell: invalid config file: {argument}\n")
             sys.exit(1)
 
         if not self.config.has_section("global"):
-            self.stderr.write("Config file missing [global] section\n")
+            self.stderr.write("lshell: config file missing [global] section\n")
             sys.exit(1)
 
         for item in self.config.items("global"):
@@ -190,7 +191,7 @@ class CheckConfig:
             try:
                 logname = str(self.conf["syslogname"])
             except (SyntaxError, NameError, TypeError):
-                sys.stderr.write("ERR: syslogname must be a string\n")
+                sys.stderr.write("lshell: syslogname must be a string\n")
                 sys.exit(1)
         else:
             logname = "lshell"
@@ -237,7 +238,7 @@ class CheckConfig:
             try:
                 logfilename = str(self.conf["logfilename"])
             except (SyntaxError, NameError, TypeError):
-                sys.stderr.write("ERR: logfilename must be a string\n")
+                sys.stderr.write("lshell: logfilename must be a string\n")
                 sys.exit(1)
             currentime = time.localtime()
             logfilename = logfilename.replace("%y", f"{currentime[0]}")
@@ -320,12 +321,6 @@ class CheckConfig:
         """this function is used to interpret the configuration +/-,
         'all' etc.
         """
-        def is_all_literal(raw_value):
-            """Return True when the config value denotes the literal 'all'."""
-            if not isinstance(raw_value, str):
-                return False
-            return raw_value.strip() in {"all", "'all'", '"all"'}
-
         # convert commandline options from dict to list of tuples, in order to
         # merge them with the output of the config parser
         conf = []
@@ -357,34 +352,38 @@ class CheckConfig:
                             self.conf_raw.update(
                                 self.minusplus(self.conf_raw, key, stuff)
                             )
-                        elif is_all_literal(stuff):
+                        elif configschema.is_all_literal(stuff):
                             if key == "allowed_shell_escape":
                                 self.log.critical(
-                                    "CONF: 'allowed_shell_escape' cannot be set to 'all'"
+                                    "lshell: config: 'allowed_shell_escape' cannot be set to 'all'"
                                 )
                                 sys.exit(1)
                             self.conf_raw.update({key: self.expand_all()})
                         elif stuff and key == "path":
                             liste = ["", ""]
-                            for path in eval(stuff):
+                            for path in self._parse_config_value(stuff, key):
                                 for item in glob.glob(path):
                                     liste[0] += os.path.realpath(item) + "/|"
                             # remove double slashes
                             liste[0] = liste[0].replace("//", "/")
                             self.conf_raw.update({key: str(liste)})
-                        elif stuff and isinstance(eval(stuff), list):
+                        elif stuff and isinstance(
+                            self._parse_config_value(stuff, key), list
+                        ):
                             self.conf_raw.update({key: stuff})
                 # case allowed is set to 'all'
                 elif key == "allowed" and split[0].strip() == "'all'":
                     self.conf_raw.update({key: self.expand_all()})
-                elif key == "allowed_shell_escape" and is_all_literal(split[0]):
+                elif key == "allowed_shell_escape" and configschema.is_all_literal(
+                    split[0]
+                ):
                     self.log.critical(
-                        "CONF: 'allowed_shell_escape' cannot be set to 'all'"
+                        "lshell: config: 'allowed_shell_escape' cannot be set to 'all'"
                     )
                     sys.exit(1)
                 elif key == "path":
                     liste = ["", ""]
-                    for path in self.myeval(value, "path"):
+                    for path in self._parse_config_value(value, "path"):
                         for item in glob.glob(path):
                             liste[0] += os.path.realpath(item) + "/|"
                     # remove double slashes
@@ -396,13 +395,13 @@ class CheckConfig:
     def minusplus(self, confdict, key, extra):
         """update configuration lists containing -/+ operators"""
         if key in confdict:
-            liste = self.myeval(confdict[key], key)
+            liste = self._parse_config_value(confdict[key], key)
         elif key == "path":
             liste = ["", ""]
         else:
             liste = []
 
-        sublist = self.myeval(extra[1:], key)
+        sublist = self._parse_config_value(extra[1:], key)
         if extra.startswith("+"):
             if key == "path":
                 for path in sublist:
@@ -419,7 +418,9 @@ class CheckConfig:
                     if item in liste:
                         liste.remove(item)
                     else:
-                        self.log.error(f"CONF: -['{item}'] ignored in '{key}' list.")
+                        self.log.error(
+                            f"lshell: config: -['{item}'] ignored in '{key}' list."
+                        )
         return {key: str(liste)}
 
     def expand_all(self):
@@ -455,28 +456,37 @@ class CheckConfig:
                     if os.access(os.path.join(directory, item), os.X_OK):
                         expanded_all.append(item)
             else:
-                self.log.error(f'CONF: PATH entry "{directory}" does not exist')
+                self.log.error(
+                    f'lshell: config: PATH entry "{directory}" does not exist'
+                )
 
         return str(expanded_all)
 
-    def myeval(self, value, key=""):
-        """if eval returns SyntaxError, log it as critical conf missing"""
+    def _parse_config_value(self, value, key=""):
+        """Safely parse config values and enforce key schema."""
         try:
-            evaluated = eval(value)
-            # if list, remove duplicates
-            if isinstance(evaluated, list) and key in [
-                "allowed",
-                "allowed_shell_escape",
-                "allowed_file_extensions",
-                "forbidden",
-                "overssh",
-                "sudo_commands",
-            ]:
-                evaluated = list(set(evaluated))
-            return evaluated
-        except SyntaxError:
-            self.log.critical(f"CONF: Incomplete {key} field in configuration file")
+            return configschema.parse_config_value(value, key)
+        except ValueError as exception:
+            self.log.critical(f"lshell: config: {exception}")
             sys.exit(1)
+
+    def _parse_history_file(self):
+        """Parse and validate history_file from raw config."""
+        history_value = self.conf_raw["history_file"].replace("%u", self.conf["username"])
+        if (
+            isinstance(history_value, str)
+            and len(history_value) >= 2
+            and history_value[0] in ("'", '"')
+            and history_value[-1] == history_value[0]
+        ):
+            parsed = self._parse_config_value(history_value, "history_file")
+        else:
+            parsed = history_value
+
+        if not isinstance(parsed, str):
+            self.log.error(f"lshell: config: history file error: {history_value}")
+            sys.exit(1)
+        return parsed
 
     def check_user_integrity(self):
         """This method checks if all the required fields by user are present
@@ -485,9 +495,9 @@ class CheckConfig:
         """
         for item in variables.required_config:
             if item not in self.conf_raw:
-                self.log.critical(f"ERROR: Missing parameter '{item}'")
+                self.log.critical(f"lshell: missing parameter '{item}'")
                 self.log.critical(
-                    f"ERROR: Add it in the in the [{self.user}] or [default] section of conf file."
+                    f"lshell: add it in the [{self.user}] or [default] section of config file."
                 )
                 sys.exit(1)
 
@@ -544,7 +554,7 @@ class CheckConfig:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""
                 else:
-                    self.conf[item] = self.myeval(self.conf_raw[item], item)
+                    self.conf[item] = self._parse_config_value(self.conf_raw[item], item)
             except KeyError:
                 if item in [
                     "allowed",
@@ -571,7 +581,7 @@ class CheckConfig:
                     self.conf[item] = 0
             except TypeError:
                 self.log.critical(
-                    f"ERR: in the -{item}- field. Check the configuration file."
+                    f"lshell: invalid value in '{item}'. Check the configuration file."
                 )
                 sys.exit(1)
 
@@ -581,7 +591,8 @@ class CheckConfig:
             umask_raw = str(self.conf_raw["umask"]).strip().strip("'\"")
             if not re.fullmatch(r"[0-7]{1,4}", umask_raw):
                 self.log.critical(
-                    f"CONF: umask must be an octal value (0000-0777), got: {self.conf_raw['umask']}"
+                    "lshell: config: umask must be an octal value (0000-0777), "
+                    f"got: {self.conf_raw['umask']}"
                 )
                 sys.exit(1)
             self.conf["umask"] = umask_raw.zfill(4)
@@ -592,7 +603,7 @@ class CheckConfig:
             home_path = home_path.replace("%u", self.conf["username"])
             self.conf_raw["home_path"] = home_path
             self.conf["home_path"] = os.path.normpath(
-                self.myeval(self.conf_raw["home_path"], "home_path")
+                self._parse_config_value(self.conf_raw["home_path"], "home_path")
             )
         else:
             self.conf["home_path"] = os.environ["HOME"]
@@ -601,31 +612,35 @@ class CheckConfig:
         self.conf["oldpwd"] = self.conf["home_path"]
 
         if "path" in self.conf_raw:
-            self.conf["path"] = eval(self.conf_raw["path"])
+            self.conf["path"] = self._parse_config_value(self.conf_raw["path"], "path")
             self.conf["path"][0] += self.conf["home_path"]
         else:
             self.conf["path"] = ["", ""]
             self.conf["path"][0] = self.conf["home_path"]
 
         if "env_path" in self.conf_raw:
-            self.conf["env_path"] = self.myeval(self.conf_raw["env_path"], "env_path")
+            self.conf["env_path"] = self._parse_config_value(
+                self.conf_raw["env_path"], "env_path"
+            )
         else:
             self.conf["env_path"] = ""
 
         if "scpforce" in self.conf_raw:
-            self.conf_raw["scpforce"] = self.myeval(self.conf_raw["scpforce"])
+            self.conf_raw["scpforce"] = self._parse_config_value(
+                self.conf_raw["scpforce"]
+            )
             try:
                 if os.path.exists(self.conf_raw["scpforce"]):
                     self.conf["scpforce"] = self.conf_raw["scpforce"]
                 else:
                     self.log.error(
-                        f"CONF: scpforce no such directory: {self.conf_raw['scpforce']}"
+                        f"lshell: config: scpforce no such directory: {self.conf_raw['scpforce']}"
                     )
             except TypeError:
-                self.log.error("CONF: scpforce must be a string!")
+                self.log.error("lshell: config: scpforce must be a string")
 
         if "intro" in self.conf_raw:
-            self.conf["intro"] = self.myeval(self.conf_raw["intro"])
+            self.conf["intro"] = self._parse_config_value(self.conf_raw["intro"])
         else:
             self.conf["intro"] = variables.INTRO
 
@@ -638,17 +653,17 @@ class CheckConfig:
                 pass
         else:
             self.log.critical(
-                f'ERR: home directory "{self.conf["home_path"]}" does not exist.'
+                f'lshell: home directory "{self.conf["home_path"]}" does not exist'
             )
             sys.exit(1)
 
         if "history_file" in self.conf_raw:
             try:
-                self.conf["history_file"] = eval(
-                    self.conf_raw["history_file"].replace("%u", self.conf["username"])
+                self.conf["history_file"] = self._parse_history_file()
+            except (KeyError, TypeError):
+                self.log.error(
+                    f"lshell: config: history file error: {self.conf_raw.get('history_file')}"
                 )
-            except (KeyError, SyntaxError, TypeError, NameError):
-                self.log.error(f"CONF: history file error: {self.conf['history_file']}")
         else:
             self.conf["history_file"] = variables.HISTORY_FILE
 
@@ -666,7 +681,9 @@ class CheckConfig:
             ) and not new_path.startswith(":"):
                 os.environ["PATH"] = new_path
             else:
-                print(f"CONF: env_path must be a valid $PATH: {self.conf['env_path']}")
+                self.stderr.write(
+                    f"lshell: config: env_path must be a valid $PATH: {self.conf['env_path']}\n"
+                )
                 sys.exit(1)
 
         # append default commands to allowed list
@@ -696,7 +713,10 @@ class CheckConfig:
                         self.conf["allowed"].append(item)
 
         # case sudo_commands set to 'all', expand to all 'allowed' commands
-        if "sudo_commands" in self.conf_raw and self.conf_raw["sudo_commands"] == "all":
+        if (
+            "sudo_commands" in self.conf_raw
+            and configschema.is_all_literal(str(self.conf_raw["sudo_commands"]))
+        ):
             # exclude native commands and sudo(8)
             exclude = builtincmd.builtins_list + ["sudo"]
             self.conf["sudo_commands"] = [
@@ -763,14 +783,17 @@ class CheckConfig:
 
         # check if alternative path is set in configuration file
         if "path_noexec" in self.conf_raw:
-            self.conf["path_noexec"] = self.myeval(self.conf_raw["path_noexec"])
+            self.conf["path_noexec"] = self._parse_config_value(
+                self.conf_raw["path_noexec"]
+            )
             # if path_noexec is empty, disable LD_PRELOAD
             # /!\ this feature should be used at the administrator's own risks!
             if self.conf["path_noexec"] == "":
                 return
             if not os.path.exists(self.conf["path_noexec"]):
                 self.log.critical(
-                    f"Fatal: 'path_noexec': {self.conf['path_noexec']} No such file or directory"
+                    "lshell: config: 'path_noexec': "
+                    f"{self.conf['path_noexec']} no such file or directory"
                 )
                 sys.exit(2)
         else:
@@ -785,14 +808,14 @@ class CheckConfig:
             self.conf["path_noexec"]
         ):
             self.log.error(
-                f"Error: disabling incompatible noexec library: {self.conf['path_noexec']}"
+                f"lshell: disabling incompatible noexec library: {self.conf['path_noexec']}"
             )
             self.conf.pop("path_noexec", None)
 
         if not self.conf.get("path_noexec"):
             # if sudo_noexec.so file is not found,  write error in log file,
             # but don't exit tp  prevent strict dependency on sudo noexec lib
-            self.log.error("Error: noexec library not found")
+            self.log.error("lshell: noexec library not found")
 
         self.conf["allowed"] += self.conf["allowed_shell_escape"]
 

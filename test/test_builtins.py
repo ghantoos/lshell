@@ -147,7 +147,7 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
 
         output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = f"ERROR: Unable to read environment file: {env_file}"
+        expected_output = f"lshell: unable to read environment file: {env_file}"
 
         assert (
             output == expected_output

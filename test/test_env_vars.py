@@ -81,7 +81,7 @@ class TestFunctions(unittest.TestCase):
 
         # Simulate what happens when the environment variable file is missing
         expected = (
-            f"ERROR: Unable to read environment file: {missing_file_path}\r\n"
+            f"lshell: unable to read environment file: {missing_file_path}\r\n"
             "You are in a limited shell.\r\n"
             "Type '?' or 'help' to get the list of allowed commands\r\n"
         )

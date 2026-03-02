@@ -375,6 +375,8 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
         retcode = builtincmd.cmd_history(shell_context.conf, shell_context.log)
     elif executable == "cd":
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
+    elif executable == "ls":
+        retcode = exec_cmd(full_command)
     elif executable in ["lpath", "policy-path"]:
         retcode = builtincmd.cmd_lpath(conf)
     elif executable in ["lsudo", "policy-sudo"]:

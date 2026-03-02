@@ -81,7 +81,9 @@ class TestAttackSurface(unittest.TestCase):
     def test_split_command_sequence_does_not_split_escaped_pipe(self):
         """Treat escaped pipes as literal text in a command token."""
         line = r"echo a\|b | wc -c"
-        self.assertEqual(utils.split_command_sequence(line), [r"echo a\|b", "|", "wc -c"])
+        self.assertEqual(
+            utils.split_command_sequence(line), [r"echo a\|b", "|", "wc -c"]
+        )
 
     def test_split_command_sequence_allows_trailing_background(self):
         """Allow a trailing background operator as a separate token."""
@@ -120,13 +122,90 @@ class TestAttackSurface(unittest.TestCase):
         with self.assertRaises(SystemExit):
             CheckConfig(self.args + ["--allowed_shell_escape='all'"]).returnconf()
 
+    def test_allowed_extension_check_blocks_extensionless_arguments(self):
+        """Reject arguments without extensions when extension policy is configured."""
+        allowed, disallowed = sec.check_allowed_file_extensions(
+            "touch report", [".log"]
+        )
+        self.assertFalse(allowed)
+        self.assertEqual(disallowed, ["<none>"])
+
+    def test_allowed_extension_check_uses_final_filename_extension(self):
+        """Use the basename final suffix, not the first dotted segment."""
+        allowed, disallowed = sec.check_allowed_file_extensions(
+            "cat /tmp/archive.v1/report.tar.gz",
+            [".gz"],
+        )
+        self.assertTrue(allowed)
+        self.assertIsNone(disallowed)
+
+    def test_allowed_extension_check_ignores_option_tokens(self):
+        """Do not treat command options as file path arguments."""
+        allowed, disallowed = sec.check_allowed_file_extensions(
+            "cat --include=*.log app.log",
+            [".log"],
+        )
+        self.assertTrue(allowed)
+        self.assertIsNone(disallowed)
+
+    def test_allowed_extension_check_ignores_literal_when_file_like_present(self):
+        """Treat plain literal arguments as non-file when explicit file-like args exist."""
+        allowed, disallowed = sec.check_allowed_file_extensions(
+            "cat --include=*.log value app.log",
+            [".log"],
+        )
+        self.assertTrue(allowed)
+        self.assertIsNone(disallowed)
+
+    def test_extension_policy_exempts_selected_builtin_commands(self):
+        """Builtin commands in the exemption list bypass extension checks."""
+        self.assertFalse(sec.should_enforce_file_extensions("cd"))
+        self.assertFalse(sec.should_enforce_file_extensions("clear"))
+        self.assertFalse(sec.should_enforce_file_extensions("fg"))
+        self.assertFalse(sec.should_enforce_file_extensions("bg"))
+        self.assertFalse(sec.should_enforce_file_extensions("ls"))
+
+    def test_check_secure_does_not_apply_extension_policy_to_cd(self):
+        """cd with extensionless path should pass extension policy checks."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['cd']",
+                "--allowed_file_extensions=['.log']",
+                "--strict=1",
+            ]
+        ).returnconf()
+        ret, _ = sec.check_secure("cd /tmp", conf, strict=1)
+        self.assertEqual(ret, 0)
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_treats_ls_as_builtin(self, mock_exec_cmd):
+        """ls should be dispatched through builtin handling."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['ls']",
+                "--allowed_file_extensions=['.log']",
+                "--path=['/tmp']",
+                "--strict=1",
+            ]
+        ).returnconf()
+        shell_context = DummyShellContext(conf)
+        retcode = utils.cmd_parse_execute("ls /tmp", shell_context=shell_context)
+        self.assertEqual(retcode, 0)
+        mock_exec_cmd.assert_called_once_with("ls /tmp")
+
     def test_shell_escape_c_runs_allowed_command_when_not_over_ssh(self):
         """Allow local -c shell escape for commands already authorized by policy."""
         saved_env = self._without_ssh_env()
         try:
-            conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--strict=0"]
+            ).returnconf()
             conf["ssh"] = "ls"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -144,7 +223,9 @@ class TestAttackSurface(unittest.TestCase):
         """Block local -c shell escape when the command is not in allowed policy."""
         saved_env = self._without_ssh_env()
         try:
-            conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--strict=0"]
+            ).returnconf()
             conf["ssh"] = "tail /etc/passwd"
             with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
@@ -168,7 +249,9 @@ class TestAttackSurface(unittest.TestCase):
                 self.args + ["--allowed=['echo']", "--overssh=['ls']", "--strict=0"]
             ).returnconf()
             conf["ssh"] = "ls"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -252,7 +335,9 @@ class TestAttackSurface(unittest.TestCase):
         try:
             conf = CheckConfig(self.args + ["--sftp=1", "--strict=0"]).returnconf()
             conf["ssh"] = "/usr/libexec/sftp-server"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -299,7 +384,9 @@ class TestAttackSurface(unittest.TestCase):
                 + ["--scp=0", "--overssh=['scp']", "--scp_download=1", "--strict=0"]
             ).returnconf()
             conf["ssh"] = f"scp -f {conf['home_path']}/artifact"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -374,7 +461,9 @@ class TestAttackSurface(unittest.TestCase):
                     ]
                 ).returnconf()
                 conf["ssh"] = f"scp -t {conf['home_path']}"
-                with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with patch(
+                    "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+                ) as mock_exec:
                     with self.assertRaises(SystemExit) as cm:
                         ShellCmd(
                             conf,
@@ -404,7 +493,9 @@ class TestAttackSurface(unittest.TestCase):
         )
         shell.cmdqueue = ["exit"]
 
-        with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+        with patch(
+            "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+        ) as mock_exec:
             with patch("lshell.shellcmd.sys.exit", side_effect=SystemExit):
                 with self.assertRaises(SystemExit):
                     shell.cmdloop()
@@ -421,7 +512,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("A=1 echo ok", conf)[0], 0)
         self.assertEqual(sec.check_secure("A=1 echo nope", conf)[0], 1)
 
-    def test_check_secure_unknown_command_does_not_decrement_counter_when_not_strict(self):
+    def test_check_secure_unknown_command_does_not_decrement_counter_when_not_strict(
+        self,
+    ):
         """Treat disallowed commands as unknown syntax when strict mode is disabled."""
         conf = CheckConfig(
             self.args
@@ -433,7 +526,9 @@ class TestAttackSurface(unittest.TestCase):
             ret, conf = sec.check_secure("no_such_allowed_command", conf, strict=0)
         self.assertEqual(ret, 1)
         self.assertEqual(conf["warning_counter"], starting_counter)
-        self.assertIn("lshell: unknown syntax: no_such_allowed_command", stderr.getvalue())
+        self.assertIn(
+            "lshell: unknown syntax: no_such_allowed_command", stderr.getvalue()
+        )
 
     def test_check_secure_unknown_command_decrements_counter_when_strict(self):
         """Count disallowed commands as forbidden actions when strict mode is enabled."""
@@ -453,7 +548,12 @@ class TestAttackSurface(unittest.TestCase):
         """Validate sudo subcommands after assignment prefixes."""
         conf = CheckConfig(
             self.args
-            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
         ).returnconf()
         self.assertEqual(sec.check_secure("A=1 sudo ls", conf)[0], 0)
         self.assertEqual(sec.check_secure("A=1 sudo cat /etc/passwd", conf)[0], 1)
@@ -462,7 +562,12 @@ class TestAttackSurface(unittest.TestCase):
         """Allow authorized sudo -u command with an assignment prefix."""
         conf = CheckConfig(
             self.args
-            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
         ).returnconf()
         self.assertEqual(sec.check_secure("A=1 sudo -u root ls", conf)[0], 0)
 
@@ -470,7 +575,12 @@ class TestAttackSurface(unittest.TestCase):
         """Reject sudo -u when no subcommand is provided."""
         conf = CheckConfig(
             self.args
-            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
         ).returnconf()
         self.assertEqual(sec.check_secure("sudo -u root", conf)[0], 1)
 
@@ -483,7 +593,8 @@ class TestAttackSurface(unittest.TestCase):
     def test_check_secure_rejects_disallowed_command_substitution(self):
         """Reject substitution constructs that invoke disallowed commands."""
         conf = CheckConfig(
-            self.args + ["--allowed=['echo']", "--forbidden=[';','&','|','>','<']", "--strict=0"]
+            self.args
+            + ["--allowed=['echo']", "--forbidden=[';','&','|','>','<']", "--strict=0"]
         ).returnconf()
         self.assertEqual(sec.check_secure("echo $(cat /etc/passwd)", conf)[0], 1)
         self.assertEqual(sec.check_secure("echo `cat /etc/passwd`", conf)[0], 1)
@@ -500,7 +611,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(conf["warning_counter"], starting_counter)
         self.assertIn("lshell: unknown syntax:", stderr.getvalue())
 
-    def test_cmd_parse_execute_unbalanced_syntax_decrements_counter_in_strict_mode(self):
+    def test_cmd_parse_execute_unbalanced_syntax_decrements_counter_in_strict_mode(
+        self,
+    ):
         """In strict mode, unknown syntax should consume warning counter."""
         conf = CheckConfig(self.args + ["--strict=1", "--quiet=0"]).returnconf()
         shell = DummyShellContext(conf)
@@ -512,7 +625,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(conf["warning_counter"], starting_counter - 1)
         self.assertIn("lshell: warning:", stderr.getvalue())
 
-    def test_cmd_parse_execute_malformed_operator_decrements_counter_in_strict_mode(self):
+    def test_cmd_parse_execute_malformed_operator_decrements_counter_in_strict_mode(
+        self,
+    ):
         """In strict mode, malformed operators should consume warning counter."""
         conf = CheckConfig(self.args + ["--strict=1", "--quiet=0"]).returnconf()
         shell = DummyShellContext(conf)
@@ -851,13 +966,17 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(ret, 130)
         mock_killpg.assert_called_once_with(7777, utils.signal.SIGINT)
 
-    def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(self):
+    def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(
+        self,
+    ):
         """Security expectation: assignment-only should not bypass env blacklist."""
         conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()
         shell = DummyShellContext(conf)
         original = os.environ.get("LD_PRELOAD")
         try:
-            ret = utils.cmd_parse_execute("LD_PRELOAD=/tmp/evil.so", shell_context=shell)
+            ret = utils.cmd_parse_execute(
+                "LD_PRELOAD=/tmp/evil.so", shell_context=shell
+            )
             self.assertNotEqual(
                 ret,
                 0,

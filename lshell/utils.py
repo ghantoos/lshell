@@ -367,15 +367,17 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
 
     if executable == "help":
         shell_context.do_help(executable)
+    elif executable == "policy-show":
+        shell_context.do_policy_show(argument)
     elif executable == "exit":
         shell_context.do_exit(full_command)
     elif executable == "history":
         retcode = builtincmd.cmd_history(shell_context.conf, shell_context.log)
     elif executable == "cd":
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
-    elif executable == "lpath":
+    elif executable in ["lpath", "policy-path"]:
         retcode = builtincmd.cmd_lpath(conf)
-    elif executable == "lsudo":
+    elif executable in ["lsudo", "policy-sudo"]:
         retcode = builtincmd.cmd_lsudo(conf)
     elif executable == "export":
         retcode, var = builtincmd.cmd_export(full_command)

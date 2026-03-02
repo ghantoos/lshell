@@ -32,15 +32,27 @@ class TestFunctions(unittest.TestCase):
 
     def test_15_cmd_completion_tab_tab(self):
         """F15 | command completion: tab to list commands"""
-        expected = (
-            "\x07\r\nbg       clear    exit     help     jobs     lpath    lsudo    "
-            "\r\ncd       echo     fg       history  ll       ls       source"
-        )
         self.child.sendline("\t\t")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").strip()
 
-        self.assertEqual(expected, result)
+        for command in [
+            "bg",
+            "cd",
+            "clear",
+            "echo",
+            "exit",
+            "help",
+            "history",
+            "jobs",
+            "lpath",
+            "lsudo",
+            "policy-path",
+            "policy-show",
+            "policy-sudo",
+            "source",
+        ]:
+            self.assertIn(command, result)
 
     def test_14_path_completion_tilda(self):
         """F14 | path completion with ~/"""

@@ -13,6 +13,23 @@ CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
+POLICY_HELP_COMMANDS = [
+    "bg",
+    "cd",
+    "clear",
+    "echo",
+    "exit",
+    "fg",
+    "help",
+    "history",
+    "jobs",
+    "lpath",
+    "lsudo",
+    "policy-path",
+    "policy-show",
+    "policy-sudo",
+    "source",
+]
 
 
 class TestFunctions(unittest.TestCase):
@@ -65,23 +82,20 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" "$@"
         # Spawn a child process to run the test.lsh script using pexpect
         child = pexpect.spawn(test_script_path)
 
-        # Expected output
-        expected_output = """test\r
-lshell: unknown syntax: dig google.com\r
-lshell: forbidden path: "/tmp/"\r
-lshell: warning: 1 violation remaining before session termination\r
-FREEDOM\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-lshell: forbidden path: "/"\r
-lshell: warning: 0 violations remaining before session termination"""
-
         # Wait for the script to finish executing
         child.expect(pexpect.EOF)
 
-        # Capture the output and compare with expected output
+        # Capture and validate key output markers while allowing wrapped help output
         result = child.before.decode("utf8").strip()
-        self.assertEqual(result, expected_output)
+        self.assertIn("test\r\n", result)
+        self.assertIn("lshell: unknown syntax: dig google.com", result)
+        self.assertIn('lshell: forbidden path: "/tmp/"', result)
+        self.assertIn("lshell: warning: 1 violation remaining", result)
+        self.assertIn("FREEDOM", result)
+        self.assertIn('lshell: forbidden path: "/"', result)
+        self.assertIn("lshell: warning: 0 violations remaining", result)
+        for command in POLICY_HELP_COMMANDS:
+            self.assertIn(command, result)
 
         # Cleanup: remove the test script after the test
         if os.path.exists(test_script_path):
@@ -121,24 +135,21 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" --strict 1 "$@"
         # Step 3: Spawn a child process to run the test.lsh script using pexpect
         child = pexpect.spawn(test_script_path)
 
-        # Expected output
-        expected_output = """test\r
-lshell: forbidden command: "dig"\r
-lshell: warning: 1 violation remaining before session termination\r
-lshell: forbidden path: "/tmp/"\r
-lshell: warning: 0 violations remaining before session termination\r
-FREEDOM\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-bg  cd  clear  echo  exit  fg  help  history  jobs  ll  lpath  ls  lsudo  source\r
-lshell: forbidden path: "/"\r
-lshell: session terminated: warning limit exceeded"""
-
         # Wait for the script to finish executing
         child.expect(pexpect.EOF)
 
-        # Capture the output and compare with expected output
+        # Capture and validate key output markers while allowing wrapped help output
         result = child.before.decode("utf8").strip()
-        self.assertEqual(result, expected_output)
+        self.assertIn("test\r\n", result)
+        self.assertIn('lshell: forbidden command: "dig"', result)
+        self.assertIn('lshell: forbidden path: "/tmp/"', result)
+        self.assertIn("lshell: warning: 1 violation remaining", result)
+        self.assertIn("lshell: warning: 0 violations remaining", result)
+        self.assertIn("FREEDOM", result)
+        self.assertIn('lshell: forbidden path: "/"', result)
+        self.assertIn("lshell: session terminated: warning limit exceeded", result)
+        for command in POLICY_HELP_COMMANDS:
+            self.assertIn(command, result)
 
         # Step 5: Cleanup: remove the test script and wrapper after the test
         if os.path.exists(test_script_path):

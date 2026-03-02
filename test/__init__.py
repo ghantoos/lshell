@@ -9,6 +9,7 @@ from test import (
     test_exit,
     test_file_extension,
     test_path,
+    test_policy,
     test_ps2,
     test_regex,
     test_scripts,
@@ -28,6 +29,7 @@ if __name__ == "__main__":
     test_exit.unittest.main()
     test_file_extension.unittest.main()
     test_path.unittest.main()
+    test_policy.unittest.main()
     test_ps2.unittest.main()
     test_regex.unittest.main()
     test_scripts.unittest.main()

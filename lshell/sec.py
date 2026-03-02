@@ -12,9 +12,16 @@ import glob
 # import lshell specifics
 from lshell import utils
 
+EXTENSION_RESTRICTION_EXEMPT_COMMANDS = {"cd", "clear", "fg", "bg", "ls"}
+
 
 def _is_assignment_word(word):
     return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", word))
+
+
+def should_enforce_file_extensions(command):
+    """Return True when extension restrictions should apply to this command."""
+    return command not in EXTENSION_RESTRICTION_EXEMPT_COMMANDS
 
 
 def _split_command_for_auth(command_line):
@@ -299,7 +306,9 @@ def check_secure(line, conf, strict=None, ssh=None):
             return ret, conf
 
         # Check if the command contains any forbidden extensions
-        if conf.get("allowed_file_extensions"):
+        if conf.get("allowed_file_extensions") and should_enforce_file_extensions(
+            command
+        ):
             allowed_extensions = conf["allowed_file_extensions"]
             check_extensions, disallowed_extensions = check_allowed_file_extensions(
                 full_command, allowed_extensions
@@ -318,7 +327,7 @@ def check_secure(line, conf, strict=None, ssh=None):
 
 
 def check_allowed_file_extensions(command_line, allowed_extensions):
-    """Checks if any file extensions in the command line are allowed."""
+    """Checks if file arguments in the command line use allowed extensions."""
     # Split the command using shlex to handle quotes and escape characters
     try:
         tokens = shlex.split(command_line)
@@ -327,20 +336,54 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
         print(f"lshell: error parsing command line: {exception}")
         return True, []
 
-    # Extract file extensions from tokens
-    extensions_in_command = []
-    for token in tokens:
-        match = re.search(r"\.\w+", token)
-        if match:
-            extensions_in_command.append(match.group())
+    if not tokens:
+        return True, None
 
-    # Check each extension against the allowed_extensions list
-    disallowed_extensions = [
-        ext for ext in extensions_in_command if ext not in allowed_extensions
-    ]
+    candidates = []
+    for token in tokens[1:]:
+        if _is_assignment_word(token):
+            continue
 
-    # if len(disallowed_extensions) == 1:
-    #     disallowed_extensions = disallowed_extensions[0]
+        # Parse option values such as `--include=*.log` as potential file globs.
+        if token.startswith("-"):
+            if "=" not in token:
+                continue
+            _, value = token.split("=", 1)
+            values_to_check = [value] if value else []
+        else:
+            values_to_check = [token]
+
+        for value in values_to_check:
+            candidate = value.rstrip("/")
+            basename = os.path.basename(candidate)
+
+            if not basename or basename in [".", ".."]:
+                continue
+
+            extension = os.path.splitext(basename)[1]
+            has_path_markers = any(
+                char in value for char in ["/", "\\", "*", "?", "[", "]"]
+            ) or value.startswith(("~", "."))
+            is_simple_bareword = bool(re.match(r"^[A-Za-z0-9_-]+$", basename))
+
+            candidates.append(
+                {
+                    "extension": extension if extension else "<none>",
+                    "explicit_path_like": bool(extension) or has_path_markers,
+                    "simple_bareword": is_simple_bareword and not has_path_markers,
+                }
+            )
+
+    has_explicit_path_like = any(item["explicit_path_like"] for item in candidates)
+    disallowed_extensions = []
+    for item in candidates:
+        # If explicit path-like operands are present, treat lone bare words as
+        # likely literals/patterns rather than filenames.
+        if has_explicit_path_like and item["simple_bareword"]:
+            continue
+        extension = item["extension"]
+        if extension not in allowed_extensions and extension not in disallowed_extensions:
+            disallowed_extensions.append(extension)
 
     if disallowed_extensions:
         return False, disallowed_extensions

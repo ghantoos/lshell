@@ -472,7 +472,7 @@ def policy_command_decision(command_line, policy):
             return {"allowed": False, "reason": f"unknown syntax '{full_command}'"}
 
         allowed_extensions = policy.get("allowed_file_extensions")
-        if allowed_extensions:
+        if allowed_extensions and sec.should_enforce_file_extensions(command):
             check_extensions, disallowed_extensions = sec.check_allowed_file_extensions(
                 full_command, allowed_extensions
             )

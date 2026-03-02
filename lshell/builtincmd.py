@@ -25,6 +25,7 @@ POLICY_COMMANDS = [
 
 builtins_list = [
     "cd",
+    "ls",
     "clear",
     "exit",
     "export",

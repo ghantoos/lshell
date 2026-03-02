@@ -65,7 +65,7 @@ class TestPolicy(unittest.TestCase):
             allowed = result["policy"]["allowed"]
             self.assertIn("cat", allowed)
             self.assertIn("echo ok", allowed)
-            self.assertNotIn("ls", allowed)
+            self.assertIn("ls", allowed)
             self.assertIn("|", result["policy"]["forbidden"])
             self.assertTrue(result["include_files"])
             self.assertTrue(
@@ -102,6 +102,51 @@ class TestPolicy(unittest.TestCase):
         }
 
         decision = policy.policy_command_decision("echo ok", runtime_policy)
+        self.assertTrue(decision["allowed"])
+
+    def test_policy_command_decision_denies_extensionless_argument(self):
+        """EX03b | extension policy blocks extensionless file arguments."""
+        runtime_policy = {
+            "forbidden": [";"],
+            "allowed": ["touch"],
+            "strict": 1,
+            "sudo_commands": [],
+            "allowed_file_extensions": [".log"],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision("touch report", runtime_policy)
+        self.assertFalse(decision["allowed"])
+        self.assertIn("<none>", decision["reason"])
+
+    def test_policy_command_decision_allows_dotted_parent_directory(self):
+        """EX03c | extension check uses final file suffix, not parent path dots."""
+        runtime_policy = {
+            "forbidden": [";"],
+            "allowed": ["cat"],
+            "strict": 1,
+            "sudo_commands": [],
+            "allowed_file_extensions": [".log"],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision(
+            "cat /tmp/releases.v1/audit.log", runtime_policy
+        )
+        self.assertTrue(decision["allowed"])
+
+    def test_policy_command_decision_exempts_builtin_ls_from_extension_filter(self):
+        """EX03d | builtin ls is not constrained by allowed_file_extensions."""
+        runtime_policy = {
+            "forbidden": [";"],
+            "allowed": ["ls"],
+            "strict": 1,
+            "sudo_commands": [],
+            "allowed_file_extensions": [".log"],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision("ls /tmp", runtime_policy)
         self.assertTrue(decision["allowed"])
 
     def test_build_resolved_rows_order_and_user_origin(self):

@@ -1,39 +1,20 @@
-""" This module is used to run all the tests in the test directory. """
+"""Test package bootstrap.
 
-from test import (
-    test_builtins,
-    test_command_execution,
-    test_completion,
-    test_config,
-    test_env_vars,
-    test_exit,
-    test_file_extension,
-    test_path,
-    test_policy,
-    test_ps2,
-    test_regex,
-    test_scripts,
-    test_security,
-    test_signals,
-    test_ssh,
-    test_unit,
-)
+This package intentionally does not maintain a hand-written module list.
+Use discovery-based runners (pytest or unittest discovery) to collect tests.
+"""
+
+import os
+import unittest
+
+
+def run_discovery():
+    """Run unittest discovery from the test package directory."""
+    start_dir = os.path.dirname(os.path.realpath(__file__))
+    suite = unittest.defaultTestLoader.discover(start_dir=start_dir, pattern="test_*.py")
+    runner = unittest.TextTestRunner(verbosity=2)
+    return 0 if runner.run(suite).wasSuccessful() else 1
 
 
 if __name__ == "__main__":
-    test_builtins.unittest.main()
-    test_command_execution.unittest.main()
-    test_completion.unittest.main()
-    test_config.unittest.main()
-    test_env_vars.unittest.main()
-    test_exit.unittest.main()
-    test_file_extension.unittest.main()
-    test_path.unittest.main()
-    test_policy.unittest.main()
-    test_ps2.unittest.main()
-    test_regex.unittest.main()
-    test_scripts.unittest.main()
-    test_security.unittest.main()
-    test_signals.unittest.main()
-    test_ssh.unittest.main()
-    test_unit.unittest.main()
+    raise SystemExit(run_discovery())

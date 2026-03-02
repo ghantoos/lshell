@@ -1,4 +1,9 @@
-"""Security-focused unit tests for parser/auth edge cases."""
+"""Security-focused unit tests for parser/auth edge cases.
+
+NOTE FOR MAINTAINERS:
+Add new tests in `test/test_security_attack_surface_unit_part2.py`.
+This file is intentionally capped to keep size manageable.
+"""
 
 import io
 import os
@@ -81,7 +86,9 @@ class TestAttackSurface(unittest.TestCase):
     def test_split_command_sequence_does_not_split_escaped_pipe(self):
         """Treat escaped pipes as literal text in a command token."""
         line = r"echo a\|b | wc -c"
-        self.assertEqual(utils.split_command_sequence(line), [r"echo a\|b", "|", "wc -c"])
+        self.assertEqual(
+            utils.split_command_sequence(line), [r"echo a\|b", "|", "wc -c"]
+        )
 
     def test_split_command_sequence_allows_trailing_background(self):
         """Allow a trailing background operator as a separate token."""
@@ -124,9 +131,13 @@ class TestAttackSurface(unittest.TestCase):
         """Allow local -c shell escape for commands already authorized by policy."""
         saved_env = self._without_ssh_env()
         try:
-            conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--strict=0"]
+            ).returnconf()
             conf["ssh"] = "ls"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -144,7 +155,9 @@ class TestAttackSurface(unittest.TestCase):
         """Block local -c shell escape when the command is not in allowed policy."""
         saved_env = self._without_ssh_env()
         try:
-            conf = CheckConfig(self.args + ["--allowed=['ls']", "--strict=0"]).returnconf()
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--strict=0"]
+            ).returnconf()
             conf["ssh"] = "tail /etc/passwd"
             with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
@@ -168,7 +181,9 @@ class TestAttackSurface(unittest.TestCase):
                 self.args + ["--allowed=['echo']", "--overssh=['ls']", "--strict=0"]
             ).returnconf()
             conf["ssh"] = "ls"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -252,7 +267,9 @@ class TestAttackSurface(unittest.TestCase):
         try:
             conf = CheckConfig(self.args + ["--sftp=1", "--strict=0"]).returnconf()
             conf["ssh"] = "/usr/libexec/sftp-server"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -299,7 +316,9 @@ class TestAttackSurface(unittest.TestCase):
                 + ["--scp=0", "--overssh=['scp']", "--scp_download=1", "--strict=0"]
             ).returnconf()
             conf["ssh"] = f"scp -f {conf['home_path']}/artifact"
-            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
                         conf,
@@ -374,7 +393,9 @@ class TestAttackSurface(unittest.TestCase):
                     ]
                 ).returnconf()
                 conf["ssh"] = f"scp -t {conf['home_path']}"
-                with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with patch(
+                    "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+                ) as mock_exec:
                     with self.assertRaises(SystemExit) as cm:
                         ShellCmd(
                             conf,
@@ -404,7 +425,9 @@ class TestAttackSurface(unittest.TestCase):
         )
         shell.cmdqueue = ["exit"]
 
-        with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+        with patch(
+            "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+        ) as mock_exec:
             with patch("lshell.shellcmd.sys.exit", side_effect=SystemExit):
                 with self.assertRaises(SystemExit):
                     shell.cmdloop()
@@ -421,7 +444,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(sec.check_secure("A=1 echo ok", conf)[0], 0)
         self.assertEqual(sec.check_secure("A=1 echo nope", conf)[0], 1)
 
-    def test_check_secure_unknown_command_does_not_decrement_counter_when_not_strict(self):
+    def test_check_secure_unknown_command_does_not_decrement_counter_when_not_strict(
+        self,
+    ):
         """Treat disallowed commands as unknown syntax when strict mode is disabled."""
         conf = CheckConfig(
             self.args
@@ -433,7 +458,9 @@ class TestAttackSurface(unittest.TestCase):
             ret, conf = sec.check_secure("no_such_allowed_command", conf, strict=0)
         self.assertEqual(ret, 1)
         self.assertEqual(conf["warning_counter"], starting_counter)
-        self.assertIn("lshell: unknown syntax: no_such_allowed_command", stderr.getvalue())
+        self.assertIn(
+            "lshell: unknown syntax: no_such_allowed_command", stderr.getvalue()
+        )
 
     def test_check_secure_unknown_command_decrements_counter_when_strict(self):
         """Count disallowed commands as forbidden actions when strict mode is enabled."""
@@ -453,7 +480,12 @@ class TestAttackSurface(unittest.TestCase):
         """Validate sudo subcommands after assignment prefixes."""
         conf = CheckConfig(
             self.args
-            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
         ).returnconf()
         self.assertEqual(sec.check_secure("A=1 sudo ls", conf)[0], 0)
         self.assertEqual(sec.check_secure("A=1 sudo cat /etc/passwd", conf)[0], 1)
@@ -462,7 +494,12 @@ class TestAttackSurface(unittest.TestCase):
         """Allow authorized sudo -u command with an assignment prefix."""
         conf = CheckConfig(
             self.args
-            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
         ).returnconf()
         self.assertEqual(sec.check_secure("A=1 sudo -u root ls", conf)[0], 0)
 
@@ -470,7 +507,12 @@ class TestAttackSurface(unittest.TestCase):
         """Reject sudo -u when no subcommand is provided."""
         conf = CheckConfig(
             self.args
-            + ["--allowed=['sudo']", "--sudo_commands=['ls']", "--forbidden=[]", "--strict=0"]
+            + [
+                "--allowed=['sudo']",
+                "--sudo_commands=['ls']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
         ).returnconf()
         self.assertEqual(sec.check_secure("sudo -u root", conf)[0], 1)
 
@@ -483,7 +525,8 @@ class TestAttackSurface(unittest.TestCase):
     def test_check_secure_rejects_disallowed_command_substitution(self):
         """Reject substitution constructs that invoke disallowed commands."""
         conf = CheckConfig(
-            self.args + ["--allowed=['echo']", "--forbidden=[';','&','|','>','<']", "--strict=0"]
+            self.args
+            + ["--allowed=['echo']", "--forbidden=[';','&','|','>','<']", "--strict=0"]
         ).returnconf()
         self.assertEqual(sec.check_secure("echo $(cat /etc/passwd)", conf)[0], 1)
         self.assertEqual(sec.check_secure("echo `cat /etc/passwd`", conf)[0], 1)
@@ -500,7 +543,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(conf["warning_counter"], starting_counter)
         self.assertIn("lshell: unknown syntax:", stderr.getvalue())
 
-    def test_cmd_parse_execute_unbalanced_syntax_decrements_counter_in_strict_mode(self):
+    def test_cmd_parse_execute_unbalanced_syntax_decrements_counter_in_strict_mode(
+        self,
+    ):
         """In strict mode, unknown syntax should consume warning counter."""
         conf = CheckConfig(self.args + ["--strict=1", "--quiet=0"]).returnconf()
         shell = DummyShellContext(conf)
@@ -512,7 +557,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(conf["warning_counter"], starting_counter - 1)
         self.assertIn("lshell: warning:", stderr.getvalue())
 
-    def test_cmd_parse_execute_malformed_operator_decrements_counter_in_strict_mode(self):
+    def test_cmd_parse_execute_malformed_operator_decrements_counter_in_strict_mode(
+        self,
+    ):
         """In strict mode, malformed operators should consume warning counter."""
         conf = CheckConfig(self.args + ["--strict=1", "--quiet=0"]).returnconf()
         shell = DummyShellContext(conf)
@@ -768,142 +815,4 @@ class TestAttackSurface(unittest.TestCase):
             "preexec_fn",
             popen_kwargs,
             msg="su should run in the current foreground session to keep tty access",
-        )
-
-    @patch("lshell.utils.os.killpg")
-    @patch("lshell.utils.os.kill")
-    @patch("lshell.utils.signal.getsignal", return_value=None)
-    @patch("lshell.utils.signal.signal")
-    @patch("lshell.utils.subprocess.Popen")
-    def test_exec_cmd_keyboard_interrupt_sudo_signals_pid_not_process_group(
-        self,
-        mock_popen,
-        _mock_signal,
-        _mock_getsignal,
-        mock_kill,
-        mock_killpg,
-    ):
-        """On Ctrl+C, sudo command should receive SIGINT directly by PID."""
-
-        class FakeProc:
-            """Simulate a running foreground process interrupted by Ctrl+C."""
-
-            def __init__(self):
-                self.returncode = None
-                self.pid = 4242
-                self.args = ["sudo", "ls"]
-                self.lshell_cmd = ""
-
-            def communicate(self):
-                """Raise keyboard interrupt while waiting for process I/O."""
-                raise KeyboardInterrupt
-
-            def poll(self):
-                """Report process still running to trigger signal handling."""
-                return None
-
-        mock_popen.return_value = FakeProc()
-
-        ret = utils.exec_cmd("sudo ls")
-
-        self.assertEqual(ret, 130)
-        mock_kill.assert_called_once_with(4242, utils.signal.SIGINT)
-        mock_killpg.assert_not_called()
-
-    @patch("lshell.utils.os.getpgid", return_value=7777)
-    @patch("lshell.utils.os.killpg")
-    @patch("lshell.utils.os.kill")
-    @patch("lshell.utils.signal.getsignal", return_value=None)
-    @patch("lshell.utils.signal.signal")
-    @patch("lshell.utils.subprocess.Popen")
-    def test_exec_cmd_keyboard_interrupt_non_sudo_signals_process_group(
-        self,
-        mock_popen,
-        _mock_signal,
-        _mock_getsignal,
-        _mock_kill,
-        mock_killpg,
-        _mock_getpgid,
-    ):
-        """On Ctrl+C, regular commands should receive SIGINT at process-group level."""
-
-        class FakeProc:
-            """Simulate a detached foreground process interrupted by Ctrl+C."""
-
-            def __init__(self):
-                self.returncode = None
-                self.pid = 5252
-                self.args = ["bash", "-c", "sleep 60"]
-                self.lshell_cmd = ""
-
-            def communicate(self):
-                """Raise keyboard interrupt while waiting for process I/O."""
-                raise KeyboardInterrupt
-
-            def poll(self):
-                """Report process still running to trigger signal handling."""
-                return None
-
-        mock_popen.return_value = FakeProc()
-
-        ret = utils.exec_cmd("sleep 60")
-
-        self.assertEqual(ret, 130)
-        mock_killpg.assert_called_once_with(7777, utils.signal.SIGINT)
-
-    def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(self):
-        """Security expectation: assignment-only should not bypass env blacklist."""
-        conf = CheckConfig(self.args + ["--forbidden=[]", "--strict=0"]).returnconf()
-        shell = DummyShellContext(conf)
-        original = os.environ.get("LD_PRELOAD")
-        try:
-            ret = utils.cmd_parse_execute("LD_PRELOAD=/tmp/evil.so", shell_context=shell)
-            self.assertNotEqual(
-                ret,
-                0,
-                msg="assignment-only LD_PRELOAD should be rejected in hardened behavior",
-            )
-            self.assertNotEqual(os.environ.get("LD_PRELOAD"), "/tmp/evil.so")
-        finally:
-            if original is None:
-                os.environ.pop("LD_PRELOAD", None)
-            else:
-                os.environ["LD_PRELOAD"] = original
-
-    @patch("lshell.utils.sec.check_forbidden_chars")
-    @patch("lshell.utils.exec_cmd")
-    def test_cmd_parse_execute_forbidden_chars_short_circuits_execution(
-        self, mock_exec, mock_forbidden
-    ):
-        """Stop execution immediately when forbidden-char checks fail."""
-        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
-        shell = DummyShellContext(conf)
-        mock_forbidden.side_effect = lambda line, conf, strict=None: (1, conf)
-        ret = utils.cmd_parse_execute("echo should_not_run", shell_context=shell)
-        self.assertEqual(ret, 126)
-        mock_exec.assert_not_called()
-
-    @patch("lshell.utils.exec_cmd", return_value=0)
-    def test_cmd_parse_execute_allows_full_bash_script_command_for_login_script(
-        self, mock_exec
-    ):
-        """Authorize and execute bash script invocation when full command is allowlisted."""
-        conf = CheckConfig(
-            self.args
-            + [
-                "--allowed=['bash test/testfiles/login_script.sh']",
-                "--forbidden=[]",
-                "--strict=0",
-            ]
-        ).returnconf()
-        shell = DummyShellContext(conf)
-
-        ret = utils.cmd_parse_execute(
-            "bash test/testfiles/login_script.sh", shell_context=shell
-        )
-
-        self.assertEqual(ret, 0)
-        self.assertEqual(mock_exec.call_count, 1)
-        self.assertEqual(
-            mock_exec.call_args.args[0], "bash test/testfiles/login_script.sh"
         )

@@ -782,7 +782,7 @@ def main(argv):
         command_line = " ".join(args.command_args).strip()
     configfile = os.path.realpath(args.config)
     if not os.path.exists(configfile):
-        sys.stderr.write("Error: Config file doesn't exist\n")
+        sys.stderr.write("lshell: config file doesn't exist\n")
         return 1
 
     groups = _resolve_user_groups(args.user, args.group)
@@ -792,7 +792,7 @@ def main(argv):
         if command_line:
             decision = policy_command_decision(command_line, result["policy"])
     except ValueError as exception:
-        sys.stderr.write(f"Error: {exception}\n")
+        sys.stderr.write(f"lshell: {exception}\n")
         return 1
 
     if args.json:

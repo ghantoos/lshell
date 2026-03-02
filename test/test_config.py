@@ -174,19 +174,19 @@ class TestFunctions(unittest.TestCase):
         """F61 | scalar value for allowed must fail schema validation."""
         self.assert_startup_failure(
             f"{LSHELL} --config {CONFIG} --allowed 1",
-            "CONF: 'allowed' must be a list",
+            "lshell: config: 'allowed' must be a list",
         )
 
     def test_62_schema_rejects_non_string_allowed_entries(self):
         """F62 | allowed list entries must be strings."""
         self.assert_startup_failure(
             f"{LSHELL} --config {CONFIG} --allowed \"['echo', 1]\"",
-            "CONF: 'allowed' list entries must be strings",
+            "lshell: config: 'allowed' list entries must be strings",
         )
 
     def test_63_schema_rejects_non_dict_aliases(self):
         """F63 | aliases must be a dictionary."""
         self.assert_startup_failure(
             f"{LSHELL} --config {CONFIG} --aliases \"['ll']\"",
-            "CONF: 'aliases' must be a dictionary",
+            "lshell: config: 'aliases' must be a dictionary",
         )

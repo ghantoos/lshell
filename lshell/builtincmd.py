@@ -141,7 +141,7 @@ def cmd_source(envfile):
                 if env_var.split(" ", 1)[0] == "export":
                     cmd_export(env_var.strip())
     except (OSError, IOError):
-        sys.stderr.write(f"ERROR: Unable to read environment file: {envfile}\n")
+        sys.stderr.write(f"lshell: unable to read environment file: {envfile}\n")
         return 1
     return 0
 
@@ -275,7 +275,7 @@ def cmd_bg_fg(job_type, job_id):
         try:
             job_id = int(job_id)
         except ValueError:
-            print("Invalid job ID.")
+            print("lshell: invalid job ID")
             return 1
     else:
         # Use the last job if no specific job_id is provided

@@ -507,7 +507,7 @@ class ShellCmd(cmd.Cmd, object):
                 groups,
             )
         except ValueError as exception:
-            self.stderr.write(f"Error: {exception}\n")
+            self.stderr.write(f"lshell: {exception}\n")
             return 1
 
         decision = None

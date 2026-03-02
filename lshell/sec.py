@@ -324,7 +324,7 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
         tokens = shlex.split(command_line)
     except ValueError as exception:
         # Log error or provide user feedback on the invalid input
-        print(f"Error parsing command line: {exception}")
+        print(f"lshell: error parsing command line: {exception}")
         return True, []
 
     # Extract file extensions from tokens

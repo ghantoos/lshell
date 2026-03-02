@@ -258,7 +258,7 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         stderr = io.StringIO()
         with redirect_stderr(stderr):
             self.assertEqual(builtincmd.cmd_source(missing), 1)
-        self.assertIn("ERROR: Unable to read environment file", stderr.getvalue())
+        self.assertIn("lshell: unable to read environment file", stderr.getvalue())
 
     def test_cmd_bg_fg_no_jobs(self):
         """Report failure when attempting fg with no jobs queued."""
@@ -275,7 +275,7 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         with redirect_stdout(stdout):
             ret = builtincmd.cmd_bg_fg("fg", "abc")
         self.assertEqual(ret, 1)
-        self.assertIn("Invalid job ID.", stdout.getvalue())
+        self.assertIn("lshell: invalid job ID", stdout.getvalue())
 
     @patch("os.getpgid", return_value=4242)
     @patch("os.killpg")

@@ -1,4 +1,4 @@
-"""Diagnostics mode for explaining policy resolution and command decisions."""
+"""Diagnostics mode for policy resolution and command decisions."""
 
 import argparse
 import configparser
@@ -13,12 +13,13 @@ import textwrap
 from getpass import getuser
 
 from lshell import builtincmd
+from lshell import configschema
 from lshell import sec
 from lshell import utils
 from lshell import variables
 
 
-LIST_KEYS = {
+MERGE_LIST_KEYS = {
     "path",
     "overssh",
     "allowed",
@@ -58,30 +59,9 @@ DISPLAY_KEY_ORDER = [
 ]
 
 
-def _is_all_literal(raw_value):
-    """Return True when the config value denotes the literal 'all'."""
-    if not isinstance(raw_value, str):
-        return False
-    return raw_value.strip() in {"all", "'all'", '"all"'}
-
-
 def _safe_eval(value, key=""):
-    """Evaluate lshell config values using project-compatible behavior."""
-    try:
-        evaluated = eval(value)
-    except SyntaxError as exception:
-        raise ValueError(f"Incomplete {key} field in configuration file") from exception
-
-    if isinstance(evaluated, list) and key in [
-        "allowed",
-        "allowed_shell_escape",
-        "allowed_file_extensions",
-        "forbidden",
-        "overssh",
-        "sudo_commands",
-    ]:
-        evaluated = list(set(evaluated))
-    return evaluated
+    """Safely parse config values with shared schema validation."""
+    return configschema.parse_config_value(value, key)
 
 
 def _expand_all():
@@ -181,7 +161,7 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
 
         previous = conf_raw.get(key)
 
-        if len(split) > 1 and key in LIST_KEYS:
+        if len(split) > 1 and key in MERGE_LIST_KEYS:
             for token in split:
                 if not token.strip():
                     continue
@@ -199,7 +179,7 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
                         }
                     )
                     previous = conf_raw.get(key)
-                elif _is_all_literal(token):
+                elif configschema.is_all_literal(token):
                     if key == "allowed_shell_escape":
                         raise ValueError(
                             "'allowed_shell_escape' cannot be set to 'all'"
@@ -263,7 +243,7 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
                     "after": conf_raw.get(key),
                 }
             )
-        elif key == "allowed_shell_escape" and _is_all_literal(split[0]):
+        elif key == "allowed_shell_escape" and configschema.is_all_literal(split[0]):
             raise ValueError("'allowed_shell_escape' cannot be set to 'all'")
         elif key == "path":
             allow_deny = ["", ""]
@@ -351,7 +331,7 @@ def _build_runtime_policy(conf_raw, username):
         policy["home_path"] = os.environ.get("HOME", "/")
 
     if "path" in conf_raw:
-        policy["path"] = eval(conf_raw["path"])
+        policy["path"] = _safe_eval(conf_raw["path"], "path")
         policy["path"][0] += policy["home_path"]
     else:
         policy["path"] = ["", ""]
@@ -372,7 +352,9 @@ def _build_runtime_policy(conf_raw, username):
                 if os.access(cmd, os.X_OK):
                     policy["allowed"].append(item)
 
-    if "sudo_commands" in conf_raw and conf_raw["sudo_commands"] == "all":
+    if "sudo_commands" in conf_raw and configschema.is_all_literal(
+        str(conf_raw["sudo_commands"])
+    ):
         exclude = builtincmd.builtins_list + ["sudo"]
         policy["sudo_commands"] = [x for x in policy["allowed"] if x not in exclude]
 
@@ -445,8 +427,8 @@ def resolve_policy(configfile, username, groups):
     }
 
 
-def explain_command(command_line, policy):
-    """Explain whether a command would be allowed and why."""
+def policy_command_decision(command_line, policy):
+    """Determine whether a command would be allowed and why."""
     if re.findall(r"[\x01-\x1F\x7F]", command_line):
         return {"allowed": False, "reason": "forbidden control character"}
 
@@ -553,7 +535,7 @@ def _format_section_label(section, username):
 
 def _resolve_key_value_display(conf_raw, key):
     if key == "path":
-        return eval(conf_raw[key])
+        return _safe_eval(conf_raw[key], key)
     try:
         value = _safe_eval(conf_raw[key], key)
         if isinstance(value, list):
@@ -644,7 +626,7 @@ def _print_text(result, command_line=None, decision=None):
     color = _use_color()
     username = result["policy"]["username"]
 
-    print(_paint("LSHELL EXPLAIN", "bold", color))
+    print(_paint("LSHELL POLICY", "bold", color))
     print(f"Target user   : {_paint(username, 'cyan', color)}")
     print(f"Main config   : {result['configfile']}")
 
@@ -808,7 +790,7 @@ def main(argv):
         result = resolve_policy(configfile, args.user, groups)
         decision = None
         if command_line:
-            decision = explain_command(command_line, result["policy"])
+            decision = policy_command_decision(command_line, result["policy"])
     except ValueError as exception:
         sys.stderr.write(f"Error: {exception}\n")
         return 1

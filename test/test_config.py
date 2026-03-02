@@ -21,6 +21,13 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
+    def assert_startup_failure(self, command, expected_fragment):
+        """Assert lshell exits during startup with a schema validation error."""
+        child = pexpect.spawn(command)
+        child.expect(pexpect.EOF)
+        output = child.before.decode("utf-8", errors="ignore")
+        self.assertIn(expected_fragment, output)
+
     def test_55_allowed_all_minus_list(self):
         """F55 | allow all commands minus the list"""
 
@@ -150,3 +157,36 @@ class TestFunctions(unittest.TestCase):
         output = child.before.decode("utf-8").split("\n")
         self.assertEqual(expected, output)
         self.do_exit(child)
+
+    def test_60_schema_accepts_valid_allowed_list(self):
+        """F60 | valid list-based override should start shell and allow command."""
+        child = pexpect.spawn(
+            f'{LSHELL} --config {CONFIG} --allowed "[\'echo\']" --forbidden "[]"'
+        )
+        child.expect(PROMPT)
+        child.sendline("echo OK")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8")
+        self.assertIn("OK", output)
+        self.do_exit(child)
+
+    def test_61_schema_rejects_non_list_allowed(self):
+        """F61 | scalar value for allowed must fail schema validation."""
+        self.assert_startup_failure(
+            f"{LSHELL} --config {CONFIG} --allowed 1",
+            "CONF: 'allowed' must be a list",
+        )
+
+    def test_62_schema_rejects_non_string_allowed_entries(self):
+        """F62 | allowed list entries must be strings."""
+        self.assert_startup_failure(
+            f"{LSHELL} --config {CONFIG} --allowed \"['echo', 1]\"",
+            "CONF: 'allowed' list entries must be strings",
+        )
+
+    def test_63_schema_rejects_non_dict_aliases(self):
+        """F63 | aliases must be a dictionary."""
+        self.assert_startup_failure(
+            f"{LSHELL} --config {CONFIG} --aliases \"['ll']\"",
+            "CONF: 'aliases' must be a dictionary",
+        )

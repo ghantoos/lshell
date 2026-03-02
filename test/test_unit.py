@@ -413,3 +413,10 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("policy-sudo", userconf["allowed"])
         self.assertNotIn("lpath", userconf["allowed"])
         self.assertNotIn("lsudo", userconf["allowed"])
+
+    def test_47_invalid_allowed_type_rejected(self):
+        """U47 | allowed must be a list, scalar values should be rejected."""
+        args = self.args + ["--allowed=1"]
+        with self.assertRaises(SystemExit) as exc:
+            CheckConfig(args).returnconf()
+        self.assertEqual(exc.exception.code, 1)

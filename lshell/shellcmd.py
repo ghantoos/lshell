@@ -17,7 +17,7 @@ from lshell import utils
 from lshell import builtincmd
 from lshell import sec
 from lshell import completion
-from lshell import explain as explain_mode
+from lshell import policy as policy_mode
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -499,9 +499,9 @@ class ShellCmd(cmd.Cmd, object):
         """Show resolved policy values and optional decision for a command."""
         command_line = (arg or "").strip() or None
         username = self.conf.get("username")
-        groups = explain_mode._resolve_user_groups(username, [])
+        groups = policy_mode._resolve_user_groups(username, [])
         try:
-            result = explain_mode.resolve_policy(
+            result = policy_mode.resolve_policy(
                 self.conf["configfile"],
                 username,
                 groups,
@@ -512,9 +512,9 @@ class ShellCmd(cmd.Cmd, object):
 
         decision = None
         if command_line:
-            decision = explain_mode.explain_command(command_line, result["policy"])
+            decision = policy_mode.policy_command_decision(command_line, result["policy"])
 
-        explain_mode.print_user_view(result, command_line, decision)
+        policy_mode.print_user_view(result, command_line, decision)
         if decision is None:
             return 0
         return 0 if decision["allowed"] else 2

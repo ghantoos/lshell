@@ -1,4 +1,4 @@
-"""Unit tests for lshell explain diagnostics mode."""
+"""Unit tests for lshell policy diagnostics mode."""
 
 import os
 import tempfile
@@ -7,12 +7,12 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from lshell import explain
+from lshell import policy
 from lshell import utils
 
 
-class TestExplain(unittest.TestCase):
-    """Tests for explain mode policy resolution and command decisions."""
+class TestPolicy(unittest.TestCase):
+    """Tests for policy mode resolution and command decisions."""
 
     def _write_config(self, directory, content, filename="lshell.conf"):
         path = os.path.join(directory, filename)
@@ -60,7 +60,7 @@ class TestExplain(unittest.TestCase):
                 filename="conf.20-user",
             )
 
-            result = explain.resolve_policy(main_config, "alice", ["ops"])
+            result = policy.resolve_policy(main_config, "alice", ["ops"])
 
             allowed = result["policy"]["allowed"]
             self.assertIn("cat", allowed)
@@ -75,9 +75,9 @@ class TestExplain(unittest.TestCase):
                 )
             )
 
-    def test_explain_command_denied_with_reason(self):
+    def test_policy_command_decision_denied_with_reason(self):
         """EX02 | denied command reports actionable reason."""
-        policy = {
+        runtime_policy = {
             "forbidden": [";"],
             "allowed": ["ls"],
             "strict": 0,
@@ -86,13 +86,13 @@ class TestExplain(unittest.TestCase):
             "path": ["", ""],
         }
 
-        decision = explain.explain_command("echo hello", policy)
+        decision = policy.policy_command_decision("echo hello", runtime_policy)
         self.assertFalse(decision["allowed"])
         self.assertIn("unknown syntax", decision["reason"])
 
-    def test_explain_command_allowed_exact_full_command(self):
+    def test_policy_command_decision_allowed_exact_full_command(self):
         """EX03 | exact command line allow-list entry is honored."""
-        policy = {
+        runtime_policy = {
             "forbidden": [";"],
             "allowed": ["echo ok"],
             "strict": 1,
@@ -101,7 +101,7 @@ class TestExplain(unittest.TestCase):
             "path": ["", ""],
         }
 
-        decision = explain.explain_command("echo ok", policy)
+        decision = policy.policy_command_decision("echo ok", runtime_policy)
         self.assertTrue(decision["allowed"])
 
     def test_build_resolved_rows_order_and_user_origin(self):
@@ -124,7 +124,7 @@ class TestExplain(unittest.TestCase):
             ],
         }
 
-        rows = explain._build_resolved_rows(result)
+        rows = policy._build_resolved_rows(result)
         keys = [row["key"] for row in rows]
         self.assertEqual(keys, ["forbidden", "warning_counter", "umask"])
         self.assertEqual(rows[-1]["section"], "user:bleh")
@@ -149,9 +149,9 @@ class TestExplain(unittest.TestCase):
                 """,
             )
 
-            result = explain.resolve_policy(config, "bleh", [])
+            result = policy.resolve_policy(config, "bleh", [])
             self.assertIn("user:bleh", result["applied_sections"])
-            rows = explain._build_resolved_rows(result)
+            rows = policy._build_resolved_rows(result)
             row_by_key = {row["key"]: row for row in rows}
             self.assertEqual(row_by_key["umask"]["section"], "user:bleh")
             self.assertEqual(row_by_key["umask"]["value"], "0077")
@@ -173,16 +173,16 @@ class TestExplain(unittest.TestCase):
             ],
         }
 
-        grouped = explain._build_grouped_rows(result)
+        grouped = policy._build_grouped_rows(result)
         self.assertEqual(list(grouped.keys()), ["default", "user:bleh"])
         self.assertEqual(
             [r["key"] for r in grouped["default"]], ["allowed", "forbidden"]
         )
         self.assertEqual([r["key"] for r in grouped["user:bleh"]], ["umask"])
 
-    @patch("lshell.explain.grp.getgrall")
-    @patch("lshell.explain.grp.getgrgid")
-    @patch("lshell.explain.pwd.getpwnam")
+    @patch("lshell.policy.grp.getgrall")
+    @patch("lshell.policy.grp.getgrgid")
+    @patch("lshell.policy.pwd.getpwnam")
     def test_resolve_user_groups_auto_lookup(
         self, mock_getpwnam, mock_getgrgid, mock_getgrall
     ):
@@ -194,7 +194,7 @@ class TestExplain(unittest.TestCase):
             SimpleNamespace(gr_name="devops", gr_mem=["testuser"]),
         ]
 
-        groups = explain._resolve_user_groups("testuser", [])
+        groups = policy._resolve_user_groups("testuser", [])
         self.assertEqual(groups, ["testuser", "devops"])
 
     def test_resolve_policy_falls_back_to_grp_user_section(self):
@@ -220,11 +220,11 @@ class TestExplain(unittest.TestCase):
                 """,
             )
 
-            result = explain.resolve_policy(config, "testuser", [])
+            result = policy.resolve_policy(config, "testuser", [])
             self.assertIn("grp:testuser", result["applied_sections"])
 
     def test_main_without_command_returns_success(self):
-        """EX09 | explain without command should print resolved values and exit 0."""
+        """EX09 | policy show without command should print resolved values and exit 0."""
         with tempfile.TemporaryDirectory() as tempdir:
             config = self._write_config(
                 tempdir,
@@ -240,8 +240,29 @@ class TestExplain(unittest.TestCase):
                 """,
             )
 
-            ret = explain.main(["--config", config, "--user", "bleh"])
+            ret = policy.main(["--config", config, "--user", "bleh"])
             self.assertEqual(ret, 0)
+
+    def test_resolve_policy_rejects_invalid_allowed_schema(self):
+        """EX09b | non-list allowed values should fail schema validation."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            config = self._write_config(
+                tempdir,
+                """
+                [global]
+                logpath : /tmp
+                loglevel : 0
+
+                [default]
+                allowed : 1
+                forbidden : [';']
+                warning_counter : 2
+                """,
+            )
+
+            with self.assertRaises(ValueError) as exc:
+                policy.resolve_policy(config, "bleh", [])
+            self.assertIn("allowed", str(exc.exception))
 
     def test_builtin_policy_show_dispatches_from_utils(self):
         """EX10 | builtin dispatcher calls shell_context.do_policy_show."""

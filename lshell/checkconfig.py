@@ -18,6 +18,7 @@ from logging.handlers import SysLogHandler
 from lshell import utils
 from lshell import variables
 from lshell import builtincmd
+from lshell import configschema
 
 
 class CheckConfig:
@@ -320,12 +321,6 @@ class CheckConfig:
         """this function is used to interpret the configuration +/-,
         'all' etc.
         """
-        def is_all_literal(raw_value):
-            """Return True when the config value denotes the literal 'all'."""
-            if not isinstance(raw_value, str):
-                return False
-            return raw_value.strip() in {"all", "'all'", '"all"'}
-
         # convert commandline options from dict to list of tuples, in order to
         # merge them with the output of the config parser
         conf = []
@@ -357,7 +352,7 @@ class CheckConfig:
                             self.conf_raw.update(
                                 self.minusplus(self.conf_raw, key, stuff)
                             )
-                        elif is_all_literal(stuff):
+                        elif configschema.is_all_literal(stuff):
                             if key == "allowed_shell_escape":
                                 self.log.critical(
                                     "CONF: 'allowed_shell_escape' cannot be set to 'all'"
@@ -366,25 +361,29 @@ class CheckConfig:
                             self.conf_raw.update({key: self.expand_all()})
                         elif stuff and key == "path":
                             liste = ["", ""]
-                            for path in eval(stuff):
+                            for path in self._parse_config_value(stuff, key):
                                 for item in glob.glob(path):
                                     liste[0] += os.path.realpath(item) + "/|"
                             # remove double slashes
                             liste[0] = liste[0].replace("//", "/")
                             self.conf_raw.update({key: str(liste)})
-                        elif stuff and isinstance(eval(stuff), list):
+                        elif stuff and isinstance(
+                            self._parse_config_value(stuff, key), list
+                        ):
                             self.conf_raw.update({key: stuff})
                 # case allowed is set to 'all'
                 elif key == "allowed" and split[0].strip() == "'all'":
                     self.conf_raw.update({key: self.expand_all()})
-                elif key == "allowed_shell_escape" and is_all_literal(split[0]):
+                elif key == "allowed_shell_escape" and configschema.is_all_literal(
+                    split[0]
+                ):
                     self.log.critical(
                         "CONF: 'allowed_shell_escape' cannot be set to 'all'"
                     )
                     sys.exit(1)
                 elif key == "path":
                     liste = ["", ""]
-                    for path in self.myeval(value, "path"):
+                    for path in self._parse_config_value(value, "path"):
                         for item in glob.glob(path):
                             liste[0] += os.path.realpath(item) + "/|"
                     # remove double slashes
@@ -396,13 +395,13 @@ class CheckConfig:
     def minusplus(self, confdict, key, extra):
         """update configuration lists containing -/+ operators"""
         if key in confdict:
-            liste = self.myeval(confdict[key], key)
+            liste = self._parse_config_value(confdict[key], key)
         elif key == "path":
             liste = ["", ""]
         else:
             liste = []
 
-        sublist = self.myeval(extra[1:], key)
+        sublist = self._parse_config_value(extra[1:], key)
         if extra.startswith("+"):
             if key == "path":
                 for path in sublist:
@@ -459,24 +458,31 @@ class CheckConfig:
 
         return str(expanded_all)
 
-    def myeval(self, value, key=""):
-        """if eval returns SyntaxError, log it as critical conf missing"""
+    def _parse_config_value(self, value, key=""):
+        """Safely parse config values and enforce key schema."""
         try:
-            evaluated = eval(value)
-            # if list, remove duplicates
-            if isinstance(evaluated, list) and key in [
-                "allowed",
-                "allowed_shell_escape",
-                "allowed_file_extensions",
-                "forbidden",
-                "overssh",
-                "sudo_commands",
-            ]:
-                evaluated = list(set(evaluated))
-            return evaluated
-        except SyntaxError:
-            self.log.critical(f"CONF: Incomplete {key} field in configuration file")
+            return configschema.parse_config_value(value, key)
+        except ValueError as exception:
+            self.log.critical(f"CONF: {exception}")
             sys.exit(1)
+
+    def _parse_history_file(self):
+        """Parse and validate history_file from raw config."""
+        history_value = self.conf_raw["history_file"].replace("%u", self.conf["username"])
+        if (
+            isinstance(history_value, str)
+            and len(history_value) >= 2
+            and history_value[0] in ("'", '"')
+            and history_value[-1] == history_value[0]
+        ):
+            parsed = self._parse_config_value(history_value, "history_file")
+        else:
+            parsed = history_value
+
+        if not isinstance(parsed, str):
+            self.log.error(f"CONF: history file error: {history_value}")
+            sys.exit(1)
+        return parsed
 
     def check_user_integrity(self):
         """This method checks if all the required fields by user are present
@@ -544,7 +550,7 @@ class CheckConfig:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""
                 else:
-                    self.conf[item] = self.myeval(self.conf_raw[item], item)
+                    self.conf[item] = self._parse_config_value(self.conf_raw[item], item)
             except KeyError:
                 if item in [
                     "allowed",
@@ -592,7 +598,7 @@ class CheckConfig:
             home_path = home_path.replace("%u", self.conf["username"])
             self.conf_raw["home_path"] = home_path
             self.conf["home_path"] = os.path.normpath(
-                self.myeval(self.conf_raw["home_path"], "home_path")
+                self._parse_config_value(self.conf_raw["home_path"], "home_path")
             )
         else:
             self.conf["home_path"] = os.environ["HOME"]
@@ -601,19 +607,23 @@ class CheckConfig:
         self.conf["oldpwd"] = self.conf["home_path"]
 
         if "path" in self.conf_raw:
-            self.conf["path"] = eval(self.conf_raw["path"])
+            self.conf["path"] = self._parse_config_value(self.conf_raw["path"], "path")
             self.conf["path"][0] += self.conf["home_path"]
         else:
             self.conf["path"] = ["", ""]
             self.conf["path"][0] = self.conf["home_path"]
 
         if "env_path" in self.conf_raw:
-            self.conf["env_path"] = self.myeval(self.conf_raw["env_path"], "env_path")
+            self.conf["env_path"] = self._parse_config_value(
+                self.conf_raw["env_path"], "env_path"
+            )
         else:
             self.conf["env_path"] = ""
 
         if "scpforce" in self.conf_raw:
-            self.conf_raw["scpforce"] = self.myeval(self.conf_raw["scpforce"])
+            self.conf_raw["scpforce"] = self._parse_config_value(
+                self.conf_raw["scpforce"]
+            )
             try:
                 if os.path.exists(self.conf_raw["scpforce"]):
                     self.conf["scpforce"] = self.conf_raw["scpforce"]
@@ -625,7 +635,7 @@ class CheckConfig:
                 self.log.error("CONF: scpforce must be a string!")
 
         if "intro" in self.conf_raw:
-            self.conf["intro"] = self.myeval(self.conf_raw["intro"])
+            self.conf["intro"] = self._parse_config_value(self.conf_raw["intro"])
         else:
             self.conf["intro"] = variables.INTRO
 
@@ -644,11 +654,11 @@ class CheckConfig:
 
         if "history_file" in self.conf_raw:
             try:
-                self.conf["history_file"] = eval(
-                    self.conf_raw["history_file"].replace("%u", self.conf["username"])
+                self.conf["history_file"] = self._parse_history_file()
+            except (KeyError, TypeError):
+                self.log.error(
+                    f"CONF: history file error: {self.conf_raw.get('history_file')}"
                 )
-            except (KeyError, SyntaxError, TypeError, NameError):
-                self.log.error(f"CONF: history file error: {self.conf['history_file']}")
         else:
             self.conf["history_file"] = variables.HISTORY_FILE
 
@@ -696,7 +706,10 @@ class CheckConfig:
                         self.conf["allowed"].append(item)
 
         # case sudo_commands set to 'all', expand to all 'allowed' commands
-        if "sudo_commands" in self.conf_raw and self.conf_raw["sudo_commands"] == "all":
+        if (
+            "sudo_commands" in self.conf_raw
+            and configschema.is_all_literal(str(self.conf_raw["sudo_commands"]))
+        ):
             # exclude native commands and sudo(8)
             exclude = builtincmd.builtins_list + ["sudo"]
             self.conf["sudo_commands"] = [
@@ -763,7 +776,9 @@ class CheckConfig:
 
         # check if alternative path is set in configuration file
         if "path_noexec" in self.conf_raw:
-            self.conf["path_noexec"] = self.myeval(self.conf_raw["path_noexec"])
+            self.conf["path_noexec"] = self._parse_config_value(
+                self.conf_raw["path_noexec"]
+            )
             # if path_noexec is empty, disable LD_PRELOAD
             # /!\ this feature should be used at the administrator's own risks!
             if self.conf["path_noexec"] == "":

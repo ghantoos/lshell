@@ -3,6 +3,7 @@
 import glob
 import sys
 import os
+import re
 import readline
 import signal
 
@@ -42,33 +43,49 @@ builtins_list = [
 
 
 def cmd_lpath(conf):
-    """lists allowed and forbidden path"""
-    if conf["path"][0]:
-        sys.stdout.write("Allowed:\n")
-        lpath_allowed = conf["path"][0].split("|")
-        lpath_allowed.sort()
+    """Show path policy in a concise, readable format."""
+    current_dir = os.path.realpath(os.getcwd())
+    current_match = current_dir if current_dir.endswith("/") else f"{current_dir}/"
+    allowed_re = str(conf["path"][0])
+    denied_re = str(conf["path"][1][:-1])
+    current_allowed = bool(re.findall(allowed_re, current_match))
+    current_denied = bool(re.findall(denied_re, current_match)) if denied_re else False
+    current_status = "allowed" if current_allowed and not current_denied else "denied"
+
+    sys.stdout.write("Path Policy\n")
+    sys.stdout.write("-----------\n")
+    sys.stdout.write(f"Current directory      : {current_dir} ({current_status})\n")
+    sys.stdout.write("\nAllowed paths\n")
+    sys.stdout.write("-------------\n")
+    lpath_allowed = sorted(path for path in conf["path"][0].split("|") if path)
+    if lpath_allowed:
         for path in lpath_allowed:
-            if path:
-                sys.stdout.write(f" {path}\n")
-    if conf["path"][1]:
-        sys.stdout.write("Denied:\n")
-        lpath_denied = conf["path"][1].split("|")
-        lpath_denied.sort()
+            sys.stdout.write(f"{path}\n")
+    else:
+        sys.stdout.write("none\n")
+
+    lpath_denied = sorted(path for path in conf["path"][1].split("|") if path)
+    if lpath_denied:
+        sys.stdout.write("\nDenied paths\n")
+        sys.stdout.write("------------\n")
         for path in lpath_denied:
-            if path:
-                sys.stdout.write(f" {path}\n")
+            sys.stdout.write(f"{path}\n")
     return 0
 
 
 def cmd_lsudo(conf):
-    """lists allowed sudo commands"""
-    if "sudo_commands" in conf and len(conf["sudo_commands"]) > 0:
-        sys.stdout.write("Allowed sudo commands:\n")
-        for command in conf["sudo_commands"]:
-            sys.stdout.write(f" - {command}\n")
+    """Show sudo policy in a concise, readable format."""
+    sudo_commands = sorted(conf.get("sudo_commands", []))
+    enabled = bool(sudo_commands)
+
+    sys.stdout.write("Sudo Policy\n")
+    sys.stdout.write("-----------\n")
+    sys.stdout.write(f"Sudo access            : {'enabled' if enabled else 'disabled'}\n")
+    if enabled:
+        sys.stdout.write(f"Allowed via sudo       : {', '.join(sudo_commands)}\n")
         return 0
 
-    sys.stdout.write("No sudo commands allowed\n")
+    sys.stdout.write("Allowed via sudo       : none\n")
     return 1
 
 

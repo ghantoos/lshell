@@ -9,6 +9,7 @@ import os
 import pwd
 import re
 import sys
+import textwrap
 from getpass import getuser
 
 from lshell import builtincmd
@@ -630,6 +631,15 @@ def _render_value(value):
     return str(value)
 
 
+def _format_wrapped_list(values, indent=22, width=88):
+    joined = ", ".join(_render_value(item) for item in values) if values else "none"
+    return textwrap.fill(
+        joined,
+        width=width,
+        subsequent_indent=" " * indent,
+    )
+
+
 def _print_text(result, command_line=None, decision=None):
     color = _use_color()
     username = result["policy"]["username"]
@@ -686,20 +696,52 @@ def _print_text(result, command_line=None, decision=None):
 
 
 def print_user_view(result, command_line=None, decision=None):
-    """Print only resolved values and optional command decision."""
+    """Print a concise user-facing policy summary and optional decision."""
     color = _use_color()
-    print(_paint("Resolved Values", "bold", color))
-    grouped = _build_grouped_rows(result)
-    for section in result["applied_sections"]:
-        label = _format_section_label(section, result["policy"]["username"])
-        section_rows = grouped.get(section, [])
-        if not section_rows:
-            continue
-        print(_paint(f"[{label}]", "cyan", color))
-        key_width = max(len(row["key"]) for row in section_rows)
-        for row in section_rows:
-            print(f"  {row['key']:<{key_width}} : {_render_value(row['value'])}")
-        print("")
+    policy = result["policy"]
+    strict_mode = "on" if policy.get("strict") else "off"
+    warning_counter = policy.get("warning_counter", 0)
+    warnings_value = "disabled" if warning_counter == -1 else str(warning_counter)
+
+    allowed_entries = sorted(set(policy.get("allowed", [])), key=str)
+    aliases = policy.get("aliases", {})
+    alias_entries = []
+    if isinstance(aliases, dict):
+        alias_entries = [f"{key} -> {value}" for key, value in sorted(aliases.items())]
+    sudo_commands = sorted(set(policy.get("sudo_commands", [])), key=str)
+    timer_value = policy.get("timer")
+    forbidden = sorted(set(policy.get("forbidden", [])), key=str)
+    extensions = policy.get("allowed_file_extensions", [])
+
+    print(_paint("Policy Overview", "bold", color))
+    print("-" * 15)
+    print(f"Strict mode            : {strict_mode}")
+    print(f"Warnings remaining     : {warnings_value}")
+    print("")
+
+    print(_paint("Command Access", "bold", color))
+    print("-" * 14)
+    print("Allowed commands       : ", end="")
+    print(_format_wrapped_list(allowed_entries, indent=24))
+    print("Allowed sudo           : ", end="")
+    print(_format_wrapped_list(sudo_commands, indent=24))
+    print("Aliases                : ", end="")
+    print(_format_wrapped_list(alias_entries, indent=24))
+    print(f"Timer                  : {timer_value}")
+    print("")
+
+    print(_paint("Security Constraints", "bold", color))
+    print("-" * 20)
+    print("Forbidden characters   : ", end="")
+    print(_format_wrapped_list(forbidden, indent=24))
+    if extensions:
+        allowed_extensions = _format_wrapped_list(
+            sorted(set(extensions), key=str), indent=24
+        )
+    else:
+        allowed_extensions = "any"
+    print("Allowed extensions     : " + allowed_extensions)
+    print("")
 
     if command_line is not None and decision is not None:
         verdict = "ALLOW" if decision["allowed"] else "DENY"

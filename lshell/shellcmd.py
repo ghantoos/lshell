@@ -140,9 +140,8 @@ class ShellCmd(cmd.Cmd, object):
                 if "sftp-server" in self.conf["ssh"]:
                     if self.conf["sftp"] == 1:
                         self.log.error("SFTP connect")
-                        retcode = utils.cmd_parse_execute(
-                            self.conf["ssh"], shell_context=self
-                        )
+                        # Execute subsystem directly once the sftp gate is passed.
+                        retcode = utils.exec_cmd(self.conf["ssh"])
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
                     else:
@@ -189,9 +188,8 @@ class ShellCmd(cmd.Cmd, object):
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
-                        retcode = utils.cmd_parse_execute(
-                            self.conf["ssh"], shell_context=self
-                        )
+                        # Execute protocol command directly once SCP gates are passed.
+                        retcode = utils.exec_cmd(self.conf["ssh"])
                         self.log.error("SCP disconnect")
                         sys.exit(retcode)
                     else:

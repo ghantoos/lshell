@@ -3,10 +3,29 @@ logpath         : /var/log/lshell/
 loglevel        : 2
 
 [default]
-allowed         : ['ls', 'pwd', 'cat', 'echo', 'sudo', './shutdown.sh']
+allowed         : ['ls', 'pwd', 'cat', 'echo', 'sudo', 'scp', './shutdown.sh']
 forbidden       : [';', '&', '|', '`', '>', '<', '$(', '${']
-overssh         : ['ls', 'pwd', 'cat', 'sudo', './shutdown.sh']
+overssh         : ['ls', 'pwd', 'cat', 'sudo', 'scp', './shutdown.sh']
 sudo_commands   : ['ls']
+scp             : 1
+scp_upload      : 0
+scp_download    : 1
+sftp            : 1
 strict          : 1
 warning_counter : 2
 allowed_file_extensions : ['.txt']
+
+[ltestsftpoff]
+sftp            : 0
+
+[ltestscpdownoff]
+scp_download    : 0
+
+[ltestscpoff]
+scp             : 0
+overssh         : ['ls', 'pwd', 'cat', 'sudo', './shutdown.sh']
+
+[ltestwinscp]
+winscp          : 1
+scp_upload      : 0
+scp_download    : 0

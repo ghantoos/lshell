@@ -6,8 +6,16 @@
   vars:
     lshell_bin: /usr/local/bin/lshell
     test_user: ltest
+    test_user_sftp_off: ltestsftpoff
+    test_user_scp_down_off: ltestscpdownoff
+    test_user_scp_off: ltestscpoff
+    test_user_winscp: ltestwinscp
     test_home: /home/ltest
     test_user_password: ltestpass
+    test_user_sftp_off_password: ltestsftpoffpass
+    test_user_scp_down_off_password: ltestscpdownoffpass
+    test_user_scp_off_password: ltestscpoffpass
+    test_user_winscp_password: ltestwinscppass
   tasks:
     - name: Wait for SSH access
       ansible.builtin.wait_for_connection:
@@ -49,6 +57,58 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Create SSH test user with sftp disabled in profile
+      ansible.builtin.user:
+        name: "{{ test_user_sftp_off }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for sftp-disabled SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_sftp_off }}:{{ test_user_sftp_off_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create SSH test user with scp_download disabled in profile
+      ansible.builtin.user:
+        name: "{{ test_user_scp_down_off }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for scp_download-disabled SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_scp_down_off }}:{{ test_user_scp_down_off_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create SSH test user with scp fully disabled in profile
+      ansible.builtin.user:
+        name: "{{ test_user_scp_off }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for scp-disabled SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_scp_off }}:{{ test_user_scp_off_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create SSH test user with WinSCP mode in profile
+      ansible.builtin.user:
+        name: "{{ test_user_winscp }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for WinSCP-mode SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_winscp }}:{{ test_user_winscp_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Allow passwordless sudo for /usr/bin/ls in test user
       ansible.builtin.copy:
         dest: /etc/sudoers.d/ltest-lshell-e2e
@@ -73,6 +133,18 @@
         - { dest: "{{ test_home }}/secret.bin", content: "binary-looking content\n" }
         - { dest: "{{ test_home }}/noext", content: "no extension file\n" }
 
+    - name: Create per-user readme files for protocol tests
+      ansible.builtin.copy:
+        dest: "/home/{{ item.user }}/readme.txt"
+        content: "hello from {{ item.user }}\n"
+        owner: "{{ item.user }}"
+        group: "{{ item.user }}"
+        mode: "0644"
+      loop:
+        - { user: "{{ test_user_scp_down_off }}" }
+        - { user: "{{ test_user_scp_off }}" }
+        - { user: "{{ test_user_winscp }}" }
+
     - name: Create allowed executable for ./ execution checks
       ansible.builtin.copy:
         dest: "{{ test_home }}/shutdown.sh"
@@ -91,8 +163,16 @@
     - ../vars/ssh_scenarios.yml
   vars:
     ssh_user: ltest
+    ssh_user_sftp_off: ltestsftpoff
+    ssh_user_scp_down_off: ltestscpdownoff
+    ssh_user_scp_off: ltestscpoff
+    ssh_user_winscp: ltestwinscp
     ssh_host: lshell-ssh-target
     ssh_password: ltestpass
+    ssh_password_sftp_off: ltestsftpoffpass
+    ssh_password_scp_down_off: ltestscpdownoffpass
+    ssh_password_scp_off: ltestscpoffpass
+    ssh_password_winscp: ltestwinscppass
     ssh_common_opts: >-
       -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
@@ -167,3 +247,169 @@
             output={{ scenario.output | replace('\n', '\\n') }}
           {% endfor %}
       when: failed_scenarios | length > 0
+
+    - name: Create local file for scp upload attempt
+      ansible.builtin.copy:
+        dest: /tmp/lshell_scp_upload.txt
+        content: "scp upload probe\n"
+        mode: "0644"
+
+    - name: Attempt scp upload when scp_upload is disabled
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_upload.txt
+        {{ ssh_user }}@{{ ssh_host }}:/home/{{ ssh_user }}/upload_should_fail.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_upload_attempt
+
+    - name: Assert scp upload is blocked when scp_upload is disabled
+      ansible.builtin.assert:
+        that:
+          - scp_upload_attempt.rc != 0
+        fail_msg: >-
+          scp upload unexpectedly succeeded. output={{ scp_upload_attempt.stdout }}
+
+    - name: Verify blocked scp upload did not create target file
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user }}/upload_should_fail.txt
+      delegate_to: "{{ ssh_host }}"
+      register: blocked_upload_target
+
+    - name: Assert blocked scp upload target file is absent
+      ansible.builtin.assert:
+        that:
+          - not blocked_upload_target.stat.exists
+        fail_msg: "scp upload target file exists despite scp_upload=0"
+
+    - name: Download file over scp when scp_download is enabled
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password }} scp -O {{ ssh_common_opts }}
+        {{ ssh_user }}@{{ ssh_host }}:/home/{{ ssh_user }}/readme.txt
+        /tmp/lshell_scp_download.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: scp_download_attempt
+
+    - name: Assert scp download succeeded when scp_download is enabled
+      ansible.builtin.assert:
+        that:
+          - scp_download_attempt.rc == 0
+        fail_msg: >-
+          scp download failed unexpectedly. output={{ scp_download_attempt.stdout }}
+
+    - name: Read downloaded scp file
+      ansible.builtin.slurp:
+        src: /tmp/lshell_scp_download.txt
+      register: scp_downloaded_file
+
+    - name: Assert downloaded scp file content
+      ansible.builtin.assert:
+        that:
+          - "'hello from txt' in (scp_downloaded_file.content | b64decode)"
+        fail_msg: "Downloaded scp file content mismatch"
+
+    - name: Attempt scp download when scp_download is disabled
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_down_off }} scp -O {{ ssh_common_opts }}
+        {{ ssh_user_scp_down_off }}@{{ ssh_host }}:/home/{{ ssh_user_scp_down_off }}/readme.txt
+        /tmp/lshell_scp_download_should_fail.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_download_blocked_attempt
+
+    - name: Assert scp download is blocked when scp_download is disabled
+      ansible.builtin.assert:
+        that:
+          - scp_download_blocked_attempt.rc != 0
+        fail_msg: >-
+          scp download unexpectedly succeeded with scp_download=0.
+          output={{ scp_download_blocked_attempt.stdout }}
+
+    - name: Attempt scp transfer when scp is fully disabled
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_off }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_upload.txt
+        {{ ssh_user_scp_off }}@{{ ssh_host }}:/home/{{ ssh_user_scp_off }}/scp_should_fail.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_fully_disabled_attempt
+
+    - name: Assert scp is blocked when scp is disabled and not in overssh
+      ansible.builtin.assert:
+        that:
+          - scp_fully_disabled_attempt.rc != 0
+        fail_msg: >-
+          scp unexpectedly succeeded with scp=0 and no overssh fallback.
+          output={{ scp_fully_disabled_attempt.stdout }}
+
+    - name: Attempt scp upload in WinSCP mode (should be forced enabled)
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_winscp }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_upload.txt
+        {{ ssh_user_winscp }}@{{ ssh_host }}:/home/{{ ssh_user_winscp }}/winscp_upload_ok.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: winscp_upload_attempt
+
+    - name: Assert WinSCP mode enables scp upload
+      ansible.builtin.assert:
+        that:
+          - winscp_upload_attempt.rc == 0
+        fail_msg: >-
+          WinSCP-mode scp upload failed unexpectedly.
+          output={{ winscp_upload_attempt.stdout }}
+
+    - name: Verify WinSCP upload target file exists
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user_winscp }}/winscp_upload_ok.txt
+      delegate_to: "{{ ssh_host }}"
+      register: winscp_uploaded_file
+
+    - name: Assert WinSCP upload created target file
+      ansible.builtin.assert:
+        that:
+          - winscp_uploaded_file.stat.exists
+        fail_msg: "WinSCP-mode upload target file is missing"
+
+    - name: Run sftp session when sftp is enabled
+      ansible.builtin.shell: >-
+        printf 'ls\nbye\n' | sshpass -p {{ ssh_password }} sftp {{ ssh_common_opts }}
+        {{ ssh_user }}@{{ ssh_host }} 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: sftp_enabled_session
+
+    - name: Assert sftp works when sftp is enabled
+      ansible.builtin.assert:
+        that:
+          - sftp_enabled_session.rc == 0
+          - (sftp_enabled_session.stdout | string).find("readme.txt") != -1
+        fail_msg: >-
+          sftp session failed unexpectedly. output={{ sftp_enabled_session.stdout }}
+
+    - name: Run sftp session when sftp is disabled for user profile
+      ansible.builtin.shell: >-
+        printf 'ls\nbye\n' | sshpass -p {{ ssh_password_sftp_off }} sftp {{ ssh_common_opts }}
+        {{ ssh_user_sftp_off }}@{{ ssh_host }} 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: sftp_disabled_session
+
+    - name: Assert sftp is blocked when sftp is disabled
+      ansible.builtin.assert:
+        that:
+          - sftp_disabled_session.rc != 0
+        fail_msg: >-
+          sftp unexpectedly succeeded for sftp-disabled user.

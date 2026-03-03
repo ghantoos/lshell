@@ -22,6 +22,10 @@ ssh_scenarios:
     expected_rc: 0
     expect_text: "hello from txt"
 
+  - name: returns underlying command exit code over ssh
+    command: "ls missing_file_should_not_exist"
+    expected_rc: 2
+
   - name: blocks cat on .bin
     command: "cat secret.bin"
     expected_rc: 1

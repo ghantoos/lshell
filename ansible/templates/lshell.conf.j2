@@ -3,9 +3,10 @@ logpath         : /var/log/lshell/
 loglevel        : 2
 
 [default]
-allowed         : ['ls', 'pwd', 'cat', 'echo']
+allowed         : ['ls', 'pwd', 'cat', 'echo', 'sudo']
 forbidden       : [';', '&', '|', '`', '>', '<', '$(', '${']
-overssh         : ['ls', 'pwd', 'cat']
+overssh         : ['ls', 'pwd', 'cat', 'sudo']
+sudo_commands   : ['ls']
 strict          : 1
 warning_counter : 2
 allowed_file_extensions : ['.txt']

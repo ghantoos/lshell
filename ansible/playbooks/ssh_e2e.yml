@@ -49,6 +49,12 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Allow passwordless sudo for /usr/bin/ls in test user
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ltest-lshell-e2e
+        content: "{{ test_user }} ALL=(ALL) NOPASSWD: /usr/bin/ls\n"
+        mode: "0440"
+
     - name: Deploy lshell test configuration
       ansible.builtin.template:
         src: ../templates/lshell.conf.j2
@@ -105,6 +111,7 @@
                 "expected_rc": item.item.expected_rc,
                 "actual_rc": item.rc,
                 "expect_text": item.item.expect_text | default(""),
+                "reject_text": item.item.reject_text | default(""),
                 "output": item.stdout | default("") | trim,
                 "passed": (
                   (item.rc == item.item.expected_rc)
@@ -112,6 +119,11 @@
                   (
                     item.item.expect_text is not defined
                     or (item.stdout | string).find(item.item.expect_text) != -1
+                  )
+                  and
+                  (
+                    item.item.reject_text is not defined
+                    or (item.stdout | string).find(item.item.reject_text) == -1
                   )
                 )
               }
@@ -141,6 +153,7 @@
           {% for scenario in failed_scenarios %}
           - {{ scenario.name }} | rc={{ scenario.actual_rc }}/{{ scenario.expected_rc }}
             expected_text={{ scenario.expect_text if scenario.expect_text else "<none>" }}
+            reject_text={{ scenario.reject_text if scenario.reject_text else "<none>" }}
             output={{ scenario.output | replace('\n', '\\n') }}
           {% endfor %}
       when: failed_scenarios | length > 0

@@ -22,6 +22,17 @@ ssh_scenarios:
     expected_rc: 0
     expect_text: "hello from txt"
 
+  - name: allows sudo ls over ssh without forbidden shell escape
+    command: "sudo ls /home/ltest/readme.txt"
+    expected_rc: 0
+    expect_text: "/home/ltest/readme.txt"
+    reject_text: "forbidden shell escape"
+
+  - name: blocks sudo subcommand not in sudo_commands
+    command: "sudo id -u"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
   - name: returns underlying command exit code over ssh
     command: "ls missing_file_should_not_exist"
     expected_rc: 2

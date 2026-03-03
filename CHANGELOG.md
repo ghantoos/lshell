@@ -3,7 +3,7 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
-### v1.0 28/02/2026
+### v0.11.0 02/03/2026
 - Replaced the command parser with a new lexer/parser based on `pyparsing`.
 - Fixed `sudo` handling inside `lshell`.
 - Added support for configuring session `umask` via `lshell.conf` or CLI, with octal validation.

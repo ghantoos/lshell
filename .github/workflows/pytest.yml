@@ -7,7 +7,6 @@ on:
   push:
     branches: [ "master" ]
   pull_request:
-    branches: [ "master" ]
 
 permissions:
   contents: read
@@ -41,3 +40,19 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+  ssh-e2e:
+    name: SSH E2E (Docker + Ansible)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run SSH end-to-end tests
+      run: |
+        docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from ansible-runner ansible-runner
+
+    - name: Cleanup SSH E2E stack
+      if: always()
+      run: |
+        docker compose -f docker-compose.e2e.yml down -v --remove-orphans

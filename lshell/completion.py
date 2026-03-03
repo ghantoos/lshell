@@ -21,10 +21,18 @@ def completenames(conf, text, line, *ignored):
     variable. This is useful when typing 'tab-tab' in the command prompt
     """
     commands = conf["allowed"]
-    if line.startswith("./"):
-        return [cmd[2:] for cmd in commands if cmd.startswith(f"./{text}")]
-    else:
-        return [cmd for cmd in commands if cmd.startswith(text)]
+
+    # Handle local relative commands explicitly allowed as "./foo".
+    # readline tokenization may provide either "foo" or "./foo" as text,
+    # depending on completer delimiters/platform.
+    if line.startswith("./") or text.startswith("./"):
+        prefix = text[2:] if text.startswith("./") else text
+        matches = [cmd for cmd in commands if cmd.startswith(f"./{prefix}")]
+        if text.startswith("./"):
+            return matches
+        return [cmd[2:] for cmd in matches]
+
+    return [cmd for cmd in commands if cmd.startswith(text)]
 
 
 def complete_sudo(conf, text, line, begidx, endidx):

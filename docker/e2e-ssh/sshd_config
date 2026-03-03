@@ -1,0 +1,14 @@
+Port 22
+ListenAddress 0.0.0.0
+Protocol 2
+PermitRootLogin yes
+PubkeyAuthentication yes
+PasswordAuthentication yes
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM no
+X11Forwarding no
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+PidFile /var/run/sshd.pid

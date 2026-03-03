@@ -420,3 +420,30 @@ class TestFunctions(unittest.TestCase):
         with self.assertRaises(SystemExit) as exc:
             CheckConfig(args).returnconf()
         self.assertEqual(exc.exception.code, 1)
+
+    def test_48_history_file_accepts_string_and_expands_home(self):
+        """U48 | --history_file should parse as string and resolve under home path."""
+        history_name = ".lshell_%u_history"
+        args = self.args + [f"--history_file='{history_name}'"]
+        userconf = CheckConfig(args).returnconf()
+        expected_history = os.path.join(
+            userconf["home_path"], history_name.replace("%u", userconf["username"])
+        )
+        self.assertEqual(userconf["history_file"], expected_history)
+
+    def test_49_history_file_absolute_path_kept_absolute(self):
+        """U49 | absolute --history_file path should not be prefixed by home path."""
+        history_path = "/tmp/lshell_%u_history"
+        args = self.args + [f"--history_file='{history_path}'"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertEqual(
+            userconf["history_file"], history_path.replace("%u", userconf["username"])
+        )
+
+    @patch("lshell.checkconfig.CheckConfig.noexec_library_usable", return_value=False)
+    def test_50_incompatible_noexec_library_is_disabled(self, _mock_usable):
+        """U50 | incompatible --path_noexec should be removed from runtime config."""
+        with tempfile.NamedTemporaryFile() as fake_lib:
+            args = self.args + [f"--path_noexec='{fake_lib.name}'"]
+            userconf = CheckConfig(args).returnconf()
+        self.assertNotIn("path_noexec", userconf)

@@ -219,6 +219,18 @@ class TestParserUtilities(unittest.TestCase):
 
         self.assertEqual(result, [])
 
+    def test_completenames_dot_slash_with_basename_text(self):
+        """Complete ./ commands when readline provides text without ./ prefix."""
+        conf = {"allowed": ["ls", "./shutdown.sh", "./show.sh"]}
+        result = completion.completenames(conf, "shut", "./shut", 0, 6)
+        self.assertEqual(result, ["shutdown.sh"])
+
+    def test_completenames_dot_slash_with_prefixed_text(self):
+        """Complete ./ commands when readline provides text including ./ prefix."""
+        conf = {"allowed": ["ls", "./shutdown.sh", "./show.sh"]}
+        result = completion.completenames(conf, "./shut", "./shut", 0, 6)
+        self.assertEqual(result, ["./shutdown.sh"])
+
 
 class TestBuiltinsJobsAndSource(unittest.TestCase):
     """Tests for built-in commands around source and job control."""

@@ -235,6 +235,18 @@ docker compose up ubuntu_tests debian_tests fedora_tests
 
 This runs `pytest`, `pylint`, and `flake8` in the configured test services.
 
+Run full local validation (including real SSH end-to-end scenarios configured with Ansible):
+
+```bash
+just test-all
+```
+
+Run only real SSH end-to-end checks:
+
+```bash
+just ssh-e2e
+```
+
 ## Documentation
 
 - `man lshell` (installed)

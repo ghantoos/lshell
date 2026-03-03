@@ -126,6 +126,13 @@ class ShellCmd(cmd.Cmd, object):
         server. If this is the case, it checks if the user is allowed to use
         SCP or not, and    acts as requested. : )
         """
+        def _execute_trusted_ssh_protocol():
+            # Protocol commands (scp/sftp-server) are gated in run_overssh.
+            # Execute through cmd_parse_execute while bypassing generic policy/path
+            # checks so existing mocking/tests keep the same call surface.
+            return utils.cmd_parse_execute(
+                self.conf["ssh"], shell_context=self, trusted_protocol=True
+            )
 
         def _aliases_for_ssh_command():
             aliases = self.conf["aliases"]
@@ -140,9 +147,7 @@ class ShellCmd(cmd.Cmd, object):
                 if "sftp-server" in self.conf["ssh"]:
                     if self.conf["sftp"] == 1:
                         self.log.error("SFTP connect")
-                        retcode = utils.cmd_parse_execute(
-                            self.conf["ssh"], shell_context=self
-                        )
+                        retcode = _execute_trusted_ssh_protocol()
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
                     else:
@@ -189,9 +194,7 @@ class ShellCmd(cmd.Cmd, object):
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
-                        retcode = utils.cmd_parse_execute(
-                            self.conf["ssh"], shell_context=self
-                        )
+                        retcode = _execute_trusted_ssh_protocol()
                         self.log.error("SCP disconnect")
                         sys.exit(retcode)
                     else:

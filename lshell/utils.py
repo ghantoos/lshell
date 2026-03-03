@@ -399,8 +399,12 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     return retcode, conf
 
 
-def cmd_parse_execute(command_line, shell_context=None):
-    """Parse and execute a shell command line"""
+def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
+    """Parse and execute a shell command line.
+
+    trusted_protocol is only for protocol commands (scp/sftp-server)
+    that were already validated in run_overssh.
+    """
     def _handle_unknown_syntax(unknown_command):
         ret, shell_context.conf = sec.warn_unknown_syntax(
             unknown_command,
@@ -427,6 +431,10 @@ def cmd_parse_execute(command_line, shell_context=None):
         # see http://tldp.org/LDP/abs/html/exitcodes.html
         retcode = 126
         return retcode
+
+    # Protocol commands (handled/gated by run_overssh) can bypass generic
+    # policy/path checks while still using the same execution surface.
+    skip_policy_checks = bool(trusted_protocol)
 
     # Iterate through the command sequence
     i = 0
@@ -529,36 +537,37 @@ def cmd_parse_execute(command_line, shell_context=None):
             i = j + (2 if background else 1)
             continue
 
-        # check that commands/chars present in line are allowed/secure
-        ret_check_secure, shell_context.conf = sec.check_secure(
-            full_command, shell_context.conf, strict=shell_context.conf["strict"]
-        )
-        if ret_check_secure == 1:
-            # see http://tldp.org/LDP/abs/html/exitcodes.html
-            retcode = 126
-            return retcode
+        if not skip_policy_checks:
+            # check that commands/chars present in line are allowed/secure
+            ret_check_secure, shell_context.conf = sec.check_secure(
+                full_command, shell_context.conf, strict=shell_context.conf["strict"]
+            )
+            if ret_check_secure == 1:
+                # see http://tldp.org/LDP/abs/html/exitcodes.html
+                retcode = 126
+                return retcode
 
-        # check that path present in line are allowed/secure
-        ret_check_path, shell_context.conf = sec.check_path(
-            full_command, shell_context.conf, strict=shell_context.conf["strict"]
-        )
-        if ret_check_path == 1:
-            # see http://tldp.org/LDP/abs/html/exitcodes.html
-            retcode = 126
-            # in case request was sent by WinSCP, return error code has to be
-            # sent via a specific echo command
-            if shell_context.conf["winscp"] and re.search(
-                "WinSCP: this is end-of-file", command_line
-            ):
-                exec_cmd(f'echo "WinSCP: this is end-of-file: {retcode}"')
-            return retcode
+            # check that path present in line are allowed/secure
+            ret_check_path, shell_context.conf = sec.check_path(
+                full_command, shell_context.conf, strict=shell_context.conf["strict"]
+            )
+            if ret_check_path == 1:
+                # see http://tldp.org/LDP/abs/html/exitcodes.html
+                retcode = 126
+                # in case request was sent by WinSCP, return error code has to be
+                # sent via a specific echo command
+                if shell_context.conf["winscp"] and re.search(
+                    "WinSCP: this is end-of-file", command_line
+                ):
+                    exec_cmd(f'echo "WinSCP: this is end-of-file: {retcode}"')
+                return retcode
 
         # Execute command
         if len(pipeline_parts) == 1 and executable in builtincmd.builtins_list and not background:
             retcode, shell_context.conf = handle_builtin_command(
                 full_command, executable, argument, shell_context
             )
-        elif all(
+        elif skip_policy_checks or all(
             executable_name
             and _is_allowed_command(executable_name, part, shell_context.conf)
             for (executable_name, _, _, _), part in zip(parsed_parts, pipeline_parts)

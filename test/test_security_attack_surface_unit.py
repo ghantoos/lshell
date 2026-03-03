@@ -280,7 +280,9 @@ class TestAttackSurface(unittest.TestCase):
                     )
             self.assertEqual(cm.exception.code, 0)
             mock_exec.assert_called_once_with(
-                "/usr/libexec/sftp-server", shell_context=unittest.mock.ANY
+                "/usr/libexec/sftp-server",
+                shell_context=unittest.mock.ANY,
+                trusted_protocol=True,
             )
         finally:
             self._restore_ssh_env(saved_env)
@@ -329,7 +331,9 @@ class TestAttackSurface(unittest.TestCase):
                     )
             self.assertEqual(cm.exception.code, 0)
             mock_exec.assert_called_once_with(
-                f"scp -f {conf['home_path']}/artifact", shell_context=unittest.mock.ANY
+                f"scp -f {conf['home_path']}/artifact",
+                shell_context=unittest.mock.ANY,
+                trusted_protocol=True,
             )
         finally:
             self._restore_ssh_env(saved_env)
@@ -408,6 +412,7 @@ class TestAttackSurface(unittest.TestCase):
                 mock_exec.assert_called_once_with(
                     f"scp -t {os.path.realpath(forced_dir)}",
                     shell_context=unittest.mock.ANY,
+                    trusted_protocol=True,
                 )
         finally:
             self._restore_ssh_env(saved_env)

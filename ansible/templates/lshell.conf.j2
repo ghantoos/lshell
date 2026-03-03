@@ -1,0 +1,11 @@
+[global]
+logpath         : /var/log/lshell/
+loglevel        : 2
+
+[default]
+allowed         : ['ls', 'pwd', 'cat', 'echo']
+forbidden       : [';', '&', '|', '`', '>', '<', '$(', '${']
+overssh         : ['ls', 'pwd', 'cat']
+strict          : 1
+warning_counter : 2
+allowed_file_extensions : ['.txt']

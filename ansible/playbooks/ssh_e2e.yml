@@ -1,0 +1,146 @@
+---
+- name: Configure SSH target with lshell
+  hosts: lshell_target
+  gather_facts: false
+  become: true
+  vars:
+    lshell_bin: /usr/local/bin/lshell
+    test_user: ltest
+    test_home: /home/ltest
+    test_user_password: ltestpass
+  tasks:
+    - name: Wait for SSH access
+      ansible.builtin.wait_for_connection:
+        timeout: 120
+
+    - name: Install lshell from workspace
+      ansible.builtin.pip:
+        name: /workspace
+        executable: pip3
+        extra_args: --break-system-packages
+
+    - name: Ensure lshell binary exists
+      ansible.builtin.stat:
+        path: "{{ lshell_bin }}"
+      register: lshell_bin_stat
+
+    - name: Assert lshell binary is available
+      ansible.builtin.assert:
+        that:
+          - lshell_bin_stat.stat.exists
+        fail_msg: "lshell binary not found at {{ lshell_bin }}"
+
+    - name: Register lshell as a valid shell
+      ansible.builtin.lineinfile:
+        path: /etc/shells
+        line: "{{ lshell_bin }}"
+        state: present
+
+    - name: Create restricted SSH test user
+      ansible.builtin.user:
+        name: "{{ test_user }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for restricted SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user }}:{{ test_user_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Deploy lshell test configuration
+      ansible.builtin.template:
+        src: ../templates/lshell.conf.j2
+        dest: /etc/lshell.conf
+        mode: "0644"
+
+    - name: Create remote files used by extension checks
+      ansible.builtin.copy:
+        dest: "{{ item.dest }}"
+        content: "{{ item.content }}"
+        owner: "{{ test_user }}"
+        group: "{{ test_user }}"
+        mode: "0644"
+      loop:
+        - { dest: "{{ test_home }}/readme.txt", content: "hello from txt\n" }
+        - { dest: "{{ test_home }}/secret.bin", content: "binary-looking content\n" }
+        - { dest: "{{ test_home }}/noext", content: "no extension file\n" }
+
+- name: Run real SSH command scenarios
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../vars/ssh_scenarios.yml
+  vars:
+    ssh_user: ltest
+    ssh_host: lshell-ssh-target
+    ssh_password: ltestpass
+    ssh_common_opts: >-
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o LogLevel=ERROR
+  tasks:
+    - name: Execute SSH scenarios
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password }} ssh {{ ssh_common_opts }} {{ ssh_user }}@{{ ssh_host }} {{ item.command | quote }} 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: ssh_scenario_results
+      loop: "{{ ssh_scenarios }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Build compact SSH scenario report
+      ansible.builtin.set_fact:
+        ssh_scenario_report: >-
+          {{
+            (ssh_scenario_report | default([]))
+            + [
+              {
+                "name": item.item.name,
+                "expected_rc": item.item.expected_rc,
+                "actual_rc": item.rc,
+                "expect_text": item.item.expect_text | default(""),
+                "output": item.stdout | default("") | trim,
+                "passed": (
+                  (item.rc == item.item.expected_rc)
+                  and
+                  (
+                    item.item.expect_text is not defined
+                    or (item.stdout | string).find(item.item.expect_text) != -1
+                  )
+                )
+              }
+            ]
+          }}
+      loop: "{{ ssh_scenario_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Print compact SSH scenario summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ item.name }} | rc={{ item.actual_rc }}/{{ item.expected_rc }} |
+          {{ "PASS" if item.passed else "FAIL" }}
+      loop: "{{ ssh_scenario_report }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Collect failed SSH scenarios
+      ansible.builtin.set_fact:
+        failed_scenarios: "{{ ssh_scenario_report | rejectattr('passed', 'equalto', true) | list }}"
+
+    - name: Fail once with compact summary if any SSH scenario failed
+      ansible.builtin.fail:
+        msg: |
+          SSH scenario failures ({{ failed_scenarios | length }}):
+          {% for scenario in failed_scenarios %}
+          - {{ scenario.name }} | rc={{ scenario.actual_rc }}/{{ scenario.expected_rc }}
+            expected_text={{ scenario.expect_text if scenario.expect_text else "<none>" }}
+            output={{ scenario.output | replace('\n', '\\n') }}
+          {% endfor %}
+      when: failed_scenarios | length > 0

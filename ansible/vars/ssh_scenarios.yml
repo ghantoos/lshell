@@ -1,0 +1,33 @@
+ssh_scenarios:
+  - name: allows overssh ls
+    command: "ls"
+    expected_rc: 0
+
+  - name: allows overssh pwd
+    command: "pwd"
+    expected_rc: 0
+
+  - name: blocks non-overssh command
+    command: "echo hello"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks separator payload
+    command: "ls; id"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: allows cat on .txt
+    command: "cat readme.txt"
+    expected_rc: 0
+    expect_text: "hello from txt"
+
+  - name: blocks cat on .bin
+    command: "cat secret.bin"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks cat on extensionless file
+    command: "cat noext"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"

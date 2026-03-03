@@ -1,0 +1,28 @@
+services:
+  lshell-ssh-target:
+    build:
+      context: .
+      dockerfile: docker/e2e-ssh/Dockerfile.target
+    container_name: lshell-ssh-target
+    hostname: lshell-ssh-target
+    volumes:
+      - .:/workspace
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc '</dev/tcp/127.0.0.1/22'"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  ansible-runner:
+    build:
+      context: .
+      dockerfile: docker/e2e-ssh/Dockerfile.runner
+    container_name: lshell-ansible-runner
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    depends_on:
+      lshell-ssh-target:
+        condition: service_healthy
+    command: >
+      bash -lc "ansible-playbook -i ansible/inventory.ini ansible/playbooks/ssh_e2e.yml"

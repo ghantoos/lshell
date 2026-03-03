@@ -84,8 +84,14 @@ test-ssh-e2e:
       exit $rc\
     '
 
+# Lint Python sources
+test-lint-flake8:
+    pylint $(git ls-files '*.py')
+    flake8 lshell test
+
 # Full local validation in one command
 test-all:
+    just test-lint-flake8
     @bash -ceu '\
       rc=0; \
       {{compose}} up --build ubuntu_tests debian_tests fedora_tests || rc=$?; \

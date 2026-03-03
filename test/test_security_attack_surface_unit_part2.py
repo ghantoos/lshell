@@ -5,7 +5,6 @@ Add all new tests related to `test_security_attack_surface_unit.py` in this file
 `test_security_attack_surface_unit.py` is intentionally kept around ~800 lines.
 """
 
-import io
 import os
 import unittest
 from unittest.mock import patch

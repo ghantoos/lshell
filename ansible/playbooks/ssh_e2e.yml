@@ -73,6 +73,16 @@
         - { dest: "{{ test_home }}/secret.bin", content: "binary-looking content\n" }
         - { dest: "{{ test_home }}/noext", content: "no extension file\n" }
 
+    - name: Create allowed executable for ./ execution checks
+      ansible.builtin.copy:
+        dest: "{{ test_home }}/shutdown.sh"
+        content: |
+          #!/bin/sh
+          echo "shutdown-script-ok"
+        owner: "{{ test_user }}"
+        group: "{{ test_user }}"
+        mode: "0755"
+
 - name: Run real SSH command scenarios
   hosts: localhost
   connection: local

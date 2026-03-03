@@ -3,9 +3,9 @@ logpath         : /var/log/lshell/
 loglevel        : 2
 
 [default]
-allowed         : ['ls', 'pwd', 'cat', 'echo', 'sudo']
+allowed         : ['ls', 'pwd', 'cat', 'echo', 'sudo', './shutdown.sh']
 forbidden       : [';', '&', '|', '`', '>', '<', '$(', '${']
-overssh         : ['ls', 'pwd', 'cat', 'sudo']
+overssh         : ['ls', 'pwd', 'cat', 'sudo', './shutdown.sh']
 sudo_commands   : ['ls']
 strict          : 1
 warning_counter : 2

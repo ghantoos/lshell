@@ -46,3 +46,8 @@ ssh_scenarios:
     command: "cat noext"
     expected_rc: 1
     expect_text: "forbidden char/command over SSH"
+
+  - name: allows explicitly whitelisted relative executable over ssh
+    command: "./shutdown.sh"
+    expected_rc: 0
+    expect_text: "shutdown-script-ok"

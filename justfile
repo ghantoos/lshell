@@ -39,43 +39,43 @@ docker-clean-lshell:
 debian:
     just run debian
 
-debian-tests:
+test-debian:
     just run debian_tests
 
-debian-pypi:
+test-debian-pypi:
     just run debian-pypi
 
-debian-pypi-pre:
+test-debian-pypi-pre:
     just run debian-pypi-pre
 
 # Ubuntu
 ubuntu:
     just run ubuntu
 
-ubuntu-tests:
+test-ubuntu:
     just run ubuntu_tests
 
-ubuntu-pypi:
+test-ubuntu-pypi:
     just run ubuntu-pypi
 
-ubuntu-pypi-pre:
+test-ubuntu-pypi-pre:
     just run ubuntu-pypi-pre
 
 # Fedora
 fedora:
     just run fedora
 
-fedora-tests:
+test-fedora:
     just run fedora_tests
 
-fedora-pypi:
+test-fedora-pypi:
     just run fedora-pypi
 
-fedora-pypi-pre:
+test-fedora-pypi-pre:
     just run fedora-pypi-pre
 
 # Real SSH end-to-end tests with Docker + Ansible only
-ssh-e2e:
+test-ssh-e2e:
     @bash -ceu '\
       rc=0; \
       {{e2e_compose}} up --build -d lshell-ssh-target; \
@@ -86,7 +86,10 @@ ssh-e2e:
 
 # Full local validation in one command
 test-all:
-    just ubuntu_tests
-    just ubuntu_pypi
-    just ubuntu_pypi_pre
-    just ssh-e2e
+    @bash -ceu '\
+      rc=0; \
+      {{compose}} up --build ubuntu_tests debian_tests fedora_tests || rc=$?; \
+      {{compose}} down -v --remove-orphans; \
+      exit $rc\
+    '
+    just test-ssh-e2e

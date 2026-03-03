@@ -8,12 +8,14 @@
     test_user: ltest
     test_user_sftp_off: ltestsftpoff
     test_user_scp_down_off: ltestscpdownoff
+    test_user_scp_up_on: ltestscpup
     test_user_scp_off: ltestscpoff
     test_user_winscp: ltestwinscp
     test_home: /home/ltest
     test_user_password: ltestpass
     test_user_sftp_off_password: ltestsftpoffpass
     test_user_scp_down_off_password: ltestscpdownoffpass
+    test_user_scp_up_on_password: ltestscpuppass
     test_user_scp_off_password: ltestscpoffpass
     test_user_winscp_password: ltestwinscppass
   tasks:
@@ -83,6 +85,19 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Create SSH test user with scp_upload enabled in profile
+      ansible.builtin.user:
+        name: "{{ test_user_scp_up_on }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for scp_upload-enabled SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_scp_up_on }}:{{ test_user_scp_up_on_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Create SSH test user with scp fully disabled in profile
       ansible.builtin.user:
         name: "{{ test_user_scp_off }}"
@@ -142,6 +157,7 @@
         mode: "0644"
       loop:
         - { user: "{{ test_user_scp_down_off }}" }
+        - { user: "{{ test_user_scp_up_on }}" }
         - { user: "{{ test_user_scp_off }}" }
         - { user: "{{ test_user_winscp }}" }
 
@@ -165,12 +181,14 @@
     ssh_user: ltest
     ssh_user_sftp_off: ltestsftpoff
     ssh_user_scp_down_off: ltestscpdownoff
+    ssh_user_scp_up_on: ltestscpup
     ssh_user_scp_off: ltestscpoff
     ssh_user_winscp: ltestwinscp
     ssh_host: lshell-ssh-target
     ssh_password: ltestpass
     ssh_password_sftp_off: ltestsftpoffpass
     ssh_password_scp_down_off: ltestscpdownoffpass
+    ssh_password_scp_up_on: ltestscpuppass
     ssh_password_scp_off: ltestscpoffpass
     ssh_password_winscp: ltestwinscppass
     ssh_common_opts: >-
@@ -349,6 +367,67 @@
         fail_msg: >-
           scp unexpectedly succeeded with scp=0 and no overssh fallback.
           output={{ scp_fully_disabled_attempt.stdout }}
+
+    - name: Attempt scp upload to forbidden target path outside allowed path
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_up_on }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_upload.txt
+        {{ ssh_user_scp_up_on }}@{{ ssh_host }}:/tmp/lshell_upload_forbidden.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_upload_forbidden_path_attempt
+
+    - name: Assert scp upload is blocked for forbidden target path
+      ansible.builtin.assert:
+        that:
+          - scp_upload_forbidden_path_attempt.rc != 0
+        fail_msg: >-
+          scp upload to forbidden path unexpectedly succeeded.
+          output={{ scp_upload_forbidden_path_attempt.stdout }}
+
+    - name: Verify forbidden upload target file was not created
+      ansible.builtin.stat:
+        path: /tmp/lshell_upload_forbidden.txt
+      delegate_to: "{{ ssh_host }}"
+      register: forbidden_upload_target
+
+    - name: Assert forbidden upload target file is absent
+      ansible.builtin.assert:
+        that:
+          - not forbidden_upload_target.stat.exists
+        fail_msg: "forbidden scp upload target file exists in /tmp"
+
+    - name: Attempt scp download from forbidden source path outside allowed path
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_up_on }} scp -O {{ ssh_common_opts }}
+        {{ ssh_user_scp_up_on }}@{{ ssh_host }}:/etc/passwd
+        /tmp/lshell_scp_download_forbidden.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_download_forbidden_path_attempt
+
+    - name: Assert scp download is blocked for forbidden source path
+      ansible.builtin.assert:
+        that:
+          - scp_download_forbidden_path_attempt.rc != 0
+        fail_msg: >-
+          scp download from forbidden path unexpectedly succeeded.
+          output={{ scp_download_forbidden_path_attempt.stdout }}
+
+    - name: Verify forbidden scp download did not create local file
+      ansible.builtin.stat:
+        path: /tmp/lshell_scp_download_forbidden.txt
+      register: forbidden_download_file
+
+    - name: Assert forbidden scp download local file is absent
+      ansible.builtin.assert:
+        that:
+          - not forbidden_download_file.stat.exists
+        fail_msg: "forbidden scp download created local output file unexpectedly"
 
     - name: Attempt scp upload in WinSCP mode (should be forced enabled)
       ansible.builtin.shell: >-

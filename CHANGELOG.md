@@ -8,7 +8,7 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 - Fixed `sudo` handling inside `lshell`.
 - Added support for configuring session `umask` via `lshell.conf` or CLI, with octal validation.
 - Improved `allowed_file_extensions` checks to validate file-like arguments (including option values such as `--include=...`) and reject disallowed or extensionless file operands.
-- Included additional bug fixes and test updates.
+- Hardened handling for SCP/SFTP while preserving command return codes. Added Docker + Ansible SSH end-to-end tests (SSH/SCP/SFTP/WinSCP paths and policy checks).
 
 ### v0.10.10 25/11/2024
 - Added path-only completion with completion from allowed paths.

@@ -4,10 +4,11 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
 ### v1.0 28/02/2026
-- Implemented a new lexer/parser based on `pyparsing`.
-- Fixed sudo inside lshell
-- Fixed multiple bugs
-- Added support for configuring session `umask` via `umask` in `lshell.conf` or CLI, including octal validation.
+- Replaced the command parser with a new lexer/parser based on `pyparsing`.
+- Fixed `sudo` handling inside `lshell`.
+- Added support for configuring session `umask` via `lshell.conf` or CLI, with octal validation.
+- Improved `allowed_file_extensions` checks to validate file-like arguments (including option values such as `--include=...`) and reject disallowed or extensionless file operands.
+- Included additional bug fixes and test updates.
 
 ### v0.10.10 25/11/2024
 - Added path-only completion with completion from allowed paths.

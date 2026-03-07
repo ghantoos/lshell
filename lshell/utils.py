@@ -435,6 +435,30 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
     # Protocol commands (handled/gated by run_overssh) can bypass generic
     # policy/path checks while still using the same execution surface.
     skip_policy_checks = bool(trusted_protocol)
+    trusted_protocol_binaries = set(variables.TRUSTED_SFTP_PROTOCOL_BINARIES)
+
+    if skip_policy_checks:
+        # Trusted protocol mode may use chaining if config permits it,
+        # but every command segment must be a known protocol command.
+        protocol_operators = {"&&", "||", "|", ";", "&"}
+        for item in command_sequence:
+            if isinstance(item, str) and item in protocol_operators:
+                continue
+            executable, _argument, _split, assignments = _parse_command(item)
+            if executable is None:
+                return _handle_unknown_syntax(item)
+            if assignments:
+                shell_context.log.critical(
+                    f'lshell: forbidden trusted SSH protocol command: "{item}"'
+                )
+                sys.stderr.write("lshell: forbidden trusted SSH protocol command\n")
+                return 126
+            if executable not in trusted_protocol_binaries:
+                shell_context.log.critical(
+                    f'lshell: forbidden trusted SSH protocol command: "{item}"'
+                )
+                sys.stderr.write("lshell: forbidden trusted SSH protocol command\n")
+                return 126
 
     # Iterate through the command sequence
     i = 0

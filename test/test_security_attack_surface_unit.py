@@ -333,7 +333,7 @@ class TestAttackSurface(unittest.TestCase):
             mock_exec.assert_called_once_with(
                 f"scp -f {conf['home_path']}/artifact",
                 shell_context=unittest.mock.ANY,
-                trusted_protocol=True,
+                trusted_protocol=False,
             )
         finally:
             self._restore_ssh_env(saved_env)
@@ -386,7 +386,9 @@ class TestAttackSurface(unittest.TestCase):
         """Rewrite scp -t target path to configured scpforce directory."""
         saved_env = self._with_forced_ssh_env()
         try:
-            with tempfile.TemporaryDirectory(prefix="lshell_scpforce_") as forced_dir:
+            with tempfile.TemporaryDirectory(
+                prefix="lshell_scpforce_", dir=os.environ["HOME"]
+            ) as forced_dir:
                 conf = CheckConfig(
                     self.args
                     + [
@@ -408,12 +410,65 @@ class TestAttackSurface(unittest.TestCase):
                             stdout=io.StringIO(),
                             stderr=io.StringIO(),
                         )
-                self.assertEqual(cm.exception.code, 0)
-                mock_exec.assert_called_once_with(
-                    f"scp -t {os.path.realpath(forced_dir)}",
-                    shell_context=unittest.mock.ANY,
-                    trusted_protocol=True,
-                )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with(
+                f"scp -t {os.path.realpath(forced_dir)}",
+                shell_context=unittest.mock.ANY,
+                trusted_protocol=False,
+            )
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_scp_chain_with_non_protocol_segment(self):
+        """Reject scp chaining when a later segment is not allowed over SSH."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--scp=1", "--scp_download=1"]).returnconf()
+            conf["ssh"] = f"scp -f {conf['home_path']}/artifact || id"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_applies_aliases_to_scp_commands(self):
+        """Expand aliases before SCP policy checks and execution."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args
+                + [
+                    "--scp=1",
+                    "--scp_download=1",
+                    f"--aliases={{'getscp':'scp -f {os.environ['HOME']}/artifact'}}",
+                ]
+            ).returnconf()
+            conf["ssh"] = "getscp"
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with(
+                f"scp -f {conf['home_path']}/artifact",
+                shell_context=unittest.mock.ANY,
+                trusted_protocol=False,
+            )
         finally:
             self._restore_ssh_env(saved_env)
 

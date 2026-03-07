@@ -190,6 +190,63 @@ class TestAttackSurfacePart2(unittest.TestCase):
             mock_exec.call_args.args[0], "bash test/testfiles/login_script.sh"
         )
 
+    @patch("lshell.utils.exec_cmd")
+    def test_cmd_parse_execute_trusted_protocol_blocks_non_protocol_chained_command(
+        self, mock_exec
+    ):
+        """Trusted SSH protocol mode must reject non-protocol chained commands."""
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+
+        ret = utils.cmd_parse_execute(
+            "sftp-server || id",
+            shell_context=shell,
+            trusted_protocol=True,
+        )
+
+        self.assertEqual(ret, 126)
+        mock_exec.assert_not_called()
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_trusted_protocol_allows_single_sftp_server_command(
+        self, mock_exec
+    ):
+        """Trusted SSH protocol mode should execute a single sftp-server command."""
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+
+        ret = utils.cmd_parse_execute(
+            "/usr/libexec/sftp-server",
+            shell_context=shell,
+            trusted_protocol=True,
+        )
+
+        self.assertEqual(ret, 0)
+        mock_exec.assert_called_once_with(
+            "/usr/libexec/sftp-server",
+            background=False,
+            extra_env=unittest.mock.ANY,
+        )
+
+    @patch("lshell.utils.exec_cmd", side_effect=[1, 0])
+    def test_cmd_parse_execute_trusted_protocol_allows_chained_sftp_server_commands(
+        self, mock_exec
+    ):
+        """Trusted SSH protocol mode should allow chained sftp-server commands."""
+        conf = CheckConfig(self.args + ["--strict=0"]).returnconf()
+        shell = DummyShellContext(conf)
+
+        ret = utils.cmd_parse_execute(
+            "sftp-server || /usr/libexec/sftp-server",
+            shell_context=shell,
+            trusted_protocol=True,
+        )
+
+        self.assertEqual(ret, 0)
+        self.assertEqual(mock_exec.call_count, 2)
+        self.assertEqual(mock_exec.call_args_list[0].args[0], "sftp-server")
+        self.assertEqual(mock_exec.call_args_list[1].args[0], "/usr/libexec/sftp-server")
+
 
 if __name__ == "__main__":
     unittest.main()

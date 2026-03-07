@@ -7,6 +7,33 @@ ssh_scenarios:
     command: "pwd"
     expected_rc: 0
 
+  - name: allows chained overssh commands
+    command: "ls && pwd"
+    expected_rc: 0
+    expect_text: "/home/ltest"
+
+  - name: blocks pipe operator when forbidden
+    command: "ls | pwd"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: allows pipe operator when not forbidden
+    command: "ls | pwd"
+    user: "ltestpipeon"
+    password: "ltestpipeonpass"
+    expected_rc: 0
+    expect_text: "/home/ltestpipeon"
+
+  - name: blocks chained command with non-overssh command
+    command: "ls && su root"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks piped payload over ssh
+    command: "ls / | grep readme"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
   - name: blocks non-overssh command
     command: "echo hello"
     expected_rc: 1
@@ -21,6 +48,11 @@ ssh_scenarios:
     command: "cat readme.txt"
     expected_rc: 0
     expect_text: "hello from txt"
+
+  - name: blocks chained extension violation
+    command: "cat readme.txt && cat secret.bin"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
 
   - name: allows sudo ls over ssh without forbidden shell escape
     command: "sudo ls /home/ltest/readme.txt"

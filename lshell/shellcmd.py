@@ -17,6 +17,7 @@ from lshell import utils
 from lshell import builtincmd
 from lshell import sec
 from lshell import completion
+from lshell import variables
 from lshell import policy as policy_mode
 
 
@@ -126,13 +127,39 @@ class ShellCmd(cmd.Cmd, object):
         server. If this is the case, it checks if the user is allowed to use
         SCP or not, and    acts as requested. : )
         """
-        def _execute_trusted_ssh_protocol():
-            # Protocol commands (scp/sftp-server) are gated in run_overssh.
-            # Execute through cmd_parse_execute while bypassing generic policy/path
-            # checks so existing mocking/tests keep the same call surface.
+        def _execute_trusted_ssh_protocol(trusted_protocol=False):
+            # Protocol commands are still validated in run_overssh, then
+            # executed through the regular command path so policy settings
+            # (path/sudo/allowed_cmd_path/env/umask) stay consistent.
             return utils.cmd_parse_execute(
-                self.conf["ssh"], shell_context=self, trusted_protocol=True
+                self.conf["ssh"],
+                shell_context=self,
+                trusted_protocol=trusted_protocol,
             )
+
+        def _validate_ssh_command(check_path=True):
+            ret_check_secure, self.conf = sec.check_secure(
+                self.conf["ssh"], self.conf, strict=1, ssh=1
+            )
+            if ret_check_secure:
+                self.ssh_warn("char/command over SSH", self.conf["ssh"])
+
+            if check_path:
+                ret_check_path, self.conf = sec.check_path(
+                    self.conf["ssh"], self.conf, strict=1, ssh=1
+                )
+                if ret_check_path == 1:
+                    self.ssh_warn("path over SSH", self.conf["ssh"])
+
+        def _with_protocol_in_overssh(protocol_commands):
+            overssh = list(self.conf.get("overssh", []))
+            changed = False
+            for item in protocol_commands:
+                if item and item not in overssh:
+                    overssh.append(item)
+                    changed = True
+            if changed:
+                self.conf["overssh"] = overssh
 
         def _aliases_for_ssh_command():
             aliases = self.conf["aliases"]
@@ -143,26 +170,33 @@ class ShellCmd(cmd.Cmd, object):
 
         if "ssh" in self.conf:
             if "SSH_CLIENT" in os.environ and "SSH_TTY" not in os.environ:
+                # Apply aliases consistently for all SSH command paths.
+                self.conf["ssh"] = utils.get_aliases(
+                    self.conf["ssh"], _aliases_for_ssh_command()
+                ).strip()
+
                 # check if sftp is requested and allowed
                 if "sftp-server" in self.conf["ssh"]:
                     if self.conf["sftp"] == 1:
+                        _with_protocol_in_overssh(
+                            variables.TRUSTED_SFTP_PROTOCOL_BINARIES
+                        )
+                        # sftp-server binary path may live outside restricted
+                        # user paths; keep command-level checks but skip path ACL.
+                        _validate_ssh_command(check_path=False)
                         self.log.error("SFTP connect")
-                        retcode = _execute_trusted_ssh_protocol()
+                        retcode = _execute_trusted_ssh_protocol(trusted_protocol=True)
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
                     else:
                         self.log.error("*** forbidden SFTP connection")
                         sys.exit(1)
 
-                ret_check_path, self.conf = sec.check_path(
-                    self.conf["ssh"], self.conf, ssh=1
-                )
-                if ret_check_path == 1:
-                    self.ssh_warn("path over SSH", self.conf["ssh"])
-
                 # check if scp is requested and allowed
                 if self.conf["ssh"].startswith("scp "):
                     if self.conf["scp"] == 1 or "scp" in self.conf["overssh"]:
+                        _with_protocol_in_overssh(["scp"])
+
                         if " -f " in self.conf["ssh"]:
                             # case scp download is allowed
                             if self.conf["scp_download"]:
@@ -194,7 +228,8 @@ class ShellCmd(cmd.Cmd, object):
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
                                 )
                                 sys.exit(1)
-                        retcode = _execute_trusted_ssh_protocol()
+                        _validate_ssh_command()
+                        retcode = _execute_trusted_ssh_protocol(trusted_protocol=False)
                         self.log.error("SCP disconnect")
                         sys.exit(retcode)
                     else:
@@ -202,19 +237,8 @@ class ShellCmd(cmd.Cmd, object):
 
                 # check if command is in allowed overssh commands
                 elif self.conf["ssh"]:
-                    # replace aliases
-                    self.conf["ssh"] = utils.get_aliases(
-                        self.conf["ssh"], _aliases_for_ssh_command()
-                    )
-                    # if command is not "secure", exit
-                    ret_check_secure, self.conf = sec.check_secure(
-                        self.conf["ssh"], self.conf, strict=1, ssh=1
-                    )
-                    if ret_check_secure:
-                        self.ssh_warn("char/command over SSH", self.conf["ssh"])
-                        sys.exit(1)
-                    else:
-                        self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
+                    _validate_ssh_command()
+                    self.log.error(f'Over SSH: "{self.conf["ssh"]}"')
                     # if command is "help"
                     if self.conf["ssh"] == "help":
                         self.do_help(None)

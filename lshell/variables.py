@@ -117,3 +117,12 @@ FORBIDDEN_ENVIRON = (
     "NIS_PATH",
     "PATH",
 )
+
+# Single source of truth for trusted SFTP protocol executables.
+TRUSTED_SFTP_PROTOCOL_BINARIES = (
+    "sftp-server",
+    "/usr/libexec/sftp-server",
+    "/usr/lib/ssh/sftp-server",
+    "/usr/lib/openssh/sftp-server",
+    "/usr/libexec/openssh/sftp-server",
+)

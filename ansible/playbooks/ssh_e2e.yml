@@ -11,6 +11,7 @@
     test_user_scp_up_on: ltestscpup
     test_user_scp_off: ltestscpoff
     test_user_winscp: ltestwinscp
+    test_user_pipe_on: ltestpipeon
     test_home: /home/ltest
     test_user_password: ltestpass
     test_user_sftp_off_password: ltestsftpoffpass
@@ -18,6 +19,7 @@
     test_user_scp_up_on_password: ltestscpuppass
     test_user_scp_off_password: ltestscpoffpass
     test_user_winscp_password: ltestwinscppass
+    test_user_pipe_on_password: ltestpipeonpass
   tasks:
     - name: Wait for SSH access
       ansible.builtin.wait_for_connection:
@@ -124,6 +126,19 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Create SSH test user with pipe character allowed in profile
+      ansible.builtin.user:
+        name: "{{ test_user_pipe_on }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for pipe-allowed SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_pipe_on }}:{{ test_user_pipe_on_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Allow passwordless sudo for /usr/bin/ls in test user
       ansible.builtin.copy:
         dest: /etc/sudoers.d/ltest-lshell-e2e
@@ -184,6 +199,7 @@
     ssh_user_scp_up_on: ltestscpup
     ssh_user_scp_off: ltestscpoff
     ssh_user_winscp: ltestwinscp
+    ssh_user_pipe_on: ltestpipeon
     ssh_host: lshell-ssh-target
     ssh_password: ltestpass
     ssh_password_sftp_off: ltestsftpoffpass
@@ -191,6 +207,7 @@
     ssh_password_scp_up_on: ltestscpuppass
     ssh_password_scp_off: ltestscpoffpass
     ssh_password_winscp: ltestwinscppass
+    ssh_password_pipe_on: ltestpipeonpass
     ssh_common_opts: >-
       -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
@@ -198,7 +215,8 @@
   tasks:
     - name: Execute SSH scenarios
       ansible.builtin.shell: >-
-        sshpass -p {{ ssh_password }} ssh {{ ssh_common_opts }} {{ ssh_user }}@{{ ssh_host }} {{ item.command | quote }} 2>&1
+        sshpass -p {{ item.password | default(ssh_password) }} ssh {{ ssh_common_opts }}
+        {{ item.user | default(ssh_user) }}@{{ ssh_host }} {{ item.command | quote }} 2>&1
       args:
         executable: /bin/bash
       changed_when: false

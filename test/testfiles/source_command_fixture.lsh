@@ -1,0 +1,10 @@
+# Source fixture for lshell tests.
+# Only exported assignments should be loaded into the shell environment.
+
+IGNORED_ASSIGNMENT=should_not_be_imported
+
+export SOURCE_SIMPLE=value
+export SOURCE_SINGLE_QUOTED='two words'
+export SOURCE_DOUBLE_QUOTED="hello world"
+export SOURCE_EMPTY=
+export SOURCE_WITH_EQUALS='a=b=c'

@@ -272,6 +272,33 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
             self.assertEqual(builtincmd.cmd_source(missing), 1)
         self.assertIn("lshell: unable to read environment file", stderr.getvalue())
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_cmd_source_preserves_quoted_values_with_spaces(self):
+        """Load quoted export values without truncating them at the first space."""
+        with tempfile.NamedTemporaryFile("w", delete=False) as env_file:
+            env_file.write('export GREETING="hello world"\n')
+            env_file.write("export TARGET='two words here'\n")
+            file_path = env_file.name
+
+        try:
+            self.assertEqual(builtincmd.cmd_source(file_path), 0)
+            self.assertEqual(os.environ.get("GREETING"), "hello world")
+            self.assertEqual(os.environ.get("TARGET"), "two words here")
+        finally:
+            os.remove(file_path)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_cmd_source_expands_tilde_paths(self):
+        """Resolve home-relative source paths the same way the shell does."""
+        with tempfile.TemporaryDirectory(dir=".") as home_dir:
+            file_path = os.path.join(home_dir, ".lshell_env")
+            with open(file_path, "w", encoding="utf-8") as env_file:
+                env_file.write("export HOME_SCOPED=value\n")
+
+            with patch.dict(os.environ, {"HOME": home_dir}, clear=True):
+                self.assertEqual(builtincmd.cmd_source("~/.lshell_env"), 0)
+                self.assertEqual(os.environ.get("HOME_SCOPED"), "value")
+
     def test_cmd_bg_fg_no_jobs(self):
         """Report failure when attempting fg with no jobs queued."""
         stdout = io.StringIO()

@@ -3,6 +3,13 @@ ssh_scenarios:
     command: "ls"
     expected_rc: 0
 
+  - name: allows alias-expanded command over ssh
+    command: "ll"
+    user: "ltestalias"
+    password: "ltestaliaspass"
+    expected_rc: 0
+    expect_text: "readme.txt"
+
   - name: allows overssh pwd
     command: "pwd"
     expected_rc: 0
@@ -26,6 +33,20 @@ ssh_scenarios:
 
   - name: blocks chained command with non-overssh command
     command: "ls && su root"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks logical-or chain with non-overssh command
+    command: "ls || su root"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: allows logical-or chain when all commands are overssh-allowed
+    command: "ls || pwd"
+    expected_rc: 0
+
+  - name: blocks background chaining operator when forbidden
+    command: "ls & pwd"
     expected_rc: 1
     expect_text: "forbidden char/command over SSH"
 

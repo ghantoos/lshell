@@ -361,6 +361,9 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
                 continue
 
             extension = os.path.splitext(basename)[1]
+            # Existing directories are valid SCP/SFTP targets and do not
+            # represent file-extension risk on their own.
+            is_existing_dir = os.path.isdir(os.path.realpath(os.path.expanduser(value)))
             has_path_markers = any(
                 char in value for char in ["/", "\\", "*", "?", "[", "]"]
             ) or value.startswith(("~", "."))
@@ -371,6 +374,7 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
                     "extension": extension if extension else "<none>",
                     "explicit_path_like": bool(extension) or has_path_markers,
                     "simple_bareword": is_simple_bareword and not has_path_markers,
+                    "is_existing_dir": is_existing_dir,
                 }
             )
 
@@ -380,6 +384,8 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
         # If explicit path-like operands are present, treat lone bare words as
         # likely literals/patterns rather than filenames.
         if has_explicit_path_like and item["simple_bareword"]:
+            continue
+        if item["is_existing_dir"]:
             continue
         extension = item["extension"]
         if extension not in allowed_extensions and extension not in disallowed_extensions:

@@ -12,6 +12,9 @@
     test_user_scp_off: ltestscpoff
     test_user_winscp: ltestwinscp
     test_user_pipe_on: ltestpipeon
+    test_user_alias: ltestalias
+    test_user_scp_over: ltestscpover
+    test_user_scp_force: ltestscpforce
     test_home: /home/ltest
     test_user_password: ltestpass
     test_user_sftp_off_password: ltestsftpoffpass
@@ -20,6 +23,9 @@
     test_user_scp_off_password: ltestscpoffpass
     test_user_winscp_password: ltestwinscppass
     test_user_pipe_on_password: ltestpipeonpass
+    test_user_alias_password: ltestaliaspass
+    test_user_scp_over_password: ltestscpoverpass
+    test_user_scp_force_password: ltestscpforcepass
   tasks:
     - name: Wait for SSH access
       ansible.builtin.wait_for_connection:
@@ -139,6 +145,45 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Create SSH test user with alias-enabled profile
+      ansible.builtin.user:
+        name: "{{ test_user_alias }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for alias-enabled SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_alias }}:{{ test_user_alias_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create SSH test user with scp fallback through overssh
+      ansible.builtin.user:
+        name: "{{ test_user_scp_over }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for scp-fallback SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_scp_over }}:{{ test_user_scp_over_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create SSH test user with scpforce upload profile
+      ansible.builtin.user:
+        name: "{{ test_user_scp_force }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for scpforce SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_scp_force }}:{{ test_user_scp_force_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Allow passwordless sudo for /usr/bin/ls in test user
       ansible.builtin.copy:
         dest: /etc/sudoers.d/ltest-lshell-e2e
@@ -175,6 +220,25 @@
         - { user: "{{ test_user_scp_up_on }}" }
         - { user: "{{ test_user_scp_off }}" }
         - { user: "{{ test_user_winscp }}" }
+        - { user: "{{ test_user_alias }}" }
+        - { user: "{{ test_user_scp_over }}" }
+        - { user: "{{ test_user_scp_force }}" }
+
+    - name: Create extra .bin file for scp extension policy checks
+      ansible.builtin.copy:
+        dest: "/home/{{ test_user_scp_up_on }}/secret.bin"
+        content: "binary extension for scp policy checks\n"
+        owner: "{{ test_user_scp_up_on }}"
+        group: "{{ test_user_scp_up_on }}"
+        mode: "0644"
+
+    - name: Ensure scpforce target directory exists
+      ansible.builtin.file:
+        path: "/home/{{ test_user_scp_force }}/forced"
+        state: directory
+        owner: "{{ test_user_scp_force }}"
+        group: "{{ test_user_scp_force }}"
+        mode: "0755"
 
     - name: Create allowed executable for ./ execution checks
       ansible.builtin.copy:
@@ -200,6 +264,9 @@
     ssh_user_scp_off: ltestscpoff
     ssh_user_winscp: ltestwinscp
     ssh_user_pipe_on: ltestpipeon
+    ssh_user_alias: ltestalias
+    ssh_user_scp_over: ltestscpover
+    ssh_user_scp_force: ltestscpforce
     ssh_host: lshell-ssh-target
     ssh_password: ltestpass
     ssh_password_sftp_off: ltestsftpoffpass
@@ -208,6 +275,9 @@
     ssh_password_scp_off: ltestscpoffpass
     ssh_password_winscp: ltestwinscppass
     ssh_password_pipe_on: ltestpipeonpass
+    ssh_password_alias: ltestaliaspass
+    ssh_password_scp_over: ltestscpoverpass
+    ssh_password_scp_force: ltestscpforcepass
     ssh_common_opts: >-
       -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
@@ -290,6 +360,18 @@
         content: "scp upload probe\n"
         mode: "0644"
 
+    - name: Create local .bin file for scp extension-deny upload checks
+      ansible.builtin.copy:
+        dest: /tmp/lshell_scp_upload.bin
+        content: "scp upload binary probe\n"
+        mode: "0644"
+
+    - name: Create local file for scpforce upload checks
+      ansible.builtin.copy:
+        dest: /tmp/lshell_scp_force.txt
+        content: "scpforce upload probe\n"
+        mode: "0644"
+
     - name: Attempt scp upload when scp_upload is disabled
       ansible.builtin.shell: >-
         sshpass -p {{ ssh_password }} scp -O {{ ssh_common_opts }}
@@ -348,6 +430,36 @@
           - "'hello from txt' in (scp_downloaded_file.content | b64decode)"
         fail_msg: "Downloaded scp file content mismatch"
 
+    - name: Upload file over scp when scp_upload is enabled
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_up_on }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_upload.txt
+        {{ ssh_user_scp_up_on }}@{{ ssh_host }}:/home/{{ ssh_user_scp_up_on }}/upload_ok.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: scp_upload_enabled_attempt
+
+    - name: Assert scp upload succeeded when scp_upload is enabled
+      ansible.builtin.assert:
+        that:
+          - scp_upload_enabled_attempt.rc == 0
+        fail_msg: >-
+          scp upload failed unexpectedly with scp_upload=1.
+          output={{ scp_upload_enabled_attempt.stdout }}
+
+    - name: Verify successful scp upload target file exists
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user_scp_up_on }}/upload_ok.txt
+      delegate_to: "{{ ssh_host }}"
+      register: scp_upload_enabled_target
+
+    - name: Assert successful scp upload target file exists
+      ansible.builtin.assert:
+        that:
+          - scp_upload_enabled_target.stat.exists
+        fail_msg: "scp upload target file missing despite scp_upload=1"
+
     - name: Attempt scp download when scp_download is disabled
       ansible.builtin.shell: >-
         sshpass -p {{ ssh_password_scp_down_off }} scp -O {{ ssh_common_opts }}
@@ -385,6 +497,74 @@
         fail_msg: >-
           scp unexpectedly succeeded with scp=0 and no overssh fallback.
           output={{ scp_fully_disabled_attempt.stdout }}
+
+    - name: Attempt scp download when scp is disabled but still present in overssh
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_over }} scp -O {{ ssh_common_opts }}
+        {{ ssh_user_scp_over }}@{{ ssh_host }}:/home/{{ ssh_user_scp_over }}/readme.txt
+        /tmp/lshell_scp_overssh_fallback.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: scp_overssh_fallback_attempt
+
+    - name: Assert scp works when scp is disabled but overssh allows scp
+      ansible.builtin.assert:
+        that:
+          - scp_overssh_fallback_attempt.rc == 0
+        fail_msg: >-
+          scp fallback via overssh failed unexpectedly.
+          output={{ scp_overssh_fallback_attempt.stdout }}
+
+    - name: Attempt scp download of forbidden extension over ssh
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password }} scp -O {{ ssh_common_opts }}
+        {{ ssh_user }}@{{ ssh_host }}:/home/{{ ssh_user }}/secret.bin
+        /tmp/lshell_scp_download_secret_bin_should_fail.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_download_forbidden_extension_attempt
+
+    - name: Assert scp download is blocked for forbidden extension
+      ansible.builtin.assert:
+        that:
+          - scp_download_forbidden_extension_attempt.rc != 0
+        fail_msg: >-
+          scp download of forbidden extension unexpectedly succeeded.
+          output={{ scp_download_forbidden_extension_attempt.stdout }}
+
+    - name: Attempt scp upload of forbidden extension over ssh
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_up_on }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_upload.bin
+        {{ ssh_user_scp_up_on }}@{{ ssh_host }}:/home/{{ ssh_user_scp_up_on }}/upload_bin_should_fail.bin 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: scp_upload_forbidden_extension_attempt
+
+    - name: Assert scp upload is blocked for forbidden extension
+      ansible.builtin.assert:
+        that:
+          - scp_upload_forbidden_extension_attempt.rc != 0
+        fail_msg: >-
+          scp upload of forbidden extension unexpectedly succeeded.
+          output={{ scp_upload_forbidden_extension_attempt.stdout }}
+
+    - name: Verify forbidden-extension scp upload target file was not created
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user_scp_up_on }}/upload_bin_should_fail.bin
+      delegate_to: "{{ ssh_host }}"
+      register: scp_upload_forbidden_extension_target
+
+    - name: Assert forbidden-extension scp upload target file is absent
+      ansible.builtin.assert:
+        that:
+          - not scp_upload_forbidden_extension_target.stat.exists
+        fail_msg: "forbidden-extension scp upload target file exists unexpectedly"
 
     - name: Attempt scp upload to forbidden target path outside allowed path
       ansible.builtin.shell: >-
@@ -446,6 +626,48 @@
         that:
           - not forbidden_download_file.stat.exists
         fail_msg: "forbidden scp download created local output file unexpectedly"
+
+    - name: Attempt scp upload with scpforce profile (target should be rewritten)
+      ansible.builtin.shell: >-
+        sshpass -p {{ ssh_password_scp_force }} scp -O {{ ssh_common_opts }}
+        /tmp/lshell_scp_force.txt
+        {{ ssh_user_scp_force }}@{{ ssh_host }}:/home/{{ ssh_user_scp_force }}/ignored_target.txt 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: scpforce_upload_attempt
+
+    - name: Assert scpforce upload succeeded
+      ansible.builtin.assert:
+        that:
+          - scpforce_upload_attempt.rc == 0
+        fail_msg: >-
+          scpforce upload failed unexpectedly.
+          output={{ scpforce_upload_attempt.stdout }}
+
+    - name: Verify original scpforce destination path is not used
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user_scp_force }}/ignored_target.txt
+      delegate_to: "{{ ssh_host }}"
+      register: scpforce_original_target
+
+    - name: Assert original scpforce destination path is absent
+      ansible.builtin.assert:
+        that:
+          - not scpforce_original_target.stat.exists
+        fail_msg: "scpforce did not rewrite destination path as expected"
+
+    - name: Verify rewritten scpforce destination file exists in forced directory
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user_scp_force }}/forced/lshell_scp_force.txt
+      delegate_to: "{{ ssh_host }}"
+      register: scpforce_forced_target
+
+    - name: Assert rewritten scpforce destination file exists
+      ansible.builtin.assert:
+        that:
+          - scpforce_forced_target.stat.exists
+        fail_msg: "scpforce target file missing from forced directory"
 
     - name: Attempt scp upload in WinSCP mode (should be forced enabled)
       ansible.builtin.shell: >-

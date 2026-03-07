@@ -6,10 +6,12 @@ Add all new tests related to `test_security_attack_surface_unit.py` in this file
 """
 
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
 from lshell.checkconfig import CheckConfig
+from lshell import sec
 from lshell import utils
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
@@ -246,6 +248,15 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertEqual(mock_exec.call_count, 2)
         self.assertEqual(mock_exec.call_args_list[0].args[0], "sftp-server")
         self.assertEqual(mock_exec.call_args_list[1].args[0], "/usr/libexec/sftp-server")
+
+    def test_check_allowed_file_extensions_allows_existing_directory_target(self):
+        """Directory targets should not fail extension checks (e.g. SCP -t <dir>)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            allowed, blocked = sec.check_allowed_file_extensions(
+                f"scp -t {tmpdir}", [".txt"]
+            )
+        self.assertTrue(allowed)
+        self.assertIsNone(blocked)
 
 
 if __name__ == "__main__":

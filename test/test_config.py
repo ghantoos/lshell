@@ -190,3 +190,21 @@ class TestFunctions(unittest.TestCase):
             f"{LSHELL} --config {CONFIG} --aliases \"['ll']\"",
             "lshell: config: 'aliases' must be a dictionary",
         )
+
+    def test_64_custom_messages_override_warning_output(self):
+        """F64 | messages config should override warning text."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 "
+            "--messages "
+            "\"{'warning_remaining':'*** You have {remaining} warning(s) "
+            "left, before getting kicked out.'}\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("echo $(uptime)")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8")
+        self.assertIn(
+            "*** You have 1 warning(s) left, before getting kicked out.", output
+        )
+        self.do_exit(child)

@@ -47,6 +47,7 @@ DISPLAY_KEY_ORDER = [
     "sftp",
     "umask",
     "aliases",
+    "messages",
     "winscp",
     "policy_commands",
     "disable_exit",
@@ -292,6 +293,7 @@ def _build_runtime_policy(conf_raw, username):
         "overssh",
         "strict",
         "aliases",
+        "messages",
         "allowed_cmd_path",
         "winscp",
         "policy_commands",
@@ -315,7 +317,7 @@ def _build_runtime_policy(conf_raw, username):
                 policy[item] = []
             elif item in ["scp_upload", "scp_download"]:
                 policy[item] = 1
-            elif item in ["aliases"]:
+            elif item in ["aliases", "messages"]:
                 policy[item] = {}
             elif item in ["policy_commands"]:
                 policy[item] = 1

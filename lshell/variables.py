@@ -62,6 +62,7 @@ configparams = [
     "sudo_commands=",
     "warning_counter=",
     "aliases=",
+    "messages=",
     "intro=",
     "prompt=",
     "prompt_short=",

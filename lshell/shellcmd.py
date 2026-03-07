@@ -15,6 +15,7 @@ import readline
 from lshell.checkconfig import CheckConfig
 from lshell import utils
 from lshell import builtincmd
+from lshell import messages
 from lshell import sec
 from lshell import completion
 from lshell import variables
@@ -279,11 +280,20 @@ class ShellCmd(cmd.Cmd, object):
     def ssh_warn(self, message, command="", key=""):
         """log and warn if forbidden action over SSH"""
         if key == "scp":
-            self.log.critical(f"lshell: forbidden {message}")
+            self.log.critical(
+                messages.get_message(self.conf, "forbidden_scp_over_ssh", message=message)
+            )
             self.log.error(f"lshell: SCP command: {command}")
         else:
-            self.log.critical(f'lshell: forbidden {message}: "{command}"')
-        sys.stderr.write("This incident has been reported.\n")
+            self.log.critical(
+                messages.get_message(
+                    self.conf,
+                    "forbidden_command_over_ssh",
+                    message=message,
+                    command=command,
+                )
+            )
+        sys.stderr.write(messages.get_message(self.conf, "incident_reported") + "\n")
         self.log.error("Exited")
         sys.exit(1)
 

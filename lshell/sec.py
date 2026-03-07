@@ -10,6 +10,7 @@ import shlex
 import glob
 
 # import lshell specifics
+from lshell import messages
 from lshell import utils
 
 EXTENSION_RESTRICTION_EXEMPT_COMMANDS = {"cd", "clear", "fg", "bg", "ls"}
@@ -49,9 +50,11 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
 
     log = conf["logpath"]
     if messagetype == "unknown syntax":
-        primary_message = f"lshell: unknown syntax: {command}"
+        primary_message = messages.get_message(
+            conf, "unknown_syntax", command=command
+        )
     else:
-        primary_message = f'lshell: forbidden {messagetype}: "{command}"'
+        primary_message = messages.get_forbidden_message(conf, messagetype, command)
 
     if ssh:
         return 1, conf
@@ -59,15 +62,20 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
     conf["warning_counter"] -= 1
     if conf["warning_counter"] < 0:
         log.critical(primary_message)
-        log.critical("lshell: session terminated: warning limit exceeded")
+        log.critical(messages.get_message(conf, "session_terminated"))
         sys.exit(1)
 
     log.critical(primary_message)
     remaining = conf["warning_counter"]
     violation_label = "violation" if remaining == 1 else "violations"
     sys.stderr.write(
-        f"lshell: warning: {remaining} {violation_label}"
-        " remaining before session termination\n"
+        messages.get_message(
+            conf,
+            "warning_remaining",
+            remaining=remaining,
+            violation_label=violation_label,
+        )
+        + "\n"
     )
     log.error(f"lshell: user warned, counter: {remaining}")
 
@@ -83,7 +91,7 @@ def warn_unknown_syntax(command, conf, strict=None, ssh=None):
     log = conf["logpath"]
     log.warning(f'INFO: unknown syntax -> "{command}"')
     # Keep legacy UX: unknown syntax is always printed to stderr.
-    sys.stderr.write(f"lshell: unknown syntax: {command}\n")
+    sys.stderr.write(messages.get_message(conf, "unknown_syntax", command=command) + "\n")
     return 1, conf
 
 

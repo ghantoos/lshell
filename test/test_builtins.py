@@ -9,6 +9,7 @@ import pexpect
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
+SOURCE_FIXTURE = f"{TOPDIR}/test/testfiles/source_command_fixture.lsh"
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
 
@@ -159,23 +160,18 @@ class TestFunctions(unittest.TestCase):
     def test_69_source_valid_file(self):
         """F69 | Test sourcing a valid environment file sets variables"""
 
-        # Write a sample environment file
-        env_file = "random_test_env"
-        with open(env_file, "w") as file:
-            file.write("export TEST_VAR='test_value'\n")
-
         # Start lshell and source the environment file
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
         child.expect(PROMPT)
 
         # Source the file and check if the variable is set
-        child.sendline(f"source {env_file}")
+        child.sendline(f"source {SOURCE_FIXTURE}")
         child.expect(PROMPT)
-        child.sendline("echo $TEST_VAR")
+        child.sendline("echo $SOURCE_DOUBLE_QUOTED")
         child.expect(PROMPT)
 
         output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = "test_value"
+        expected_output = "hello world"
 
         assert (
             output == expected_output
@@ -187,25 +183,20 @@ class TestFunctions(unittest.TestCase):
     def test_70_source_overwrite_variable(self):
         """F70 | Test sourcing a file overwrites existing environment variables"""
 
-        # Write a sample environment file
-        env_file = "test_env_overwrite"
-        with open(env_file, "w") as file:
-            file.write("export TEST_VAR='new_value'\n")
-
         # Start lshell, set initial variable, and source file to overwrite it
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
         child.expect(PROMPT)
 
         # Set initial variable and source the file
-        child.sendline("export TEST_VAR='initial_value'")
+        child.sendline("export SOURCE_SIMPLE='initial_value'")
         child.expect(PROMPT)
-        child.sendline(f"source {env_file}")
+        child.sendline(f"source {SOURCE_FIXTURE}")
         child.expect(PROMPT)
-        child.sendline("echo $TEST_VAR")
+        child.sendline("echo $SOURCE_SIMPLE")
         child.expect(PROMPT)
 
         output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = "new_value"
+        expected_output = "value"
 
         assert (
             output == expected_output

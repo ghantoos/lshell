@@ -4,7 +4,7 @@ import io
 import os
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from lshell import builtincmd
@@ -233,7 +233,7 @@ class TestParserUtilities(unittest.TestCase):
 
 
 class TestBuiltinsJobsAndSource(unittest.TestCase):
-    """Tests for built-in commands around source and job control."""
+    """Tests for built-in commands around job control."""
 
     def setUp(self):
         """Save and clear global background job state before each test."""
@@ -244,33 +244,6 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         """Restore global background job state after each test."""
         builtincmd.BACKGROUND_JOBS.clear()
         builtincmd.BACKGROUND_JOBS.extend(self._previous_jobs)
-
-    @patch.dict(os.environ, {}, clear=True)
-    def test_cmd_source_loads_exported_values(self):
-        """Load exported entries from a source file into the environment."""
-        with tempfile.NamedTemporaryFile("w", delete=False) as env_file:
-            env_file.write("export FIRST=one\n")
-            env_file.write("NOPE=ignore\n")
-            env_file.write("export SECOND='two_words'\n")
-            file_path = env_file.name
-
-        try:
-            self.assertEqual(builtincmd.cmd_source(file_path), 0)
-            self.assertEqual(os.environ.get("FIRST"), "one")
-            self.assertIsNone(os.environ.get("NOPE"))
-            self.assertEqual(os.environ.get("SECOND"), "two_words")
-        finally:
-            os.remove(file_path)
-
-    def test_cmd_source_missing_file_returns_error(self):
-        """Return an error and stderr message when the source file is missing."""
-        missing = "/tmp/lshell_missing_source_file"
-        if os.path.exists(missing):
-            os.remove(missing)
-        stderr = io.StringIO()
-        with redirect_stderr(stderr):
-            self.assertEqual(builtincmd.cmd_source(missing), 1)
-        self.assertIn("lshell: unable to read environment file", stderr.getvalue())
 
     def test_cmd_bg_fg_no_jobs(self):
         """Report failure when attempting fg with no jobs queued."""

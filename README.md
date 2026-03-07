@@ -156,6 +156,43 @@ For local executables, add explicit relative paths (for example `./deploy.sh`).
 `warning_counter` is decremented on forbidden command/path/character attempts.
 When `strict = 1`, unknown syntax/commands also decrement `warning_counter`.
 
+### `messages`
+
+`messages` is an optional dictionary for customizing user-facing shell messages.
+Unsupported keys and unsupported placeholders are rejected during config parsing.
+
+Supported keys and placeholders:
+
+- `unknown_syntax`: `{command}`
+- `forbidden_generic`: `{messagetype}`, `{command}`
+- `forbidden_command`: `{command}`
+- `forbidden_path`: `{command}`
+- `forbidden_character`: `{command}`
+- `forbidden_control_char`: `{command}`
+- `forbidden_command_over_ssh`: `{message}`, `{command}`
+- `forbidden_scp_over_ssh`: `{message}`
+- `warning_remaining`: `{remaining}`, `{violation_label}`
+- `session_terminated`: no placeholders
+- `incident_reported`: no placeholders
+
+Example:
+
+```ini
+messages : {
+  'unknown_syntax': 'lshell: unknown syntax: {command}',
+  'forbidden_generic': 'lshell: forbidden {messagetype}: "{command}"',
+  'forbidden_command': 'lshell: forbidden command: "{command}"',
+  'forbidden_path': 'lshell: forbidden path: "{command}"',
+  'forbidden_character': 'lshell: forbidden character: "{command}"',
+  'forbidden_control_char': 'lshell: forbidden control char: "{command}"',
+  'forbidden_command_over_ssh': 'lshell: forbidden {message}: "{command}"',
+  'forbidden_scp_over_ssh': 'lshell: forbidden {message}',
+  'warning_remaining': '*** You have {remaining} warning(s) left, before getting kicked out.',
+  'session_terminated': 'lshell: session terminated: warning limit exceeded',
+  'incident_reported': 'This incident has been reported.'
+}
+```
+
 ### Security-related settings
 
 - `path_noexec`: if available, lshell uses `sudo_noexec.so` to reduce command escape vectors.
@@ -200,6 +237,19 @@ loglevel        : 2
 allowed         : ['ls','pwd']
 forbidden       : [';', '&', '|']
 warning_counter : 2
+messages        : {
+                    'unknown_syntax': 'lshell: unknown syntax: {command}',
+                    'forbidden_generic': 'lshell: forbidden {messagetype}: "{command}"',
+                    'forbidden_command': 'lshell: forbidden command: "{command}"',
+                    'forbidden_path': 'lshell: forbidden path: "{command}"',
+                    'forbidden_character': 'lshell: forbidden character: "{command}"',
+                    'forbidden_control_char': 'lshell: forbidden control char: "{command}"',
+                    'forbidden_command_over_ssh': 'lshell: forbidden {message}: "{command}"',
+                    'forbidden_scp_over_ssh': 'lshell: forbidden {message}',
+                    'warning_remaining': 'lshell: warning: {remaining} {violation_label} remaining before session termination',
+                    'session_terminated': 'lshell: session terminated: warning limit exceeded',
+                    'incident_reported': 'This incident has been reported.'
+                  }
 timer           : 0
 path            : ['/etc', '/usr']
 env_path        : '/sbin:/usr/foo'

@@ -540,6 +540,7 @@ class CheckConfig:
             "overssh",
             "strict",
             "aliases",
+            "messages",
             "prompt",
             "prompt_short",
             "allowed_cmd_path",
@@ -572,7 +573,7 @@ class CheckConfig:
                 # default scp is allowed
                 elif item in ["scp_upload", "scp_download"]:
                     self.conf[item] = 1
-                elif item in ["aliases", "env_vars"]:
+                elif item in ["aliases", "env_vars", "messages"]:
                     self.conf[item] = {}
                 # do not set the variable
                 elif item in ["prompt"]:

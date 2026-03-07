@@ -5,13 +5,16 @@ Add all new tests related to `test_security_attack_surface_unit.py` in this file
 `test_security_attack_surface_unit.py` is intentionally kept around ~800 lines.
 """
 
+import io
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from unittest.mock import patch
 
 from lshell.checkconfig import CheckConfig
 from lshell import sec
+from lshell.shellcmd import ShellCmd
 from lshell import utils
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
@@ -36,9 +39,21 @@ class DummyLog:
         """Record critical-level messages."""
         self.messages.append(("critical", message))
 
+    def error(self, message):
+        """Record error-level messages."""
+        self.messages.append(("error", message))
+
 
 class DummyShellContext:
     """Minimal shell context consumed by utils.cmd_parse_execute."""
+
+    def __init__(self, conf):
+        self.conf = conf
+        self.log = DummyLog()
+
+
+class DummySSHWarnContext:
+    """Minimal object supporting ShellCmd.ssh_warn."""
 
     def __init__(self, conf):
         self.conf = conf
@@ -257,6 +272,57 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
         self.assertTrue(allowed)
         self.assertIsNone(blocked)
+
+    def test_config_rejects_message_override_with_unknown_placeholder(self):
+        """Fail closed when a custom message references unsupported placeholders."""
+        with self.assertRaises(SystemExit):
+            CheckConfig(
+                self.args
+                + ["--messages={'warning_remaining': 'warning {unknown_placeholder}'}"]
+            ).returnconf()
+
+    def test_warn_count_uses_custom_warning_message_template(self):
+        """Allow warning text customization through the messages config dict."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--strict=0",
+                (
+                    "--messages={'warning_remaining': "
+                    "'*** You have {remaining} warning(s) left, before getting kicked out.'}"
+                ),
+            ]
+        ).returnconf()
+
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret, updated_conf = sec.warn_count("command", "id", conf)
+
+        self.assertEqual(ret, 1)
+        self.assertEqual(updated_conf["warning_counter"], 1)
+        self.assertEqual(
+            stderr.getvalue(),
+            "*** You have 1 warning(s) left, before getting kicked out.\n",
+        )
+
+    def test_ssh_warn_uses_custom_incident_message_template(self):
+        """Allow SSH incident text customization through the messages config dict."""
+        conf = CheckConfig(
+            self.args + ["--messages={'incident_reported': 'Custom incident message.'}"]
+        ).returnconf()
+        context = DummySSHWarnContext(conf)
+        stderr = io.StringIO()
+
+        with self.assertRaises(SystemExit) as cm:
+            with redirect_stderr(stderr):
+                ShellCmd.ssh_warn(context, "command over SSH", "id")
+
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(stderr.getvalue(), "Custom incident message.\n")
+        self.assertIn(
+            ("critical", 'lshell: forbidden command over SSH: "id"'),
+            context.log.messages,
+        )
 
 
 if __name__ == "__main__":

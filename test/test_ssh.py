@@ -101,3 +101,25 @@ class TestFunctions(unittest.TestCase):
             1,
             f"The process should exit with code 1, got {self.child.exitstatus}.",
         )
+
+    def test_57_overssh_all_minus_list(self):
+        """F57 | overssh minus command list."""
+        command = "echo 1"
+        expected = (
+            'lshell: forbidden char/command over SSH: "echo 1"\r\n'
+            "This incident has been reported."
+        )
+
+        if not os.environ.get("SSH_CLIENT"):
+            os.environ["SSH_CLIENT"] = "random"
+
+        self.child = pexpect.spawn(
+            f"{LSHELL} "
+            f"--config {CONFIG} "
+            f"--overssh \"['ls','echo'] - ['echo']\" "
+            f"-c '{command}'"
+        )
+        self.child.expect(pexpect.EOF)
+
+        output = self.child.before.decode("utf-8").strip()
+        self.assertEqual(expected, output)

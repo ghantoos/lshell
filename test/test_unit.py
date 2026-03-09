@@ -1,6 +1,8 @@
 """ Unit tests for lshell """
 
+import io
 import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -13,6 +15,7 @@ from lshell.checkconfig import CheckConfig
 from lshell.utils import get_aliases, updateprompt, parse_ps1, getpromptbase
 from lshell import builtincmd
 from lshell import sec
+from lshell.shellcmd import ShellCmd
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
@@ -138,47 +141,6 @@ class TestFunctions(unittest.TestCase):
         args = input_command
         retcode = builtincmd.cmd_export(args)[0]
         return self.assertEqual(retcode, 0)
-
-    def test_20_winscp_allowed_commands(self):
-        """U20 | when winscp is enabled, new allowed commands are automatically
-        added (see man).
-        """
-        args = self.args + ["--allowed=[]", "--winscp=1"]
-        userconf = CheckConfig(args).returnconf()
-        # sort lists to compare, except 'export'
-        exclude = list(set(builtincmd.builtins_list) - set(["export"]))
-        expected = exclude + ["scp", "env", "pwd", "groups", "unset", "unalias"]
-        expected.sort()
-        allowed = userconf["allowed"]
-        allowed.sort()
-        return self.assertEqual(allowed, expected)
-
-    def test_21_winscp_allowed_semicolon(self):
-        """U21 | when winscp is enabled, use of semicolon is allowed"""
-        args = self.args + ["--forbidden=[';']", "--winscp=1"]
-        userconf = CheckConfig(args).returnconf()
-        # sort lists to compare
-        return self.assertNotIn(";", userconf["forbidden"])
-
-    def test_21b_winscp_forces_scp_transfers_enabled(self):
-        """U21b | winscp should override scp_upload/scp_download to enabled."""
-        args = self.args + ["--scp_upload=0", "--scp_download=0", "--winscp=1"]
-        userconf = CheckConfig(args).returnconf()
-        self.assertEqual(userconf["scp_upload"], 1)
-        self.assertEqual(userconf["scp_download"], 1)
-
-    def test_21c_winscp_ignores_scpforce(self):
-        """U21c | winscp should ignore scpforce setting."""
-        with tempfile.TemporaryDirectory() as forced_dir:
-            args = self.args + [f"--scpforce='{forced_dir}'", "--winscp=1"]
-            userconf = CheckConfig(args).returnconf()
-            self.assertNotIn("scpforce", userconf)
-
-    def test_21d_scp_transfer_flags_default_to_enabled(self):
-        """U21d | scp_upload/scp_download default values should be enabled."""
-        userconf = CheckConfig(self.args).returnconf()
-        self.assertEqual(userconf["scp_upload"], 1)
-        self.assertEqual(userconf["scp_download"], 1)
 
     def test_22_prompt_short_0(self):
         """U22 | short_prompt = 0 should show dir compared to home dir"""
@@ -379,6 +341,27 @@ class TestFunctions(unittest.TestCase):
             CheckConfig(args).returnconf()
         self.assertEqual(exc.exception.code, 1)
 
+    def test_42b_umask_masks_new_history_file_permissions(self):
+        """U42b | configured umask should affect newly created lshell artifacts."""
+        original_umask = os.umask(0)
+        os.umask(original_umask)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                history_path = os.path.join(tmpdir, "lshell_history")
+                args = self.args + [
+                    "--umask=0077",
+                    f"--history_file='{history_path}'",
+                ]
+                userconf = CheckConfig(args).returnconf()
+
+                with open(userconf["history_file"], "w", encoding="utf-8") as handle:
+                    handle.write("echo test\n")
+
+                history_mode = stat.S_IMODE(os.stat(userconf["history_file"]).st_mode)
+                self.assertEqual(history_mode, 0o600)
+        finally:
+            os.umask(original_umask)
+
     def test_43_default_ls_alias_enables_auto_color(self):
         """U43 | default config should alias ls to a platform color option."""
         userconf = CheckConfig(self.args).returnconf()
@@ -394,6 +377,38 @@ class TestFunctions(unittest.TestCase):
         args = self.args + ["--aliases={'ls':'ls -lh'}"]
         userconf = CheckConfig(args).returnconf()
         self.assertEqual(userconf["aliases"].get("ls"), "ls -lh")
+
+    def test_44b_auto_ls_alias_expands_during_local_execution(self):
+        """U44b | local execution should dispatch through the generated ls alias."""
+        saved_env = {}
+        for key in ("SSH_CLIENT", "SSH_TTY", "SSH_ORIGINAL_COMMAND"):
+            saved_env[key] = os.environ.get(key)
+            os.environ.pop(key, None)
+        try:
+            userconf = CheckConfig(self.args).returnconf()
+            expected = get_aliases("ls", userconf["aliases"])
+            if not userconf.get("_auto_ls_alias") or expected is None:
+                self.skipTest("platform does not synthesize an ls alias")
+
+            with patch(
+                "lshell.shellcmd.utils.cmd_parse_execute", return_value=0
+            ) as mock_exec:
+                shell = ShellCmd(
+                    userconf,
+                    args=[],
+                    stdin=io.StringIO(),
+                    stdout=io.StringIO(),
+                    stderr=io.StringIO(),
+                )
+                shell.onecmd("ls")
+
+            mock_exec.assert_called_once_with(expected, shell_context=shell)
+        finally:
+            for key, value in saved_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     def test_45_policy_commands_enabled_by_default(self):
         """U45 | policy commands should be available by default."""

@@ -67,30 +67,6 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected2, output)
         self.do_exit(child)
 
-    def test_57_overssh_all_minus_list(self):
-        """F57 | overssh minus command list"""
-        command = "echo 1"
-        expected = (
-            'lshell: forbidden char/command over SSH: "echo 1"\r\n'
-            "This incident has been reported."
-        )
-
-        # add SSH_CLIENT to environment
-        if not os.environ.get("SSH_CLIENT"):
-            os.environ["SSH_CLIENT"] = "random"
-
-        child = pexpect.spawn(
-            f"{LSHELL} "
-            f"--config {CONFIG} "
-            f"--overssh \"['ls','echo'] - ['echo']\" "
-            f"-c '{command}'"
-        )
-        child.expect(pexpect.EOF)
-
-        output = child.before.decode("utf-8").strip()
-        self.assertEqual(expected, output)
-        self.do_exit(child)
-
     def test_58_allowed_plus_minus_list(self):
         """F58 | allow plus list minus list"""
         command = "echo 1"

@@ -265,7 +265,9 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         """Deny scp -f when scp_download flag is disabled."""
         saved_env = self._with_forced_ssh_env()
         try:
-            conf = CheckConfig(self.args + ["--scp=1", "--scp_download=0", "--strict=0"]).returnconf()
+            conf = CheckConfig(
+                self.args + ["--scp=1", "--scp_download=0", "--strict=0"]
+            ).returnconf()
             conf["ssh"] = f"scp -f {conf['home_path']}/artifact"
             with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
@@ -305,9 +307,12 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         """Rewrite scp -t target path to configured scpforce directory."""
         saved_env = self._with_forced_ssh_env()
         try:
-            with tempfile.TemporaryDirectory(prefix="lshell_scpforce_", dir=os.environ["HOME"]) as forced_dir:
+            with tempfile.TemporaryDirectory(
+                prefix="lshell_scpforce_", dir=os.environ["HOME"]
+            ) as forced_dir:
                 conf = CheckConfig(
-                    self.args + ["--scp=1", "--scp_upload=1", f"--scpforce='{forced_dir}'", "--strict=0"]
+                    self.args
+                    + ["--scp=1", "--scp_upload=1", f"--scpforce='{forced_dir}'", "--strict=0"]
                 ).returnconf()
                 conf["ssh"] = f"scp -t {conf['home_path']}"
                 with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:

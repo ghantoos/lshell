@@ -64,6 +64,22 @@ class TestSourceCommand(unittest.TestCase):
                 self.assertEqual(builtincmd.cmd_source("~/.lshell_env"), 0)
                 self.assertEqual(os.environ.get("HOME_SCOPED"), "value")
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_cmd_source_expands_environment_variable_paths(self):
+        """Resolve $VARNAME paths before opening env source files."""
+        with tempfile.TemporaryDirectory(dir=".") as home_dir:
+            file_path = os.path.join(home_dir, ".lshell_env")
+            with open(file_path, "w", encoding="utf-8") as env_file:
+                env_file.write("export ENV_SCOPED=value\n")
+
+            with patch.dict(
+                os.environ,
+                {"HOME": home_dir, "ENV_FILE_PATH": file_path},
+                clear=True,
+            ):
+                self.assertEqual(builtincmd.cmd_source("$ENV_FILE_PATH"), 0)
+                self.assertEqual(os.environ.get("ENV_SCOPED"), "value")
+
 
 if __name__ == "__main__":
     unittest.main()

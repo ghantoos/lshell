@@ -586,6 +586,10 @@ class CheckConfig:
                 )
                 sys.exit(1)
 
+        if self.conf["prompt_short"] not in [0, 1, 2]:
+            self.log.critical("lshell: config: 'prompt_short' must be 0, 1, or 2")
+            sys.exit(1)
+
         self.conf["username"] = self.user
 
         if "umask" in self.conf_raw:

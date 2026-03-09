@@ -323,7 +323,6 @@ class ShellCmd(cmd.Cmd, object):
         if self.use_rawinput and self.completekey:
             try:
                 readline.read_history_file(self.conf["history_file"])
-                readline.set_history_length(self.conf["history_size"])
             except IOError:
                 # if history file does not exist
                 try:
@@ -331,6 +330,7 @@ class ShellCmd(cmd.Cmd, object):
                     readline.read_history_file(self.conf["history_file"])
                 except IOError:
                     pass
+            readline.set_history_length(self.conf["history_size"])
             readline.set_completer_delims(
                 readline.get_completer_delims().replace("-", "")
             )

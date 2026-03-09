@@ -308,18 +308,29 @@ set the user's prompt format (default: username)
 .RE
 .TP
 .I prompt_short
-set prompt style for current directory - 0, 1 or 2. Default is 0.
+set how the current directory is rendered in the prompt path segment. Accepted
+values are 0, 1, or 2 (default: 0).
 .RS
 .BR \ \ \ \ 0
--> will show the current directory as compared to home directory ~/current/dir
+-> show path relative to home when inside home (e.g. \fB~/projects/api\fR),
+and absolute path when outside home (e.g. \fB/var/log\fR)
 .RE
 .RS
 .BR \ \ \ \ 1
--> will only show the current directory name
+-> show only basename of current directory (e.g. \fBapi\fR)
 .RE
 .RS
 .BR \ \ \ \ 2
--> will show the complete path to the current directory
+-> show full absolute path of current directory (e.g. \fB/home/user/projects/api\fR)
+.RE
+.RS
+.BR \ \ \ \ note
+-> if \fB$LPS1\fR is set, \fIprompt_short\fR is ignored and \fB$LPS1\fR fully
+controls prompt rendering
+.RE
+.RS
+.BR \ \ \ \ validation
+-> values outside \fB0\fR/\fB1\fR/\fB2\fR are rejected during configuration parsing
 .RE
 .TP
 .I LPS1

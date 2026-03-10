@@ -66,6 +66,26 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("YES", result.stdout)
 
+    def test_assignment_only_command_propagates_to_next_and_segment(self):
+        """Assignment-only command should be visible in subsequent && command."""
+        result = self._run_lsh_script(
+            script_body="LSH_AND_CHAIN=YES && echo $LSH_AND_CHAIN\n",
+            extra_shell_args="--forbidden \"[]\"",
+        )
+        self.assertEqual(result.returncode, 0)
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        self.assertIn("YES", lines)
+
+    def test_single_quoted_variable_remains_literal_in_chained_execution(self):
+        """Single-quoted variables should remain literal after assignment in a chain."""
+        result = self._run_lsh_script(
+            script_body="LSH_AND_QUOTED=YES && echo '$LSH_AND_QUOTED'\n",
+            extra_shell_args="--forbidden \"[]\"",
+        )
+        self.assertEqual(result.returncode, 0)
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        self.assertIn("$LSH_AND_QUOTED", lines)
+
     def test_forbidden_redirection_is_blocked_and_file_not_created(self):
         """Forbidden redirection should fail closed and not write output file."""
         output_path = "/tmp/lshell_hardening_forbidden_redir.txt"

@@ -88,11 +88,6 @@ class ShellCmd(cmd.Cmd, object):
         added a do_uname in the ShellCmd class!
         """
 
-        # Expand only the full input line; command/arg are derived from it.
-        self.g_cmd = utils.expand_vars_quoted(self.g_cmd)
-        self.g_line = utils.expand_vars_quoted(self.g_line)
-        self.g_arg = utils.expand_vars_quoted(self.g_arg)
-
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
             self.conf = CheckConfig(

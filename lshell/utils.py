@@ -423,9 +423,11 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
     # Initialize return code
     retcode = 0
 
-    # Check for forbidden characters in the command line
+    # Check forbidden characters on an expanded view of the line so
+    # `${VAR}` references are treated consistently with prior behavior.
+    forbidden_check_line = expand_vars_quoted(command_line)
     ret_forbidden_chars, shell_context.conf = sec.check_forbidden_chars(
-        command_line, shell_context.conf, strict=shell_context.conf["strict"]
+        forbidden_check_line, shell_context.conf, strict=shell_context.conf["strict"]
     )
     if ret_forbidden_chars == 1:
         # see http://tldp.org/LDP/abs/html/exitcodes.html
@@ -529,6 +531,9 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         # Expand `$?` for each command segment so sequences like
         # `cmd1; echo $?` reflect the exit code from `cmd1`.
         pipeline_parts = [replace_exit_code(part, retcode) for part in pipeline_parts]
+        # Expand variables at execution time for each segment so assignment-only
+        # commands earlier in a chain affect later commands (e.g. `A=1 && echo $A`).
+        pipeline_parts = [expand_vars_quoted(part) for part in pipeline_parts]
         full_command = " | ".join(pipeline_parts)
         background = bool(j + 1 < len(command_sequence) and command_sequence[j + 1] == "&")
 

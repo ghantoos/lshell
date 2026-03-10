@@ -183,6 +183,79 @@ class TestAttackSurfacePart2(unittest.TestCase):
         mock_exec.assert_not_called()
 
     @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_assignment_then_and_expands_with_updated_env(
+        self, mock_exec
+    ):
+        """Assignment-only command should update env before next && segment expands."""
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        shell = DummyShellContext(conf)
+
+        original = os.environ.get("LSHELL_CHAIN_AND")
+        try:
+            ret = utils.cmd_parse_execute(
+                "LSHELL_CHAIN_AND=ok && echo $LSHELL_CHAIN_AND", shell_context=shell
+            )
+            self.assertEqual(ret, 0)
+            self.assertEqual(mock_exec.call_count, 1)
+            self.assertEqual(mock_exec.call_args.args[0], "echo ok")
+        finally:
+            if original is None:
+                os.environ.pop("LSHELL_CHAIN_AND", None)
+            else:
+                os.environ["LSHELL_CHAIN_AND"] = original
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_assignment_then_semicolon_expands_with_updated_env(
+        self, mock_exec
+    ):
+        """Assignment-only command should update env before next ';' segment expands."""
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        shell = DummyShellContext(conf)
+
+        original = os.environ.get("LSHELL_CHAIN_SEMI")
+        try:
+            ret = utils.cmd_parse_execute(
+                "LSHELL_CHAIN_SEMI=ok; echo $LSHELL_CHAIN_SEMI", shell_context=shell
+            )
+            self.assertEqual(ret, 0)
+            self.assertEqual(mock_exec.call_count, 1)
+            self.assertEqual(mock_exec.call_args.args[0], "echo ok")
+        finally:
+            if original is None:
+                os.environ.pop("LSHELL_CHAIN_SEMI", None)
+            else:
+                os.environ["LSHELL_CHAIN_SEMI"] = original
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_single_quoted_variable_remains_literal(
+        self, mock_exec
+    ):
+        """Variable expansion should not occur inside single quotes in chained commands."""
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        shell = DummyShellContext(conf)
+
+        original = os.environ.get("LSHELL_CHAIN_QUOTED")
+        try:
+            ret = utils.cmd_parse_execute(
+                "LSHELL_CHAIN_QUOTED=ok && echo '$LSHELL_CHAIN_QUOTED'",
+                shell_context=shell,
+            )
+            self.assertEqual(ret, 0)
+            self.assertEqual(mock_exec.call_count, 1)
+            self.assertEqual(mock_exec.call_args.args[0], "echo '$LSHELL_CHAIN_QUOTED'")
+        finally:
+            if original is None:
+                os.environ.pop("LSHELL_CHAIN_QUOTED", None)
+            else:
+                os.environ["LSHELL_CHAIN_QUOTED"] = original
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
     def test_cmd_parse_execute_allows_full_bash_script_command_for_login_script(
         self, mock_exec
     ):

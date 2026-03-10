@@ -123,3 +123,27 @@ class TestFunctions(unittest.TestCase):
 
         output = self.child.before.decode("utf-8").strip()
         self.assertEqual(expected, output)
+
+    def test_58_overssh_plus_minus_chain_controls_warning_and_allow(self):
+        """F58 | overssh +/- chain should deny removed command and allow added one."""
+        if not os.environ.get("SSH_CLIENT"):
+            os.environ["SSH_CLIENT"] = "random"
+
+        denied = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--overssh \"['ls'] + ['echo'] - ['ls']\" "
+            "-c 'ls'"
+        )
+        denied.expect(pexpect.EOF)
+        denied_output = denied.before.decode("utf-8").strip()
+        self.assertIn('lshell: forbidden char/command over SSH: "ls"', denied_output)
+        self.assertIn("This incident has been reported.", denied_output)
+
+        allowed = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--overssh \"['ls'] + ['echo'] - ['ls']\" "
+            "-c 'echo 1'"
+        )
+        allowed.expect(pexpect.EOF, timeout=10)
+        allowed_output = allowed.before.decode("utf-8")
+        self.assertIn("1", allowed_output)

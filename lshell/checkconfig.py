@@ -1,4 +1,4 @@
-""" This module contains the checkconfig class of lshell """
+"""This module contains the checkconfig class of lshell"""
 
 import sys
 import os
@@ -353,12 +353,13 @@ class CheckConfig:
                                 self.minusplus(self.conf_raw, key, stuff)
                             )
                         elif configschema.is_all_literal(stuff):
-                            if key == "allowed_shell_escape":
+                            if key == "allowed":
+                                self.conf_raw.update({key: self.expand_all()})
+                            else:
                                 self.log.critical(
-                                    "lshell: config: 'allowed_shell_escape' cannot be set to 'all'"
+                                    f"lshell: config: '{key}' cannot be set to 'all'"
                                 )
                                 sys.exit(1)
-                            self.conf_raw.update({key: self.expand_all()})
                         elif stuff and key == "path":
                             liste = ["", ""]
                             for path in self._parse_config_value(stuff, key):
@@ -371,8 +372,8 @@ class CheckConfig:
                             self._parse_config_value(stuff, key), list
                         ):
                             self.conf_raw.update({key: stuff})
-                # case allowed is set to 'all'
-                elif key == "allowed" and split[0].strip() == "'all'":
+                # case allowed/sudo_commands is set to all
+                elif key == "allowed" and configschema.is_all_literal(split[0]):
                     self.conf_raw.update({key: self.expand_all()})
                 elif key == "allowed_shell_escape" and configschema.is_all_literal(
                     split[0]
@@ -472,7 +473,9 @@ class CheckConfig:
 
     def _parse_history_file(self):
         """Parse and validate history_file from raw config."""
-        history_value = self.conf_raw["history_file"].replace("%u", self.conf["username"])
+        history_value = self.conf_raw["history_file"].replace(
+            "%u", self.conf["username"]
+        )
         if (
             isinstance(history_value, str)
             and len(history_value) >= 2
@@ -555,7 +558,9 @@ class CheckConfig:
                 if len(self.conf_raw[item]) == 0:
                     self.conf[item] = ""
                 else:
-                    self.conf[item] = self._parse_config_value(self.conf_raw[item], item)
+                    self.conf[item] = self._parse_config_value(
+                        self.conf_raw[item], item
+                    )
             except KeyError:
                 if item in [
                     "allowed",
@@ -718,15 +723,15 @@ class CheckConfig:
                         self.conf["allowed"].append(item)
 
         # case sudo_commands set to 'all', expand to all 'allowed' commands
-        if (
-            "sudo_commands" in self.conf_raw
-            and configschema.is_all_literal(str(self.conf_raw["sudo_commands"]))
+        if "sudo_commands" in self.conf_raw and configschema.is_all_literal(
+            str(self.conf_raw["sudo_commands"])
         ):
-            # exclude native commands and sudo(8)
-            exclude = builtincmd.builtins_list + ["sudo"]
-            self.conf["sudo_commands"] = [
-                x for x in self.conf["allowed"] if x not in exclude
-            ]
+            # Keep shell-internal builtins out of sudo all-expansion while
+            # preserving `ls`, which is executed via exec_cmd in lshell.
+            exclude = [cmd for cmd in builtincmd.builtins_list if cmd != "ls"] + ["sudo"]
+            self.conf["sudo_commands"] = list(
+                dict.fromkeys(x for x in self.conf["allowed"] if x not in exclude)
+            )
 
         # sort lsudo commands
         self.conf["sudo_commands"].sort()

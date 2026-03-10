@@ -185,7 +185,10 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
                         raise ValueError(
                             "'allowed_shell_escape' cannot be set to 'all'"
                         )
-                    conf_raw.update({key: _expand_all()})
+                    if key == "allowed":
+                        conf_raw.update({key: _expand_all()})
+                    else:
+                        raise ValueError(f"'{key}' cannot be set to 'all'")
                     trace.append(
                         {
                             "section": section,
@@ -231,7 +234,7 @@ def _merge_section(conf_raw, section, section_items, key_sources, trace):
                         }
                     )
                     previous = conf_raw.get(key)
-        elif key == "allowed" and split[0].strip() == "'all'":
+        elif key == "allowed" and configschema.is_all_literal(split[0]):
             conf_raw.update({key: _expand_all()})
             trace.append(
                 {
@@ -357,8 +360,10 @@ def _build_runtime_policy(conf_raw, username):
     if "sudo_commands" in conf_raw and configschema.is_all_literal(
         str(conf_raw["sudo_commands"])
     ):
-        exclude = builtincmd.builtins_list + ["sudo"]
-        policy["sudo_commands"] = [x for x in policy["allowed"] if x not in exclude]
+        exclude = [cmd for cmd in builtincmd.builtins_list if cmd != "ls"] + ["sudo"]
+        policy["sudo_commands"] = list(
+            dict.fromkeys(x for x in policy["allowed"] if x not in exclude)
+        )
 
     policy["allowed"] += policy["allowed_shell_escape"]
 

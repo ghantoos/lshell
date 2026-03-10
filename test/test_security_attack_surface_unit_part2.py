@@ -280,6 +280,124 @@ class TestAttackSurfacePart2(unittest.TestCase):
             mock_exec.call_args.args[0], "bash test/testfiles/login_script.sh"
         )
 
+    def test_check_secure_blocks_braced_variable_expansion_when_forbidden(self):
+        """${...} syntax must be blocked when '${' is configured as forbidden."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=['${']",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${HOME}", conf)[0], 1)
+
+    def test_check_secure_allows_braced_variable_expansion_when_token_is_allowed(self):
+        """${...} syntax should be accepted when config does not forbid '${'."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${HOME}", conf)[0], 0)
+
+    def test_check_secure_blocks_command_substitution_when_forbidden(self):
+        """$(...) syntax must be blocked when '$(' remains forbidden."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=['$(']",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(printf ok)", conf)[0], 1)
+
+    def test_check_secure_allows_command_substitution_when_allowed_and_commands_allowlisted(
+        self,
+    ):
+        """$(...) should be accepted only when '$(' is allowed and nested command is allowed."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(printf ok)", conf)[0], 0)
+
+    def test_check_secure_rejects_command_substitution_when_inner_command_is_not_allowlisted(
+        self,
+    ):
+        """Even if '$(' is allowed, nested commands must still pass allowlist checks."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(printf ok)", conf)[0], 1)
+
+    @patch("lshell.utils.exec_cmd", return_value=0)
+    def test_cmd_parse_execute_passes_parameter_expansion_forms_when_config_allows_them(
+        self, mock_exec
+    ):
+        """Shell-style ${...} forms should be executable when '${' is not forbidden."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        shell = DummyShellContext(conf)
+
+        ret = utils.cmd_parse_execute(
+            "echo ${LSHELL_MISSING:-fallback} ${#HOME}",
+            shell_context=shell,
+        )
+
+        self.assertEqual(ret, 0)
+        self.assertEqual(mock_exec.call_count, 1)
+        self.assertEqual(
+            mock_exec.call_args.args[0],
+            "echo ${LSHELL_MISSING:-fallback} ${#HOME}",
+        )
+
+    def test_check_path_should_expand_brace_operands_like_shell(self):
+        """Expected shell parity: brace-expanded path operands should all be validated."""
+        with tempfile.TemporaryDirectory(prefix="lshell-brace-path-", dir="/tmp") as tmpdir:
+            allowed_dir = os.path.join(tmpdir, "allowed")
+            blocked_dir = os.path.join(tmpdir, "blocked")
+            os.makedirs(allowed_dir, exist_ok=True)
+            os.makedirs(blocked_dir, exist_ok=True)
+
+            conf = CheckConfig(
+                self.args + [f"--path=['{allowed_dir}']", "--strict=0"]
+            ).returnconf()
+
+            # In a regular shell, this operand expands to two paths.
+            ret, _conf = sec.check_path(
+                f"ls {tmpdir}/{{allowed,blocked}}",
+                conf,
+                strict=0,
+            )
+            self.assertEqual(
+                ret,
+                1,
+                msg=(
+                    "brace expansion should validate every expanded operand "
+                    "and reject blocked targets"
+                ),
+            )
+
     @patch("lshell.utils.exec_cmd")
     def test_cmd_parse_execute_trusted_protocol_blocks_non_protocol_chained_command(
         self, mock_exec

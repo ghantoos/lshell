@@ -32,6 +32,21 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
+    def _spawn_shell(self, *extra_args):
+        """Spawn lshell with optional CLI overrides."""
+        cmd = f"{LSHELL} --config {CONFIG}"
+        if extra_args:
+            cmd = f"{cmd} {' '.join(extra_args)}"
+        child = pexpect.spawn(cmd)
+        child.expect(PROMPT)
+        return child
+
+    def _run_command_and_get_body(self, child, command):
+        """Run one command and return output body (without echoed input)."""
+        child.sendline(command)
+        child.expect(PROMPT)
+        return child.before.decode("utf8").split("\n", 1)[1]
+
     def test_22_expand_env_variables(self):
         """F22 | expanding of environment variables"""
         child = pexpect.spawn(
@@ -143,10 +158,10 @@ class TestFunctions(unittest.TestCase):
 
     def test_49_env_variable_with_dollar_braces(self):
         """F49 | Syntax ${command} should replace with the variable"""
-        child = pexpect.spawn(
-            f"{LSHELL} " f"--config {CONFIG} " "--env_vars \"{'foo':'OK'}\""
+        child = self._spawn_shell(
+            '--env_vars "{\'foo\':\'OK\'}"',
+            '--forbidden "[]"',
         )
-        child.expect(PROMPT)
 
         child.sendline("echo ${foo}")
         child.expect(PROMPT)
@@ -187,3 +202,61 @@ class TestFunctions(unittest.TestCase):
         persisted_result = child.before.decode("utf8").split("\n", 1)[1].strip()
         self.assertEqual("", persisted_result)
         self.do_exit(child)
+
+    def test_52_braced_parameter_expansion_matrix_when_braces_are_allowed(self):
+        """F52 | ${...} forms should behave like shell parameter expansion when allowed."""
+        cases = [
+            ("${LSHELL_SET}", {"LSHELL_SET": "VALUE"}, "VALUE"),
+            ("${LSHELL_UNSET}", {}, ""),
+            ("${LSHELL_SET-default}", {"LSHELL_SET": "VALUE"}, "VALUE"),
+            ("${LSHELL_UNSET-default}", {}, "default"),
+            ("${LSHELL_SET:-default}", {"LSHELL_SET": "VALUE"}, "VALUE"),
+            ("${LSHELL_EMPTY:-default}", {"LSHELL_EMPTY": ""}, "default"),
+            ("${LSHELL_UNSET:-default}", {}, "default"),
+            ("${LSHELL_SET+ALT}", {"LSHELL_SET": "VALUE"}, "ALT"),
+            ("${LSHELL_UNSET+ALT}", {}, ""),
+            ("${LSHELL_SET:+ALT}", {"LSHELL_SET": "VALUE"}, "ALT"),
+            ("${LSHELL_EMPTY:+ALT}", {"LSHELL_EMPTY": ""}, ""),
+            ("${LSHELL_UNSET:+ALT}", {}, ""),
+            ("${#LSHELL_SET}", {"LSHELL_SET": "VALUE"}, "5"),
+            ("${#LSHELL_UNSET}", {}, "0"),
+        ]
+
+        for expression, env_vars, expected in cases:
+            with self.subTest(expression=expression, env_vars=env_vars):
+                env_opt = f'--env_vars "{env_vars}"'
+                child = self._spawn_shell('--forbidden "[]"', env_opt)
+                try:
+                    body = self._run_command_and_get_body(child, f"echo {expression}")
+                    self.assertEqual(body.strip(), expected)
+                finally:
+                    self.do_exit(child)
+
+    def test_53_braced_parameter_expansion_matrix_when_braces_are_forbidden(self):
+        """F53 | ${...} forms should be blocked when '${' is forbidden."""
+        expressions = [
+            "${LSHELL_SET}",
+            "${LSHELL_UNSET}",
+            "${LSHELL_SET-default}",
+            "${LSHELL_UNSET-default}",
+            "${LSHELL_SET:-default}",
+            "${LSHELL_EMPTY:-default}",
+            "${LSHELL_UNSET:-default}",
+            "${LSHELL_SET+ALT}",
+            "${LSHELL_UNSET+ALT}",
+            "${LSHELL_SET:+ALT}",
+            "${LSHELL_EMPTY:+ALT}",
+            "${LSHELL_UNSET:+ALT}",
+            "${#LSHELL_SET}",
+            "${#LSHELL_UNSET}",
+        ]
+
+        env_opt = '--env_vars "{\'LSHELL_SET\':\'VALUE\',\'LSHELL_EMPTY\':\'\'}"'
+        child = self._spawn_shell("--strict 1", "--warning_counter 99", env_opt)
+        try:
+            for expression in expressions:
+                with self.subTest(expression=expression):
+                    body = self._run_command_and_get_body(child, f"echo {expression}")
+                    self.assertIn('lshell: forbidden character: "${"', body)
+        finally:
+            self.do_exit(child)

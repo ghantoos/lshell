@@ -368,7 +368,7 @@ def check_secure(line, conf, strict=None, ssh=None):
     for item in curly:
         # split to get variable only, and remove last character "}"
         if re.findall(r"=|\+|\?|\-", item):
-            variable = re.split(r"=|\+|\?|\-", item, 1)
+            variable = re.split(r"=|\+|\?|\-", item, maxsplit=1)
         else:
             variable = item
         ret_check_path, conf = check_path(variable[1][:-1], conf, strict=strict)

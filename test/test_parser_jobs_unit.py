@@ -75,6 +75,22 @@ class TestParserUtilities(unittest.TestCase):
             ["echo $(printf '%s' 'a|b')", "|", "wc -c"],
         )
 
+    def test_split_command_sequence_keeps_parameter_expansion_with_logical_tokens(self):
+        """Do not split on && / || that appear inside ${...} expansions."""
+        line = "echo ${LSHELL_WORD:-a||b&&c} && echo done"
+        self.assertEqual(
+            utils.split_command_sequence(line),
+            ["echo ${LSHELL_WORD:-a||b&&c}", "&&", "echo done"],
+        )
+
+    def test_split_command_sequence_keeps_nested_command_substitution(self):
+        """Nested $(...) blocks should be treated as one command operand."""
+        line = "echo $(printf '%s' \"$(echo a|tr a b)\") | wc -c"
+        self.assertEqual(
+            utils.split_command_sequence(line),
+            ["echo $(printf '%s' \"$(echo a|tr a b)\")", "|", "wc -c"],
+        )
+
     def test_split_command_sequence_rejects_unbalanced_quote(self):
         """Reject command lines with unmatched quotes."""
         self.assertIsNone(utils.split_command_sequence('echo "unterminated'))
@@ -91,6 +107,44 @@ class TestParserUtilities(unittest.TestCase):
         self.assertEqual(
             utils.expand_vars_quoted(line),
             "echo VALUE_A '$A' \"VALUE_B\" VALUE_A",
+        )
+
+    @patch.dict(os.environ, {"A": "VALUE_A"}, clear=False)
+    def test_expand_vars_quoted_keeps_escaped_dollar_literal(self):
+        """Backslash-escaped dollars should remain literal."""
+        line = r"echo \$A \"$A\""
+        self.assertEqual(utils.expand_vars_quoted(line), r"echo \$A \"VALUE_A\"")
+
+    @patch.dict(os.environ, {"LSHELL_SET": "set"}, clear=False)
+    def test_expand_vars_quoted_should_support_shell_parameter_default_expansion(self):
+        """Expected shell parity: expand default value forms in ${...} expressions."""
+        self.assertEqual(
+            utils.expand_vars_quoted("echo ${LSHELL_UNSET:-fallback}"),
+            "echo fallback",
+        )
+        self.assertEqual(
+            utils.expand_vars_quoted("echo ${LSHELL_SET:-fallback}"),
+            "echo set",
+        )
+
+    @patch.dict(os.environ, {"LSHELL_SET": "set"}, clear=False)
+    def test_expand_vars_quoted_should_support_shell_parameter_alternative_expansion(self):
+        """Expected shell parity: support ${VAR:+alt} semantics."""
+        self.assertEqual(
+            utils.expand_vars_quoted("echo ${LSHELL_SET:+ALT}"),
+            "echo ALT",
+        )
+        self.assertEqual(
+            utils.expand_vars_quoted("echo ${LSHELL_UNSET:+ALT}"),
+            "echo ",
+        )
+
+    @patch.dict(os.environ, {"LSHELL_LEN": "abcd"}, clear=False)
+    def test_expand_vars_quoted_should_support_shell_parameter_length_expansion(self):
+        """Expected shell parity: support ${#VAR} length expansion."""
+        self.assertEqual(
+            utils.expand_vars_quoted("echo ${#LSHELL_LEN}"),
+            "echo 4",
         )
 
     def test_parse_command_extracts_assignments_and_command(self):

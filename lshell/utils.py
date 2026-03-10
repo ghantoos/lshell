@@ -246,7 +246,44 @@ def replace_exit_code(line, retcode):
 _ENV_VAR_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
-def _consume_env_var(text, start):
+def _expand_braced_parameter(expr, support_advanced=True):
+    """Expand ${...} expressions for the supported shell parameter forms."""
+    if not expr:
+        return None
+
+    if not support_advanced:
+        # Runtime parser mode: keep ${...} literal so policy checks can gate it.
+        return None
+
+    if expr.startswith("#"):
+        name = expr[1:]
+        if _ENV_VAR_NAME_RE.fullmatch(name):
+            return str(len(os.environ.get(name, "")))
+        return None
+
+    match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)(:?[-+])(.*)", expr, re.DOTALL)
+    if match:
+        name, operator, operand = match.groups()
+        value = os.environ.get(name)
+        is_set = value is not None
+        is_non_null = bool(value)
+
+        if operator == ":-":
+            return value if is_non_null else operand
+        if operator == "-":
+            return value if is_set else operand
+        if operator == ":+":  # `${VAR:+word}` => word iff VAR is set and non-empty.
+            return operand if is_non_null else ""
+        if operator == "+":
+            return operand if is_set else ""
+
+    if _ENV_VAR_NAME_RE.fullmatch(expr):
+        return os.environ.get(expr, "")
+
+    return None
+
+
+def _consume_env_var(text, start, support_advanced_braced=True):
     """Parse a variable reference at text[start] where text[start] == '$'."""
     length = len(text)
     if start + 1 >= length:
@@ -257,9 +294,12 @@ def _consume_env_var(text, start):
         closing = text.find("}", start + 2)
         if closing == -1:
             return None, 1
-        name = text[start + 2 : closing]
-        if _ENV_VAR_NAME_RE.fullmatch(name):
-            return os.environ.get(name, ""), (closing - start + 1)
+        expression = text[start + 2 : closing]
+        expanded = _expand_braced_parameter(
+            expression, support_advanced=support_advanced_braced
+        )
+        if expanded is not None:
+            return expanded, (closing - start + 1)
         return None, 1
 
     match = _ENV_VAR_NAME_RE.match(text, start + 1)
@@ -270,7 +310,7 @@ def _consume_env_var(text, start):
     return None, 1
 
 
-def expand_vars_quoted(line):
+def expand_vars_quoted(line, support_advanced_braced=True):
     """Expand environment variables while preserving single-quoted literals."""
     if not line:
         return line
@@ -309,7 +349,9 @@ def expand_vars_quoted(line):
             continue
 
         if char == "$" and not in_single:
-            replacement, consumed = _consume_env_var(line, i)
+            replacement, consumed = _consume_env_var(
+                line, i, support_advanced_braced=support_advanced_braced
+            )
             if replacement is not None:
                 expanded.append(replacement)
                 i += consumed
@@ -425,7 +467,9 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
 
     # Check forbidden characters on an expanded view of the line so
     # `${VAR}` references are treated consistently with prior behavior.
-    forbidden_check_line = expand_vars_quoted(command_line)
+    forbidden_check_line = expand_vars_quoted(
+        command_line, support_advanced_braced=False
+    )
     ret_forbidden_chars, shell_context.conf = sec.check_forbidden_chars(
         forbidden_check_line, shell_context.conf, strict=shell_context.conf["strict"]
     )
@@ -533,7 +577,10 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         pipeline_parts = [replace_exit_code(part, retcode) for part in pipeline_parts]
         # Expand variables at execution time for each segment so assignment-only
         # commands earlier in a chain affect later commands (e.g. `A=1 && echo $A`).
-        pipeline_parts = [expand_vars_quoted(part) for part in pipeline_parts]
+        pipeline_parts = [
+            expand_vars_quoted(part, support_advanced_braced=False)
+            for part in pipeline_parts
+        ]
         full_command = " | ".join(pipeline_parts)
         background = bool(j + 1 < len(command_sequence) and command_sequence[j + 1] == "&")
 

@@ -118,3 +118,29 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n")[1].strip()
         self.assertEqual(expected, result)
         self.do_exit(child)
+
+    def test_22_path_plus_minus_reallow_and_warning_messages(self):
+        """F22 | path +/- chain should re-allow child path and keep warning countdown."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--path \"['/'] - ['/var/','/var/lib/'] + ['/var/log']\" "
+            "--warning_counter 2 --strict 1"
+        )
+        child.expect(PROMPT)
+
+        child.sendline("cd /var")
+        child.expect(PROMPT)
+        output_1 = child.before.decode("utf8")
+        self.assertIn('lshell: forbidden path: "/var/"', output_1)
+        self.assertIn("lshell: warning: 1 violation remaining", output_1)
+
+        child.sendline("cd /var/log")
+        child.expect(f"{USER}:/var/log\\$")
+
+        child.sendline("cd /var/lib")
+        child.expect(f"{USER}:/var/log\\$")
+        output_2 = child.before.decode("utf8")
+        self.assertIn('lshell: forbidden path: "/var/lib/"', output_2)
+        self.assertIn("lshell: warning: 0 violations remaining", output_2)
+
+        self.do_exit(child)

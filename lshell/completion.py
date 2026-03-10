@@ -83,6 +83,9 @@ def complete_change_dir(conf, text, line, begidx, endidx):
             if instance.startswith(directory) and instance.startswith(tocomplete):
                 # Extract the next unmatched segment of the allowed path
                 remaining_path = instance[len(directory) :].lstrip("/")
+                # Nothing left to suggest for this allowed path.
+                if not remaining_path:
+                    continue
                 if "/" in remaining_path:
                     next_segment = remaining_path.split("/", 1)[0] + "/"
                 else:

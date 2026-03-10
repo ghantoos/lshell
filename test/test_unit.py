@@ -89,6 +89,36 @@ class TestFunctions(unittest.TestCase):
         userconf = CheckConfig(args).returnconf()
         return self.assertEqual(userconf["strict"], 123)
 
+    def test_11b_merge_plus_minus_supported_for_all_list_merge_keys(self):
+        """U12b | +/- merge semantics are applied for all merge-capable list keys."""
+        args = self.args + [
+            "--allowed=['basecmd'] + ['pluscmd'] - ['basecmd']",
+            "--allowed_shell_escape=['ase_base'] + ['ase_plus'] - ['ase_base']",
+            "--allowed_file_extensions=['.log'] + ['.txt'] - ['.log']",
+            "--forbidden=[';'] + ['#'] - [';']",
+            "--overssh=['scp', 'rsync'] + ['ls'] - ['scp']",
+            "--path=['/'] - ['/var','/etc'] + ['/var/log']",
+        ]
+        userconf = CheckConfig(args).returnconf()
+
+        self.assertIn("pluscmd", userconf["allowed"])
+        self.assertNotIn("basecmd", userconf["allowed"])
+
+        self.assertEqual(set(userconf["allowed_shell_escape"]), {"ase_plus"})
+        self.assertEqual(set(userconf["allowed_file_extensions"]), {".txt"})
+
+        self.assertIn("#", userconf["forbidden"])
+        self.assertNotIn(";", userconf["forbidden"])
+
+        self.assertIn("rsync", userconf["overssh"])
+        self.assertIn("ls", userconf["overssh"])
+        self.assertNotIn("scp", userconf["overssh"])
+
+        self.assertTrue(userconf["path"][0].startswith("/|"))
+        self.assertIn(f"{os.path.realpath('/var/log')}/|", userconf["path"][0])
+        self.assertIn(f"{os.path.realpath('/var')}/|", userconf["path"][1])
+        self.assertIn(f"{os.path.realpath('/etc')}/|", userconf["path"][1])
+
     def test_13_multiple_aliases_with_separator(self):
         """U13 | multiple aliases using &&, || and ; separators"""
         # enable &, | and ; characters
@@ -103,13 +133,40 @@ class TestFunctions(unittest.TestCase):
         """U14 | sudo_commands set to 'all' is equal to allowed variable"""
         args = self.args + ["--sudo_commands=all"]
         userconf = CheckConfig(args).returnconf()
-        # exclude internal and sudo(8) commands
-        exclude = builtincmd.builtins_list + ["sudo"]
-        allowed = [x for x in userconf["allowed"] if x not in exclude]
+        # exclude shell-internal builtins and sudo(8), but keep `ls`
+        exclude = [cmd for cmd in builtincmd.builtins_list if cmd != "ls"] + ["sudo"]
+        allowed = list(dict.fromkeys(x for x in userconf["allowed"] if x not in exclude))
         # sort lists to compare
         userconf["sudo_commands"].sort()
         allowed.sort()
         return self.assertEqual(allowed, userconf["sudo_commands"])
+
+    def test_14b_allowed_all_unquoted_expands(self):
+        """U14b | allowed=all (unquoted) expands to executable allow-list."""
+        args = self.args + ["--allowed=all"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertIsInstance(userconf["allowed"], list)
+        self.assertIn("ls", userconf["allowed"])
+
+    def test_14c_allowed_all_quoted_expands(self):
+        """U14c | allowed='all' (quoted) expands to executable allow-list."""
+        args = self.args + ["--allowed='all'"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertIsInstance(userconf["allowed"], list)
+        self.assertIn("ls", userconf["allowed"])
+
+    def test_14d_sudo_all_quoted_expansion(self):
+        """U14d | sudo_commands='all' (quoted) expands against effective allowed list."""
+        args = self.args + ["--sudo_commands='all'"]
+        userconf = CheckConfig(args).returnconf()
+        self.assertIn("echo", userconf["sudo_commands"])
+        self.assertIn("ll", userconf["sudo_commands"])
+        self.assertIn("ls", userconf["sudo_commands"])
+        self.assertEqual(
+            userconf["sudo_commands"].count("ls"),
+            1,
+            msg="sudo_commands all-expansion must not duplicate ls",
+        )
 
     def test_16_allowed_ld_preload_builtin(self):
         """U16 | builtin commands should NOT be prepended with LD_PRELOAD"""

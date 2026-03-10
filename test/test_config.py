@@ -45,6 +45,18 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
         self.do_exit(child)
 
+    def test_55b_allowed_all_unquoted_allows_non_default_command(self):
+        """F55b | allowed=all (unquoted) should allow commands outside default list."""
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed all")
+        child.expect(PROMPT)
+
+        child.sendline("uname")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8")
+        self.assertNotIn("lshell: unknown syntax:", output)
+        self.assertIn("Linux", output)
+        self.do_exit(child)
+
     def test_56_path_minus_specific_path(self):
         """F56 | allow paths except for the specified path"""
 
@@ -183,4 +195,49 @@ class TestFunctions(unittest.TestCase):
         self.assertIn(
             "*** You have 1 warning(s) left, before getting kicked out.", output
         )
+        self.do_exit(child)
+
+    def test_65_allowed_shell_escape_plus_minus_chain(self):
+        """F65 | +/- merge on allowed_shell_escape impacts command allow-list."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"[]\" "
+            "--allowed_shell_escape \"['echo'] + ['printf'] - ['echo']\" "
+            "--forbidden \"[]\" --warning_counter 2 --strict 1"
+        )
+        child.expect(PROMPT)
+
+        child.sendline("echo blocked")
+        child.expect(PROMPT)
+        denied_output = child.before.decode("utf-8")
+        self.assertIn('lshell: forbidden command: "echo"', denied_output)
+        self.assertIn("lshell: warning: 1 violation remaining", denied_output)
+
+        child.sendline("printf ALLOWED")
+        child.expect(PROMPT)
+        allowed_output = child.before.decode("utf-8")
+        self.assertIn("ALLOWED", allowed_output)
+
+        self.do_exit(child)
+
+    def test_66_sudo_commands_all_quoted_reflected_in_policy_sudo(self):
+        """F66 | sudo_commands='all' should expose effective sudo allow-list."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"['ls','echo','cat']\" "
+            "--sudo_commands \"'all'\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("policy-sudo")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8")
+        self.assertIn("Sudo access            : enabled", output)
+        self.assertIn("Allowed via sudo", output)
+        allowed_line = [
+            line for line in output.splitlines() if "Allowed via sudo" in line
+        ][0]
+        self.assertIn("echo", allowed_line)
+        self.assertIn("ls", allowed_line)
+
         self.do_exit(child)

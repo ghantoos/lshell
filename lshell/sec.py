@@ -110,19 +110,136 @@ def tokenize_command(command):
 
 
 def expand_shell_wildcards(item):
-    """Expand shell wildcards in the item and return the expanded path"""
+    """Expand shell wildcards and return all candidate filesystem paths."""
 
-    # Expand shell variables like $HOME
-    item = os.path.expanduser(item)
-    item = os.path.expandvars(item)
-    item = os.path.realpath(item)  # this is a hack - needs to be reviewed
-    # test if item is a directory
-    expanded_items = glob.glob(item, recursive=True)
+    # Expand shell variables like $HOME first.
+    expanded_item = os.path.expanduser(item)
+    expanded_item = os.path.expandvars(expanded_item)
+
+    # Expand wildcard patterns against the filesystem and validate all matches.
+    expanded_items = glob.glob(expanded_item, recursive=True)
     if expanded_items:
-        # Return all matches instead of just the first one
-        item = expanded_items[0]
+        return [os.path.realpath(match) for match in expanded_items]
 
-    return item
+    # If no glob match exists, still validate the canonical target path.
+    return [os.path.realpath(expanded_item)]
+
+
+def _split_path_acl_entries(path_acl):
+    """Convert legacy path ACL string format to canonical path entries."""
+    if not path_acl:
+        return []
+
+    entries = []
+    for token in str(path_acl).split("|"):
+        candidate = token.strip()
+        if not candidate:
+            continue
+        entries.append(os.path.realpath(candidate))
+    return entries
+
+
+def _is_path_within_base(path, base):
+    """Return True when path is equal to or nested under base."""
+    try:
+        return os.path.commonpath([path, base]) == base
+    except ValueError:
+        # Different mount/drive semantics: treat as not matching.
+        return False
+
+
+def _is_path_allowed(candidate, allowed_roots, denied_roots):
+    """Return True when candidate path passes allow/deny ACL precedence.
+
+    Specificity rule:
+    - most specific matching prefix wins;
+    - ties favor deny.
+    This preserves historical expectation that:
+      ['/'] - ['/var'] + ['/var/log']
+    allows /var/log while still denying /var.
+    """
+
+    def _specificity(path):
+        normalized = os.path.normpath(path)
+        if normalized == os.sep:
+            return 0
+        return len([segment for segment in normalized.split(os.sep) if segment])
+
+    matching_allows = [root for root in allowed_roots if _is_path_within_base(candidate, root)]
+    matching_denies = [root for root in denied_roots if _is_path_within_base(candidate, root)]
+
+    # Legacy behavior: empty allow-list means unrestricted unless denied.
+    if not allowed_roots:
+        return not bool(matching_denies)
+
+    if not matching_allows:
+        return False
+
+    best_allow = max(_specificity(root) for root in matching_allows)
+    best_deny = max(_specificity(root) for root in matching_denies) if matching_denies else -1
+
+    return best_allow > best_deny
+
+
+def _format_path_for_message(path):
+    """Format path in user-facing messages with historical trailing-slash behavior."""
+    if os.path.isdir(path) and not path.endswith("/"):
+        return f"{path}/"
+    return path
+
+
+def _looks_like_path_token(token):
+    """Heuristic: return True if a token appears to reference a filesystem path."""
+    if not token:
+        return False
+    if token.startswith(("/", ".", "~")):
+        return True
+    if "/" in token or "\\" in token:
+        return True
+    if any(char in token for char in ["*", "?", "[", "]"]):
+        return True
+    return False
+
+
+def _path_tokens_from_line(line):
+    """Extract path-like tokens from command segments, excluding bare command names."""
+    segments = utils.split_commands(line)
+    if not segments:
+        return []
+
+    path_tokens = []
+    for segment in segments:
+        try:
+            tokens = shlex.split(segment, posix=True)
+        except ValueError:
+            tokens = tokenize_command(segment)
+        if not tokens:
+            continue
+
+        index = 0
+        while index < len(tokens) and _is_assignment_word(tokens[index]):
+            index += 1
+        if index >= len(tokens):
+            continue
+
+        command = tokens[index]
+        args = tokens[index + 1 :]
+
+        if command == "cd" and args:
+            # `cd var` style operands are path targets even without slashes.
+            path_tokens.append(args[0])
+            continue
+
+        if args:
+            path_tokens.extend(token for token in args if _looks_like_path_token(token))
+            continue
+
+        # Single token mode (used by completion/policy path checks):
+        # only treat it as a path when it looks path-like.
+        if _looks_like_path_token(command):
+            path_tokens.append(command)
+
+    return path_tokens
 
 
 def check_path(line, conf, completion=None, ssh=None, strict=None):
@@ -130,32 +247,32 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
     are allowed to see this path. If user is not allowed, it calls
     warn_count. In case of completion, it only returns 0 or 1.
     """
-    allowed_path_re = str(conf["path"][0])
-    denied_path_re = str(conf["path"][1][:-1])
+    allowed_roots = _split_path_acl_entries(conf["path"][0])
+    denied_roots = _split_path_acl_entries(conf["path"][1])
 
-    line = tokenize_command(line)
+    path_tokens = _path_tokens_from_line(line)
 
-    for item in line:
-        tomatch = expand_shell_wildcards(item)
-        if os.path.isdir(tomatch) and tomatch[-1] != "/":
-            tomatch += "/"
-        match_allowed = re.findall(allowed_path_re, tomatch)
-        if denied_path_re:
-            match_denied = re.findall(denied_path_re, tomatch)
-        else:
-            match_denied = None
-
-        # if path not allowed
-        # case path executed: warn, and return 1
-        # case completion: return 1
-        if not match_allowed or match_denied:
-            if not completion:
-                ret, conf = warn_count("path", tomatch, conf, strict=strict, ssh=ssh)
-            return 1, conf
+    for item in path_tokens:
+        candidates = expand_shell_wildcards(item)
+        for candidate in candidates:
+            if not _is_path_allowed(candidate, allowed_roots, denied_roots):
+                if not completion:
+                    message_path = _format_path_for_message(candidate)
+                    ret, conf = warn_count(
+                        "path", message_path, conf, strict=strict, ssh=ssh
+                    )
+                return 1, conf
 
     if not completion:
-        if not re.findall(allowed_path_re, os.getcwd() + "/"):
-            ret, conf = warn_count("path", tomatch, conf, strict=strict, ssh=ssh)
+        current_dir = os.path.realpath(os.getcwd())
+        if not _is_path_allowed(current_dir, allowed_roots, denied_roots):
+            ret, conf = warn_count(
+                "path",
+                _format_path_for_message(current_dir),
+                conf,
+                strict=strict,
+                ssh=ssh,
+            )
             os.chdir(conf["home_path"])
             conf["promptprint"] = utils.updateprompt(os.getcwd(), conf)
             return 1, conf

@@ -122,6 +122,14 @@ Make sure lshell is present in `/etc/shells`.
 
 The main template is [`etc/lshell.conf`](etc/lshell.conf). Full reference is available in the man page.
 
+### Best practices
+
+- Prefer an explicit `allowed` allow-list instead of `'all'`.
+- Keep `allowed_shell_escape` short and audit every entry. Never add tools that execute arbitrary commands (for example `find`, `vim`, `xargs`).
+- Use `allowed_file_extensions` when users are expected to work with a known set of file types.
+- Keep `warning_counter` enabled (avoid `-1` unless you intentionally want warning-only behavior).
+- Use `policy-show` during reviews to validate effective policy before assigning it to users.
+
 ### Section model and precedence
 
 Supported section types:
@@ -155,6 +163,7 @@ For local executables, add explicit relative paths (for example `./deploy.sh`).
 
 `warning_counter` is decremented on forbidden command/path/character attempts.
 When `strict = 1`, unknown syntax/commands also decrement `warning_counter`.
+`strict = 1` is typically preferred for higher-assurance restricted environments.
 
 ### `messages`
 
@@ -198,6 +207,12 @@ messages : {
 - `path_noexec`: if available, lshell uses `sudo_noexec.so` to reduce command escape vectors.
 - `allowed_shell_escape`: explicit list of commands allowed to run child programs. Do not set it to `'all'`.
 - `allowed_file_extensions`: optional allow-list for file extensions passed in command lines.
+
+### Prompt accessibility
+
+- Keep the default prompt text-based and readable in monochrome terminals.
+- If you use ANSI colors in `prompt` or `$LPS1`, avoid color-only meaning (for example, include separators like `user@host:path`).
+- Verify contrast and readability over SSH clients commonly used in your environment.
 
 ### `umask`
 

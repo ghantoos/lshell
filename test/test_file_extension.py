@@ -104,3 +104,30 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
         self.assertFalse(os.path.exists(target))
         self.do_exit(child)
+
+    def test_64_allowed_file_extensions_plus_minus_chain(self):
+        """F64 | +/- merge on allowed_file_extensions controls warning outcome."""
+        f_name = "test_60_allowed_extension_success"
+        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        conf_file = CONFIG
+
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--allowed \"+ ['cat']\" "
+            "--allowed_file_extensions \"['.log'] + ['.conf'] - ['.log']\" "
+            "--warning_counter 2 --strict 1"
+        )
+        child.expect(PROMPT)
+
+        child.sendline(f"cat {log_file}")
+        child.expect(PROMPT)
+        denied_output = child.before.decode("utf-8")
+        self.assertIn("forbidden file extension ['.log']", denied_output)
+        self.assertIn("lshell: warning: 1 violation remaining", denied_output)
+
+        child.sendline(f"cat {conf_file}")
+        child.expect(PROMPT)
+        allowed_output = child.before.decode("utf-8")
+        self.assertIn("[global]", allowed_output)
+
+        self.do_exit(child)

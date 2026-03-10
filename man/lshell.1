@@ -24,7 +24,7 @@ or with
 .I /etc/shells
 and 
 .I /etc/passwd
-, it becomes very easy to restrict a user's access to a limited set of commands.
+, it is straightforward to restrict a user's access to a limited set of commands.
 
 .SH OPTIONS
 .TP
@@ -35,7 +35,7 @@ Specify configuration file
 Specify the log directory
 .TP
 .B \--<param> \fI<value>\fR
-where <param> is any config file parameter
+where <param> is any configuration file parameter
 .TP
 .B \-h, --help
 Show help message
@@ -185,8 +185,8 @@ Local executables must be explicitly listed with a relative path (e.g., './deplo
 .BR \ \ \ \ -
 To allow all commands in the user's PATH, use the value 'all'.
 .RE
-if  sudo(8) is installed and sudo_noexec.so is available, it will be loaded
-before running every command, preventing it from  running  further  commands
+if sudo(8) is installed and sudo_noexec.so is available, it will be loaded
+before running every command, preventing it from running further commands
 itself. If not available, beware of commands like vim/find/more/etc. that will
 allow users to execute code (e.g. /bin/sh) from within the application,
 thus easily escaping lshell. See variable 'path_noexec' to use an alternative
@@ -198,7 +198,7 @@ a list of the allowed commands that are permitted to execute other programs
 allowed. Warning: do not put here any command that can execute arbitrary
 commands (e.g. find, vim, xargs).
 
-important: commands defined in 'allowed_shell_escape' override their definition
+Important: commands defined in 'allowed_shell_escape' override their definition
 in the \'allowed\' variable.
 .TP
 .I allowed_file_extensions
@@ -206,7 +206,7 @@ a list of allowed file extensions that can be provided in the command line.
 If a list of allowed extensions is provided, all other file extensions will be disallowed.
 .TP
 .I allowed_cmd_path
-a list of path; all executable files inside these path will be allowed
+a list of paths; all executable files inside these paths are allowed
 .TP
 .I disable_exit
 disable user exit, this could be useful when lshell is spawned from another
@@ -463,6 +463,40 @@ ignored (uses scp(1) from within session)
 enable/disable policy introspection builtins. If set to 1 (default), users can
 run \fBpolicy-show\fR, \fBpolicy-path\fR, \fBpolicy-sudo\fR (and aliases
 \fBlpath\fR, \fBlsudo\fR). If set to 0, these commands are hidden.
+
+.SH BEST PRACTICES
+.TP
+.B Least privilege
+Prefer explicit allow-lists in \fIallowed\fR and avoid using \fB'all'\fR unless
+strictly required.
+.TP
+.B Shell escape control
+Keep \fIallowed_shell_escape\fR minimal and do not include tools that execute
+arbitrary commands (for example: find, vim, xargs).
+.TP
+.B Extension policy
+Use \fIallowed_file_extensions\fR when users should handle only known file types.
+.TP
+.B Warning policy
+Keep \fIwarning_counter\fR enabled and consider \fIstrict=1\fR for stronger
+enforcement in high-assurance environments.
+.TP
+.B Validate before rollout
+Use \fBlshell policy-show\fR to review final merged policy and command decisions
+before assigning a profile to users.
+
+.SH ACCESSIBILITY
+.TP
+.B Prompt readability
+Use a readable text prompt format (for example \fB%u@%h\fR) as the default.
+.TP
+.B Color usage
+If using ANSI colors in \fIprompt\fR or \fB$LPS1\fR, avoid color-only meaning so
+the prompt remains understandable in monochrome or low-contrast terminals.
+.TP
+.B Message clarity
+When customizing \fImessages\fR, keep phrasing concise and actionable so users
+understand how to recover from denied commands.
 
 .SH SHELL BUILTIN COMMANDS
 Here is the set of commands that are always available with lshell:

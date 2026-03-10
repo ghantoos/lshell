@@ -85,9 +85,12 @@ def parse_config_value(value, key=""):
 
     Raises ValueError with user-friendly field-level errors.
     """
-    if isinstance(value, str) and key in {"allowed", "sudo_commands"}:
-        if value.strip() == "all":
-            return "all"
+    if (
+        isinstance(value, str)
+        and key in {"allowed", "sudo_commands"}
+        and is_all_literal(value)
+    ):
+        return "all"
 
     try:
         evaluated = ast.literal_eval(value)

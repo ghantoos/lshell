@@ -219,6 +219,21 @@ class TestParserUtilities(unittest.TestCase):
 
         self.assertEqual(result, [])
 
+    def test_complete_change_dir_denied_path_does_not_suggest_root_slash(self):
+        """Denied cd completion should not suggest a standalone '/' segment."""
+        conf = {
+            "home_path": "/home/testuser",
+            "path": ["/var/log/|", ""],
+        }
+        with patch("lshell.completion.os.getcwd", return_value="/home/testuser"), patch(
+            "lshell.completion.sec.check_path", return_value=(1, conf)
+        ):
+            result = completion.complete_change_dir(
+                conf, "", "cd /var/log/", len("cd "), len("cd /var/log/")
+            )
+
+        self.assertNotIn("/", result)
+
     def test_completenames_dot_slash_with_basename_text(self):
         """Complete ./ commands when readline provides text without ./ prefix."""
         conf = {"allowed": ["ls", "./shutdown.sh", "./show.sh"]}

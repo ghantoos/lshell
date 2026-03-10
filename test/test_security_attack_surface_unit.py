@@ -7,6 +7,7 @@ This file is intentionally capped to keep size manageable.
 
 import io
 import os
+import tempfile
 import unittest
 from contextlib import redirect_stderr
 from unittest.mock import patch
@@ -98,6 +99,87 @@ class TestAttackSurface(unittest.TestCase):
         ret, _conf = sec.check_path("cd /tmp", conf, strict=0)
         self.assertEqual(ret, 1)
         self.assertEqual(_conf["warning_counter"], starting_counter - 1)
+
+    def test_check_path_uses_canonical_prefix_not_substring_regex(self):
+        """Do not allow sibling paths that only share a string prefix."""
+        with tempfile.TemporaryDirectory(prefix="lshell-path-prefix-", dir="/tmp") as tmpdir:
+            allowed_dir = os.path.join(tmpdir, "allow")
+            sibling_dir = os.path.join(tmpdir, "allow-evil")
+            os.makedirs(allowed_dir, exist_ok=True)
+            os.makedirs(sibling_dir, exist_ok=True)
+
+            conf = CheckConfig(
+                self.args + [f"--path=['{allowed_dir}']", "--strict=0"]
+            ).returnconf()
+            ret, _conf = sec.check_path(f"ls {sibling_dir}", conf, strict=0)
+            self.assertEqual(ret, 1)
+
+    def test_check_path_validates_all_glob_matches(self):
+        """Validate every wildcard expansion result, not only the first match."""
+        with tempfile.TemporaryDirectory(prefix="lshell-path-glob-", dir="/tmp") as tmpdir:
+            allowed_dir = os.path.join(tmpdir, "a_allowed")
+            blocked_dir = os.path.join(tmpdir, "z_blocked")
+            os.makedirs(allowed_dir, exist_ok=True)
+            os.makedirs(blocked_dir, exist_ok=True)
+
+            conf = CheckConfig(
+                self.args + [f"--path=['{allowed_dir}']", "--strict=0"]
+            ).returnconf()
+            ret, _conf = sec.check_path(f"ls {tmpdir}/*", conf, strict=0)
+            self.assertEqual(ret, 1)
+
+    def test_check_path_allow_root_minus_var_allows_cd_root(self):
+        """Root allow-list entry '/' must stay valid when minus-paths are present."""
+        conf = CheckConfig(
+            self.args + ["--path=['/'] - ['/var']", "--strict=0"]
+        ).returnconf()
+        ret, _conf = sec.check_path("cd /", conf, strict=0)
+        self.assertEqual(ret, 0)
+
+    def test_check_path_root_minus_var_denies_relative_cd_var(self):
+        """Relative cd target should still be validated against path ACL."""
+        conf = CheckConfig(
+            self.args + ["--path=['/'] - ['/var']", "--strict=0"]
+        ).returnconf()
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir("/")
+            ret, _conf = sec.check_path("cd var", conf, strict=0)
+            self.assertEqual(ret, 1)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_check_path_more_specific_allow_overrides_broader_deny(self):
+        """Specific allow path should win over broader deny prefix."""
+        conf = CheckConfig(
+            self.args
+            + ["--path=['/'] - ['/var','/var/lib'] + ['/var/log']", "--strict=0"]
+        ).returnconf()
+        ret, _conf = sec.check_path("cd /var/log", conf, strict=0)
+        self.assertEqual(ret, 0)
+
+    def test_check_path_does_not_treat_command_word_as_path(self):
+        """Command names like 'cd' must not be reported as denied filesystem paths."""
+        conf = CheckConfig(
+            self.args + ["--path=['/tmp']", "--strict=0", "--quiet=0"]
+        ).returnconf()
+
+        with patch("lshell.sec.warn_count", return_value=(1, conf)) as mock_warn:
+            ret, _conf = sec.check_path("cd /var/log", conf, strict=0)
+
+        self.assertEqual(ret, 1)
+        self.assertTrue(mock_warn.called)
+        warned_path = mock_warn.call_args.args[1]
+        self.assertNotEqual(warned_path, os.path.realpath("cd"))
+        self.assertNotEqual(os.path.basename(warned_path.rstrip("/")), "cd")
+
+    def test_check_path_completion_still_validates_single_path_token(self):
+        """Single-token path checks (completion/policy mode) must keep working."""
+        conf = CheckConfig(
+            self.args + ["--path=['/home', '/var']", "--strict=0"]
+        ).returnconf()
+        ret, _conf = sec.check_path("/tmp", conf, completion=1, strict=0)
+        self.assertEqual(ret, 1)
 
     def test_checkconfig_rejects_allowed_shell_escape_all(self):
         """Reject allowed_shell_escape=all to avoid bypassing noexec globally."""

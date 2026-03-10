@@ -149,6 +149,44 @@ class TestPolicy(unittest.TestCase):
         decision = policy.policy_command_decision("ls /tmp", runtime_policy)
         self.assertTrue(decision["allowed"])
 
+    def test_resolve_policy_allowed_all_unquoted_expands(self):
+        """EX03e | allowed=all (unquoted) should expand successfully."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            config = self._write_config(
+                tempdir,
+                """
+                [global]
+                logpath : /tmp
+                loglevel : 0
+
+                [default]
+                allowed : all
+                forbidden : [';']
+                warning_counter : 2
+                """,
+            )
+            result = policy.resolve_policy(config, "bleh", [])
+            self.assertIn("ls", result["policy"]["allowed"])
+
+    def test_resolve_policy_allowed_all_minus_list(self):
+        """EX03f | allowed supports all - [item] merge semantics."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            config = self._write_config(
+                tempdir,
+                """
+                [global]
+                logpath : /tmp
+                loglevel : 0
+
+                [default]
+                allowed : all - ['echo']
+                forbidden : [';']
+                warning_counter : 2
+                """,
+            )
+            result = policy.resolve_policy(config, "bleh", [])
+            self.assertNotIn("echo", result["policy"]["allowed"])
+
     def test_build_resolved_rows_order_and_user_origin(self):
         """EX04 | rows are ordered and user section label is explicit."""
         result = {
@@ -267,6 +305,59 @@ class TestPolicy(unittest.TestCase):
 
             result = policy.resolve_policy(config, "testuser", [])
             self.assertIn("grp:testuser", result["applied_sections"])
+
+    def test_resolve_policy_plus_minus_supported_for_all_list_merge_keys(self):
+        """EX08b | policy mode applies +/- merges on every merge-capable list key."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            config = self._write_config(
+                tempdir,
+                """
+                [global]
+                logpath : /tmp
+                loglevel : 0
+
+                [default]
+                allowed : ['basecmd']
+                allowed_shell_escape : ['ase_base']
+                allowed_file_extensions : ['.log']
+                forbidden : [';']
+                overssh : ['scp', 'rsync']
+                path : ['/']
+                warning_counter : 2
+
+                [user:bleh]
+                allowed : + ['pluscmd'] - ['basecmd']
+                allowed_shell_escape : + ['ase_plus'] - ['ase_base']
+                allowed_file_extensions : + ['.txt'] - ['.log']
+                forbidden : + ['#'] - [';']
+                overssh : + ['ls'] - ['scp']
+                path : - ['/var', '/etc'] + ['/var/log']
+                """,
+            )
+
+            result = policy.resolve_policy(config, "bleh", [])
+            runtime_policy = result["policy"]
+
+            self.assertIn("pluscmd", runtime_policy["allowed"])
+            self.assertNotIn("basecmd", runtime_policy["allowed"])
+
+            self.assertEqual(set(runtime_policy["allowed_shell_escape"]), {"ase_plus"})
+            self.assertEqual(set(runtime_policy["allowed_file_extensions"]), {".txt"})
+
+            self.assertIn("#", runtime_policy["forbidden"])
+            self.assertNotIn(";", runtime_policy["forbidden"])
+
+            self.assertIn("rsync", runtime_policy["overssh"])
+            self.assertIn("ls", runtime_policy["overssh"])
+            self.assertNotIn("scp", runtime_policy["overssh"])
+
+            self.assertTrue(runtime_policy["path"][0].startswith("/|"))
+            self.assertIn(
+                f"{os.path.realpath('/var/log')}/|",
+                runtime_policy["path"][0],
+            )
+            self.assertIn(f"{os.path.realpath('/var')}/|", runtime_policy["path"][1])
+            self.assertIn(f"{os.path.realpath('/etc')}/|", runtime_policy["path"][1])
 
     def test_main_without_command_returns_success(self):
         """EX09 | policy show without command should print resolved values and exit 0."""

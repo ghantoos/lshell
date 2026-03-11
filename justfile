@@ -3,28 +3,23 @@ set shell := ["bash", "-cu"]
 compose := env_var_or_default("COMPOSE", "docker compose")
 e2e_compose := "docker compose -f docker-compose.e2e.yml"
 
+[private]
 default:
     @just --list
 
-# Run any docker compose command, e.g. `just dc "run --rm ubuntu_tests"`
-dc args:
-    {{compose}} {{args}}
-
 # Run a compose service with build + cleanup, e.g. `just run ubuntu_tests`
+[private]
 run service:
     {{compose}} run --build --rm {{service}}
 
 # Start a compose service with build, e.g. `just up ubuntu-pypi`
+[private]
 up service:
     {{compose}} up --build {{service}}
 
 # Build one or more services, e.g. `just build ubuntu_tests ubuntu`
 build +services:
     {{compose}} build {{services}}
-
-# Stop and remove compose resources
-clean:
-    {{compose}} down -v --remove-orphans
 
 # Aggressive Docker cleanup (images, containers, networks, build cache, volumes)
 docker-prune:
@@ -34,6 +29,47 @@ docker-prune:
 docker-clean-lshell:
     {{compose}} down --rmi local --volumes --remove-orphans
     {{e2e_compose}} down --rmi local --volumes --remove-orphans
+
+# List available interactive sample configurations
+[private]
+lshell-samples:
+    @ls -1 test/samples/*.conf | xargs -n1 basename
+    @echo
+    @echo "Run one with:"
+    @echo "  just sample-ubuntu 01_baseline_allowlist.conf"
+    @echo "  just sample-ubuntu sample=01_baseline_allowlist.conf"
+
+# Run lshell interactively with one sample config on a chosen distro.
+# Example: just lshell-sample debian 04_sudo_and_aliases.conf
+[private]
+lshell-sample distro sample='01_baseline_allowlist.conf':
+    @bash -ceu '\
+      sample="{{sample}}"; \
+      sample="${sample#sample=}"; \
+      distro="{{distro}}"; \
+      if [[ ! -f "test/samples/${sample}" ]]; then \
+        echo "Unknown sample: ${sample}"; \
+        echo "Use: just lshell-samples"; \
+        exit 1; \
+      fi; \
+      if [[ "${distro}" != "debian" && "${distro}" != "ubuntu" && "${distro}" != "fedora" ]]; then \
+        echo "Unsupported distro: ${distro}"; \
+        echo "Allowed values: debian, ubuntu, fedora"; \
+        exit 1; \
+      fi; \
+      echo "Starting interactive lshell on ${distro} with test/samples/${sample}"; \
+      {{compose}} run --build --rm --entrypoint lshell "${distro}" --config "/app/test/samples/${sample}" \
+    '
+
+# User-friendly distro shortcuts:
+sample-debian sample='01_baseline_allowlist.conf':
+    just lshell-sample debian {{sample}}
+
+sample-ubuntu sample='01_baseline_allowlist.conf':
+    just lshell-sample ubuntu {{sample}}
+
+sample-fedora sample='01_baseline_allowlist.conf':
+    just lshell-sample fedora {{sample}}
 
 # Debian
 debian:

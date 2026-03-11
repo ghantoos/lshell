@@ -3,6 +3,9 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.11.1rc1 11/03/2026
+- Added handling for `command not found` messages, with dedicated test coverage.
+
 ### v0.11.0 10/03/2026
 - Reworked command parsing with a new `pyparsing`-based parser for more reliable command handling.
 - Added policy diagnostics and built-ins: `policy-show`, `policy-path`, and `policy-sudo`.

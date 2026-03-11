@@ -31,8 +31,7 @@ docker-clean-lshell:
     {{e2e_compose}} down --rmi local --volumes --remove-orphans
 
 # List available interactive sample configurations
-[private]
-lshell-samples:
+sample-list:
     @ls -1 test/samples/*.conf | xargs -n1 basename
     @echo
     @echo "Run one with:"
@@ -40,16 +39,16 @@ lshell-samples:
     @echo "  just sample-ubuntu sample=01_baseline_allowlist.conf"
 
 # Run lshell interactively with one sample config on a chosen distro.
-# Example: just lshell-sample debian 04_sudo_and_aliases.conf
+# Example: just sample-lshell debian 04_sudo_and_aliases.conf
 [private]
-lshell-sample distro sample='01_baseline_allowlist.conf':
+sample-lshell distro sample='01_baseline_allowlist.conf':
     @bash -ceu '\
       sample="{{sample}}"; \
       sample="${sample#sample=}"; \
       distro="{{distro}}"; \
       if [[ ! -f "test/samples/${sample}" ]]; then \
         echo "Unknown sample: ${sample}"; \
-        echo "Use: just lshell-samples"; \
+        echo "Use: just sample-list"; \
         exit 1; \
       fi; \
       if [[ "${distro}" != "debian" && "${distro}" != "ubuntu" && "${distro}" != "fedora" ]]; then \
@@ -63,13 +62,13 @@ lshell-sample distro sample='01_baseline_allowlist.conf':
 
 # User-friendly distro shortcuts:
 sample-debian sample='01_baseline_allowlist.conf':
-    just lshell-sample debian {{sample}}
+    just sample-lshell debian {{sample}}
 
 sample-ubuntu sample='01_baseline_allowlist.conf':
-    just lshell-sample ubuntu {{sample}}
+    just sample-lshell ubuntu {{sample}}
 
 sample-fedora sample='01_baseline_allowlist.conf':
-    just lshell-sample fedora {{sample}}
+    just sample-lshell fedora {{sample}}
 
 # Debian
 debian:

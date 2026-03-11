@@ -103,6 +103,38 @@ fedora:
 test-fedora:
     just run fedora_tests
 
+# Build an RPM from the current workspace using Fedora tooling
+[private]
+rpm-build-fedora:
+    {{compose}} run --build --rm --user root --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-build.sh
+
+# Install latest built RPM in Fedora container and verify CLI smoke checks
+[private]
+rpm-install-fedora:
+    {{compose}} run --build --rm --user root --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-install-smoke.sh
+
+# Run against installed RPM in two modes:
+# - mode=tests (default): run full /app/test suite as testuser
+# - mode=login: open root shell with testuser configured as /usr/bin/lshell
+[private]
+rpm-run-fedora mode='tests':
+    {{compose}} run --build --rm --user root -e MODE={{mode}} --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-run.sh
+
+# Run full tests against installed RPM
+[private]
+rpm-test-fedora:
+    just rpm-run-fedora tests
+
+# Open an interactive root shell with testuser preconfigured
+rpm-login-fedora:
+    just rpm-run-fedora login
+
+# Full RPM flow: build, install verification, and installed-package tests
+rpm-check-fedora:
+    just rpm-build-fedora
+    just rpm-install-fedora
+    just rpm-test-fedora
+
 test-fedora-pypi:
     just run fedora-pypi
 

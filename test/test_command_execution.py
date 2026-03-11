@@ -256,6 +256,26 @@ class TestFunctions(unittest.TestCase):
         self.assertIn("does_not_exist", result)
         self.do_exit(child)
 
+    def test_47_allowed_missing_binary_uses_lshell_error(self):
+        """F47 | Allowed command missing on PATH should use lshell error format."""
+        random_suffix = random.randint(100000, 999999)
+        missing_cmd = f"lshell_missing_cmd_{random_suffix}"
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            f"--allowed \"+['{missing_cmd}']\" "
+            '--forbidden "[]"'
+        )
+        child.expect(PROMPT)
+
+        child.sendline(missing_cmd)
+        child.expect(PROMPT)
+        output = child.before.decode("utf8").split("\n", 1)[1]
+        expected = f'lshell: command not found: "{missing_cmd}"'
+        self.assertIn(expected, output)
+        self.assertEqual(output.count(expected), 1)
+        self.assertNotIn("bash:", output)
+        self.do_exit(child)
+
     def test_69_operator_matrix_fuzz(self):
         """F69 | Operator and expansion matrix should remain stable."""
         child = pexpect.spawn(

@@ -7,6 +7,7 @@ import sys
 import random
 import string
 import shlex
+import shutil
 from getpass import getuser
 from time import strftime, gmtime
 import signal
@@ -15,6 +16,7 @@ import signal
 from lshell import variables
 from lshell import builtincmd
 from lshell import sec
+from lshell import messages
 
 
 def usage(exitcode=1):
@@ -244,6 +246,68 @@ def replace_exit_code(line, retcode):
 
 
 _ENV_VAR_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_SHELL_BUILTINS = {
+    ".",
+    ":",
+    "alias",
+    "bg",
+    "bind",
+    "break",
+    "builtin",
+    "caller",
+    "cd",
+    "command",
+    "compgen",
+    "complete",
+    "compopt",
+    "continue",
+    "declare",
+    "dirs",
+    "disown",
+    "echo",
+    "enable",
+    "eval",
+    "exec",
+    "exit",
+    "export",
+    "false",
+    "fc",
+    "fg",
+    "getopts",
+    "hash",
+    "help",
+    "history",
+    "jobs",
+    "kill",
+    "let",
+    "local",
+    "logout",
+    "mapfile",
+    "popd",
+    "printf",
+    "pushd",
+    "pwd",
+    "read",
+    "readonly",
+    "return",
+    "set",
+    "shift",
+    "shopt",
+    "source",
+    "suspend",
+    "test",
+    "times",
+    "trap",
+    "true",
+    "type",
+    "typeset",
+    "ulimit",
+    "umask",
+    "unalias",
+    "unset",
+    "wait",
+    "[",
+}
 
 
 def _expand_braced_parameter(expr, support_advanced=True):
@@ -396,6 +460,20 @@ def _parse_command(command):
 def _is_allowed_command(executable, command, conf):
     """Check command authorization from lshell config."""
     return executable in conf["allowed"] or command in conf["allowed"]
+
+
+def _command_exists(executable):
+    """Return True when command token resolves to a runnable command."""
+    if not executable:
+        return False
+
+    if executable in _SHELL_BUILTINS:
+        return True
+
+    if "/" in executable:
+        return os.path.isfile(executable) and os.access(executable, os.X_OK)
+
+    return shutil.which(executable) is not None
 
 
 def handle_builtin_command(full_command, executable, argument, shell_context):
@@ -648,6 +726,26 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
             and _is_allowed_command(executable_name, part, shell_context.conf)
             for (executable_name, _, _, _), part in zip(parsed_parts, pipeline_parts)
         ):
+            if not skip_policy_checks:
+                missing_executable = next(
+                    (
+                        executable_name
+                        for executable_name, _, _, _ in parsed_parts
+                        if executable_name
+                        and executable_name not in builtincmd.builtins_list
+                        and not _command_exists(executable_name)
+                    ),
+                    None,
+                )
+                if missing_executable:
+                    command_not_found_message = messages.get_message(
+                        shell_context.conf,
+                        "command_not_found",
+                        command=missing_executable,
+                    )
+                    shell_context.log.critical(command_not_found_message)
+                    return 127
+
             extra_env = None
             allowed_shell_escape = set(shell_context.conf.get("allowed_shell_escape", []))
             uses_shell_escape = any(

@@ -3,12 +3,17 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
-### v0.11.0 02/03/2026
-- Replaced the command parser with a new lexer/parser based on `pyparsing`.
-- Fixed `sudo` handling inside `lshell`.
-- Added support for configuring session `umask` via `lshell.conf` or CLI, with octal validation.
-- Improved `allowed_file_extensions` checks to validate file-like arguments (including option values such as `--include=...`) and reject disallowed or extensionless file operands.
-- Hardened handling for SCP/SFTP while preserving command return codes. Added Docker + Ansible SSH end-to-end tests (SSH/SCP/SFTP/WinSCP paths and policy checks).
+### v0.11.0 10/03/2026
+- Reworked command parsing with a new `pyparsing`-based parser for more reliable command handling.
+- Added policy diagnostics and built-ins: `policy-show`, `policy-path`, and `policy-sudo`.
+- Added customizable user-facing messages via the `messages` configuration section.
+- Added session `umask` configuration support from `lshell.conf` and CLI overrides.
+- Improved `sudo` behavior and command execution handling.
+- Improved variable expansion and `source`/`export` handling.
+- Improved path ACL and configuration merge behavior (including include-dir/user/group precedence).
+- Strengthened `allowed_file_extensions` enforcement.
+- Hardened SCP/SFTP behavior and expanded SSH end-to-end test coverage (Docker + Ansible).
+- Added extensive new unit, functional, and end-to-end test coverage across parser, policy, security, and SSH/SCP/SFTP flows.
 
 ### v0.10.10 25/11/2024
 - Added path-only completion with completion from allowed paths.

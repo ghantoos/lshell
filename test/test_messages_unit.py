@@ -52,6 +52,20 @@ class TestMessagesUnit(unittest.TestCase):
             "blocked sudo command: sudo cat /etc/passwd",
         )
 
+    def test_command_not_found_message(self):
+        """Render the command-not-found message from default and custom config."""
+        conf = {}
+        self.assertEqual(
+            messages.get_message(conf, "command_not_found", command="catt"),
+            'lshell: command not found: "catt"',
+        )
+
+        custom_conf = {"messages": {"command_not_found": "missing: {command}"}}
+        self.assertEqual(
+            messages.get_message(custom_conf, "command_not_found", command="catt"),
+            "missing: catt",
+        )
+
     def test_forbidden_command_message(self):
         """Render the forbidden command message from default and custom config."""
         conf = {}
@@ -252,6 +266,7 @@ class TestMessagesUnit(unittest.TestCase):
         """Accept a messages dictionary containing every supported key."""
         overrides = {
             "unknown_syntax": "a {command}",
+            "command_not_found": "a {command}",
             "forbidden_generic": "a {messagetype} {command}",
             "forbidden_command": "a {command}",
             "forbidden_path": "a {command}",

@@ -5,17 +5,17 @@
 
 # lshell
 
-`lshell` is a Python-based limited shell. It is designed to restrict a user to a defined command set, enforce path and character restrictions, control SSH command behavior (`scp`, `sftp`, `rsync`, ...), and log activity.
+`lshell` is a Python-based restricted shell that limits users to a defined set of commands, enforces path and SSH transfer controls (`scp`, `sftp`, `rsync`, ...), logs user activity, supports session/time restrictions, and more.
 
 ## Installation
 
-### Install from PyPI
+Install from PyPI:
 
 ```bash
 pip install limited-shell
 ```
 
-### Build and install from source
+Build/install from source:
 
 ```bash
 python3 -m pip install build --user
@@ -23,23 +23,34 @@ python3 -m build
 pip install . --break-system-packages
 ```
 
-### Uninstall
+Uninstall:
 
 ```bash
 pip uninstall limited-shell
 ```
 
-## Usage
+## Quick start
 
-### Run lshell
+Run `lshell` with an explicit config:
 
 ```bash
 lshell --config /path/to/lshell.conf
 ```
 
-### Admin diagnostics (`lshell policy-show`)
+Default config location:
 
-Explain effective policy resolution for a target user/group set and a command:
+- Linux: `/etc/lshell.conf`
+- *BSD: `/usr/{pkg,local}/etc/lshell.conf`
+
+Set `lshell` as login shell:
+
+```bash
+chsh -s /usr/bin/lshell user_name
+```
+
+## Policy diagnostics
+
+Explain the effective policy and decision for a command:
 
 ```bash
 lshell policy-show \
@@ -50,77 +61,39 @@ lshell policy-show \
   --command "sudo systemctl restart nginx"
 ```
 
-- prints precedence resolution (`default -> groups -> user`)
-- lists included config files (`include_dir`)
-- shows key-level overrides and final merged policy
-- returns command decision (`ALLOW` / `DENY`) with reason
+Inside an interactive session:
 
-### Interactive policy builtins
+- `policy-show [<command...>]`
+- `policy-path` (`lpath` alias)
+- `policy-sudo` (`lsudo` alias)
 
-Inside an `lshell` session:
-
-- `policy-show [<command...>]`: show resolved values and optionally check a command
-- `policy-path`: show allowed/denied paths
-- `policy-sudo`: show allowed sudo commands
-
-Backward-compatible aliases:
-
-- `lpath` -> `policy-path`
-- `lsudo` -> `policy-sudo`
-
-You can hide these policy commands from users with:
+Hide these built-ins if needed:
 
 ```ini
 policy_commands : 0
 ```
 
-Default config location:
+## Configuration
 
-- Linux: `/etc/lshell.conf`
-- *BSD: `/usr/{pkg,local}/etc/lshell.conf`
+Primary template: [`etc/lshell.conf`](etc/lshell.conf)
 
-You can also override configuration values from CLI:
+Key settings to review:
+
+- `allowed` / `forbidden`
+- `path`
+- `sudo_commands`
+- `overssh`, `scp`, `sftp`, `scp_upload`, `scp_download`
+- `allowed_shell_escape`
+- `allowed_file_extensions`
+- `messages`
+- `warning_counter`, `strict`
+- `umask`
+
+CLI overrides are supported, for example:
 
 ```bash
 lshell --config /path/to/lshell.conf --log /var/log/lshell --umask 0077
 ```
-
-### Use lshell in scripts
-
-Use the lshell shebang and keep the `.lsh` extension:
-
-```bash
-#!/usr/bin/lshell
-echo "test"
-```
-
-## System setup
-
-### Add user to `lshell` group (for log access)
-
-```bash
-usermod -aG lshell username
-```
-
-### Set lshell as login shell
-
-Linux:
-
-```bash
-chsh -s /usr/bin/lshell user_name
-```
-
-*BSD:
-
-```bash
-chsh -s /usr/{pkg,local}/bin/lshell user_name
-```
-
-Make sure lshell is present in `/etc/shells`.
-
-## Configuration
-
-The main template is [`etc/lshell.conf`](etc/lshell.conf). Full reference is available in the man page.
 
 ### Best practices
 
@@ -144,100 +117,6 @@ Precedence order:
 1. User section
 2. Group section
 3. Default section
-
-### `allowed`: exact vs generic commands
-
-`allowed` accepts command names and exact command lines.
-
-```ini
-allowed: ['ls', 'echo asd', 'telnet localhost']
-```
-
-- `ls` allows `ls` with any arguments.
-- `echo asd` allows only that exact command line.
-- `telnet localhost` allows only `localhost` as host.
-
-For local executables, add explicit relative paths (for example `./deploy.sh`).
-
-### `warning_counter` and `strict`
-
-`warning_counter` is decremented on forbidden command/path/character attempts.
-When `strict = 1`, unknown syntax/commands also decrement `warning_counter`.
-`strict = 1` is typically preferred for higher-assurance restricted environments.
-
-### `messages`
-
-`messages` is an optional dictionary for customizing user-facing shell messages.
-Unsupported keys and unsupported placeholders are rejected during config parsing.
-
-Supported keys and placeholders:
-
-- `unknown_syntax`: `{command}`
-- `forbidden_generic`: `{messagetype}`, `{command}`
-- `forbidden_command`: `{command}`
-- `forbidden_path`: `{command}`
-- `forbidden_character`: `{command}`
-- `forbidden_control_char`: `{command}`
-- `forbidden_command_over_ssh`: `{message}`, `{command}`
-- `forbidden_scp_over_ssh`: `{message}`
-- `warning_remaining`: `{remaining}`, `{violation_label}`
-- `session_terminated`: no placeholders
-- `incident_reported`: no placeholders
-
-Example:
-
-```ini
-messages : {
-  'unknown_syntax': 'lshell: unknown syntax: {command}',
-  'forbidden_generic': 'lshell: forbidden {messagetype}: "{command}"',
-  'forbidden_command': 'lshell: forbidden command: "{command}"',
-  'forbidden_path': 'lshell: forbidden path: "{command}"',
-  'forbidden_character': 'lshell: forbidden character: "{command}"',
-  'forbidden_control_char': 'lshell: forbidden control char: "{command}"',
-  'forbidden_command_over_ssh': 'lshell: forbidden {message}: "{command}"',
-  'forbidden_scp_over_ssh': 'lshell: forbidden {message}',
-  'warning_remaining': '*** You have {remaining} warning(s) left, before getting kicked out.',
-  'session_terminated': 'lshell: session terminated: warning limit exceeded',
-  'incident_reported': 'This incident has been reported.'
-}
-```
-
-### Security-related settings
-
-- `path_noexec`: if available, lshell uses `sudo_noexec.so` to reduce command escape vectors.
-- `allowed_shell_escape`: explicit list of commands allowed to run child programs. Do not set it to `'all'`.
-- `allowed_file_extensions`: optional allow-list for file extensions passed in command lines.
-
-### Prompt accessibility
-
-- Keep the default prompt text-based and readable in monochrome terminals.
-- If you use ANSI colors in `prompt` or `$LPS1`, avoid color-only meaning (for example, include separators like `user@host:path`).
-- Verify contrast and readability over SSH clients commonly used in your environment.
-
-### `umask`
-
-Set a persistent session umask in config:
-
-```ini
-umask : 0002
-```
-
-- `0002` -> files `664`, directories `775`
-- `0022` -> files `644`, directories `755`
-- `0077` -> files `600`, directories `700`
-
-`umask` must be octal (`0000` to `0777`).  
-If you set umask in `login_script`, it does not persist because `login_script` runs in a child shell.
-
-Quick check inside an lshell session:
-
-```bash
-umask
-touch test_file
-mkdir test_dir
-ls -ld test_file test_dir
-```
-
 ### Example configuration
 
 For users `foo` and `bar` in UNIX group `users`:
@@ -252,19 +131,6 @@ loglevel        : 2
 allowed         : ['ls','pwd']
 forbidden       : [';', '&', '|']
 warning_counter : 2
-messages        : {
-                    'unknown_syntax': 'lshell: unknown syntax: {command}',
-                    'forbidden_generic': 'lshell: forbidden {messagetype}: "{command}"',
-                    'forbidden_command': 'lshell: forbidden command: "{command}"',
-                    'forbidden_path': 'lshell: forbidden path: "{command}"',
-                    'forbidden_character': 'lshell: forbidden character: "{command}"',
-                    'forbidden_control_char': 'lshell: forbidden control char: "{command}"',
-                    'forbidden_command_over_ssh': 'lshell: forbidden {message}: "{command}"',
-                    'forbidden_scp_over_ssh': 'lshell: forbidden {message}',
-                    'warning_remaining': 'lshell: warning: {remaining} {violation_label} remaining before session termination',
-                    'session_terminated': 'lshell: session terminated: warning limit exceeded',
-                    'incident_reported': 'This incident has been reported.'
-                  }
 timer           : 0
 path            : ['/etc', '/usr']
 env_path        : '/sbin:/usr/foo'
@@ -290,32 +156,53 @@ scpforce        : '/home/bar/uploads/'
 # CONFIGURATION END
 ```
 
-## Testing with Docker Compose
+For full option details, use:
 
-Run tests on multiple distributions in parallel:
+- `man lshell`
+- `man ./man/lshell.1`
+
+## Testing
+
+Run test services directly:
 
 ```bash
 docker compose up ubuntu_tests debian_tests fedora_tests
 ```
 
-This runs `pytest`, `pylint`, and `flake8` in the configured test services.
-
-Run full local validation (including real SSH end-to-end scenarios configured with Ansible):
+Run full validation:
 
 ```bash
 just test-all
 ```
 
-Run only real SSH end-to-end checks:
+Run only SSH end-to-end checks:
 
 ```bash
-just ssh-e2e
+just test-ssh-e2e
 ```
 
-## Documentation
+### Justfile usage
 
-- `man lshell` (installed)
-- `man ./man/lshell.1` (from repository)
+List commands:
+
+```bash
+just --list
+```
+
+Run distro-specific tests:
+
+```bash
+just test-debian
+just test-ubuntu
+just test-fedora
+```
+
+Run sample configs interactively:
+
+```bash
+just sample-list
+just sample-ubuntu 01_baseline_allowlist.conf
+```
 
 ## Contributing
 

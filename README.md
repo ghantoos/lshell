@@ -7,6 +7,8 @@
 
 `lshell` is a Python-based restricted shell that limits users to a defined set of commands, enforces path and SSH transfer controls (`scp`, `sftp`, `rsync`, ...), logs user activity, supports session/time restrictions, and more.
 
+PyPI project page: https://pypi.org/project/limited-shell/
+
 ## Installation
 
 Install from PyPI:

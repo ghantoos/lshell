@@ -83,8 +83,10 @@ except ImportError:  # pragma: no cover - environment-dependent skip
 
 
 _OPERATOR_TOKENS = ["&&", "||", "|", ";", "&"]
+# Keep payloads free of expansion/backtick metacharacters so the generated
+# lines stay within this test's "known-valid quoting" scope.
 _PAYLOAD_ALPHABET = st.characters(
-    blacklist_characters=['"', "'", "\\", "\n", "\r"],
+    blacklist_characters=['"', "'", "\\", "\n", "\r", "`", "$"],
     min_codepoint=32,
     max_codepoint=126,
 )

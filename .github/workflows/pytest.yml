@@ -18,6 +18,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install just
+      uses: taiki-e/install-action@just
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -40,6 +42,10 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    - name: Fuzz security parser/policy
+      timeout-minutes: 45
+      run: |
+        just fuzz-security-parser-policy 20000
 
   ssh-e2e:
     name: SSH E2E (Docker + Ansible)

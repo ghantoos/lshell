@@ -7,7 +7,7 @@ RUN \
     # For Debian/Ubuntu
     if [ -f /etc/debian_version ]; then \
         apt-get update && \
-        apt-get install -y python3 python3-pip git flake8 pylint python3-pytest python3-pexpect python3-setuptools python3-pyparsing vim procps sudo && \
+        apt-get install -y python3 python3-pip python3-dev build-essential clang libclang-rt-dev git flake8 pylint python3-pytest python3-pexpect python3-setuptools python3-pyparsing vim procps sudo && \
         apt-get clean; \
         groupadd -f testuser; \
         useradd -m -d /home/testuser -s /bin/bash -g testuser testuser; \

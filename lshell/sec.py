@@ -14,6 +14,7 @@ from lshell import messages
 from lshell import utils
 
 EXTENSION_RESTRICTION_EXEMPT_COMMANDS = {"cd", "clear", "fg", "bg", "ls"}
+MAX_WILDCARD_MATCHES = 4096
 
 
 def _is_assignment_word(word):
@@ -109,20 +110,50 @@ def tokenize_command(command):
     return tokens
 
 
+def _safe_realpath(path):
+    """Resolve canonical path and ignore malformed/unresolvable inputs."""
+    try:
+        return os.path.realpath(path)
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def _safe_expand_path(path):
+    """Expand user/env path fragments and reject malformed values."""
+    try:
+        expanded = os.path.expanduser(path)
+        return os.path.expandvars(expanded)
+    except (TypeError, ValueError):
+        return None
+
+
 def expand_shell_wildcards(item):
     """Expand shell wildcards and return all candidate filesystem paths."""
 
     # Expand shell variables like $HOME first.
-    expanded_item = os.path.expanduser(item)
-    expanded_item = os.path.expandvars(expanded_item)
+    expanded_item = _safe_expand_path(item)
+    if expanded_item is None:
+        return []
 
     # Expand wildcard patterns against the filesystem and validate all matches.
-    expanded_items = glob.glob(expanded_item, recursive=True)
+    # Fail closed if expansion fans out too much to avoid memory abuse.
+    try:
+        expanded_items = []
+        for match in glob.iglob(expanded_item, recursive=True):
+            resolved = _safe_realpath(match)
+            if resolved:
+                expanded_items.append(resolved)
+            if len(expanded_items) > MAX_WILDCARD_MATCHES:
+                return []
+    except (OSError, RuntimeError, ValueError, re.error):
+        return []
+
     if expanded_items:
-        return [os.path.realpath(match) for match in expanded_items]
+        return expanded_items
 
     # If no glob match exists, still validate the canonical target path.
-    return [os.path.realpath(expanded_item)]
+    resolved_item = _safe_realpath(expanded_item)
+    return [resolved_item] if resolved_item else []
 
 
 def _split_path_acl_entries(path_acl):
@@ -135,7 +166,9 @@ def _split_path_acl_entries(path_acl):
         candidate = token.strip()
         if not candidate:
             continue
-        entries.append(os.path.realpath(candidate))
+        resolved = _safe_realpath(candidate)
+        if resolved:
+            entries.append(resolved)
     return entries
 
 
@@ -254,6 +287,11 @@ def check_path(line, conf, completion=None, ssh=None, strict=None):
 
     for item in path_tokens:
         candidates = expand_shell_wildcards(item)
+        if not candidates:
+            if not completion:
+                ret, conf = warn_count("path", item, conf, strict=strict, ssh=ssh)
+            return 1, conf
+
         for candidate in candidates:
             if not _is_path_allowed(candidate, allowed_roots, denied_roots):
                 if not completion:
@@ -488,7 +526,11 @@ def check_allowed_file_extensions(command_line, allowed_extensions):
             extension = os.path.splitext(basename)[1]
             # Existing directories are valid SCP/SFTP targets and do not
             # represent file-extension risk on their own.
-            is_existing_dir = os.path.isdir(os.path.realpath(os.path.expanduser(value)))
+            expanded_value = _safe_expand_path(value)
+            resolved_value = (
+                _safe_realpath(expanded_value) if expanded_value is not None else None
+            )
+            is_existing_dir = bool(resolved_value and os.path.isdir(resolved_value))
             has_path_markers = any(
                 char in value for char in ["/", "\\", "*", "?", "[", "]"]
             ) or value.startswith(("~", "."))

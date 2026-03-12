@@ -206,6 +206,21 @@ just sample-list
 just sample-ubuntu 01_baseline_allowlist.conf
 ```
 
+### Fuzzing parser/policy checks
+
+Run Atheris fuzzing in Debian Docker (dependencies installed in-container):
+
+```bash
+just fuzz-security-parser-policy 20000
+```
+
+Optional local run (if you want to fuzz outside Docker):
+
+```bash
+pip install -r requirements-fuzz.txt
+python3 fuzz/fuzz_parser_policy.py -runs=20000
+```
+
 ## Contributing
 
 Open an issue or pull request: https://github.com/ghantoos/lshell/issues

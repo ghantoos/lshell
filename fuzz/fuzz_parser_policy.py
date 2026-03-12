@@ -20,15 +20,19 @@ class _NullLog:
     """Minimal logger required by security helpers during fuzzing."""
 
     def critical(self, _message):
+        """Discard critical log messages during fuzzing."""
         return None
 
     def error(self, _message):
+        """Discard error log messages during fuzzing."""
         return None
 
     def warning(self, _message):
+        """Discard warning log messages during fuzzing."""
         return None
 
     def info(self, _message):
+        """Discard info log messages during fuzzing."""
         return None
 
 

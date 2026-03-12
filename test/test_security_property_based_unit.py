@@ -23,32 +23,40 @@ except ImportError:  # pragma: no cover - environment-dependent skip
 
         @staticmethod
         def characters(*_args, **_kwargs):
+            """Return placeholder `characters` strategy."""
             return _DummyStrategy()
 
         @staticmethod
         def from_regex(*_args, **_kwargs):
+            """Return placeholder `from_regex` strategy."""
             return _DummyStrategy()
 
         @staticmethod
         def integers(*_args, **_kwargs):
+            """Return placeholder `integers` strategy."""
             return _DummyStrategy()
 
         @staticmethod
         def text(*_args, **_kwargs):
+            """Return placeholder `text` strategy."""
             return _DummyStrategy()
 
         @staticmethod
         def sampled_from(*_args, **_kwargs):
+            """Return placeholder `sampled_from` strategy."""
             return _DummyStrategy()
 
         @staticmethod
         def composite(_function):
+            """Return placeholder composite-decorator wrapper."""
             def _wrapper(*_args, **_kwargs):
                 return _DummyStrategy()
 
             return _wrapper
 
     class HealthCheck:  # pragma: no cover - shim only
+        """Fallback shim exposing Hypothesis health-check constants."""
+
         too_slow = "too_slow"
 
     def assume(_condition):

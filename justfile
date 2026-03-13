@@ -185,7 +185,7 @@ test-ssh-e2e:
 
 # Lint Python sources
 test-lint-flake8:
-    pylint $(git ls-files '*.py')
+    pylint lshell test
     flake8 lshell test
 
 # Run Atheris fuzzing in Debian Docker container (host deps not required)

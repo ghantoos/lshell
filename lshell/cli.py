@@ -1,0 +1,47 @@
+"""CLI entry points for lshell."""
+
+import os
+import signal
+import sys
+
+from lshell import policy as policy_mode
+from lshell.checkconfig import CheckConfig
+from lshell.shellcmd import LshellTimeOut, ShellCmd
+
+
+def main():
+    """Main CLI entry point."""
+    if len(sys.argv) > 1 and sys.argv[1] == "policy-show":
+        sys.exit(policy_mode.main(sys.argv[2:]))
+
+    # Set SHELL and process LSHELL_ARGS env variables.
+    os.environ["SHELL"] = os.path.realpath(sys.argv[0])
+    if "LSHELL_ARGS" in os.environ:
+        args = sys.argv[1:] + eval(os.environ["LSHELL_ARGS"])
+    else:
+        args = sys.argv[1:]
+
+    userconf = CheckConfig(args).returnconf()
+
+    def disable_ctrl_z(_signum, _frame):
+        return None
+
+    signal.signal(signal.SIGTSTP, disable_ctrl_z)
+
+    cli = ShellCmd(userconf, args)
+    try:
+        while True:
+            try:
+                cli.cmdloop()
+                break
+            except KeyboardInterrupt:
+                # Keep interactive sessions alive when Ctrl+C races outside
+                # command-specific handlers.
+                sys.stdout.write("\n")
+                continue
+            except EOFError:
+                sys.stdout.write("\nExited on user request\n")
+                sys.exit(0)
+    except LshellTimeOut:
+        userconf["logpath"].error("Timer expired")
+        sys.stdout.write("\nTime is up.\n")

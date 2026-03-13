@@ -215,7 +215,7 @@ services:
     user: "testuser"
     working_dir: /home/testuser/lshell
     container_name: ubuntu_tests
-    command: "sh -c 'pylint lshell test setup.py && flake8 lshell && pytest'"
+    command: "sh -c 'pylint lshell test && flake8 lshell && pytest'"
     volumes:
       - .:/home/testuser/lshell
     environment:
@@ -228,7 +228,7 @@ services:
       args:
         DISTRO: "debian:latest"
     container_name: debian_tests
-    command: "sh -c 'pylint lshell test setup.py && flake8 lshell && pytest'"
+    command: "sh -c 'pylint lshell test && flake8 lshell && pytest'"
     volumes:
       - .:/app
     environment:
@@ -241,7 +241,7 @@ services:
       args:
         DISTRO: "fedora:latest"
     container_name: fedora_tests
-    command: "sh -c 'pylint lshell test setup.py && flake8 lshell && pytest'"
+    command: "sh -c 'pylint lshell test && flake8 lshell && pytest'"
     volumes:
       - .:/app
     environment:
@@ -254,7 +254,7 @@ services:
       args:
         DISTRO: "centos:8"
     container_name: centos_tests
-    command: "sh -c 'pylint lshell test setup.py; pyflake lshell; pytest-3'"
+    command: "sh -c 'pylint lshell test; pyflake lshell; pytest-3'"
     volumes:
       - .:/app
     environment:

@@ -7,7 +7,7 @@ RUN \
     # For Debian/Ubuntu
     if [ -f /etc/debian_version ]; then \
         apt-get update && \
-        apt-get install -y python3 python3-pip git flake8 pylint python3-pytest python3-pexpect python3-setuptools python3-pyparsing vim procps sudo && \
+        apt-get install -y python3 python3-pip python3-dev build-essential clang libclang-rt-dev git flake8 pylint python3-pytest python3-pexpect python3-setuptools python3-pyparsing vim procps sudo && \
         apt-get clean; \
         groupadd -f testuser; \
         useradd -m -d /home/testuser -s /bin/bash -g testuser testuser; \
@@ -49,6 +49,11 @@ ENV PYTHONPATH=/home/testuser/lshell
 
 # Copy the code and requirements
 COPY . /home/testuser/lshell
+
+# Install test/runtime Python dependencies from the repository requirements.
+# Debian/Ubuntu images may require --break-system-packages (PEP 668).
+RUN python3 -m pip install --no-cache-dir -r /home/testuser/lshell/requirements.txt \
+    || python3 -m pip install --break-system-packages --no-cache-dir -r /home/testuser/lshell/requirements.txt
 
 # Install lshell from the source
 RUN python3 setup.py install

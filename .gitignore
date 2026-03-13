@@ -9,3 +9,4 @@ dist/
 test.lsh
 .pylint_cache/
 .pylint.d/
+.hypothesis/

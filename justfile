@@ -188,6 +188,10 @@ test-lint-flake8:
     pylint $(git ls-files '*.py')
     flake8 lshell test
 
+# Run Atheris fuzzing in Debian Docker container (host deps not required)
+test-fuzz-security-parser runs='20000':
+    {{compose}} run --build --rm --entrypoint bash debian -lc "CLANG_BIN=clang python3 -m pip install --user --break-system-packages -r /app/requirements-fuzz.txt && PYTHONPATH=/app python3 /app/fuzz/fuzz_parser_policy.py -runs={{runs}}"
+
 # Full local validation in one command
 test-all:
     just test-lint-flake8
@@ -197,4 +201,5 @@ test-all:
       {{compose}} down -v --remove-orphans; \
       exit $rc\
     '
+    just test-fuzz-security-parser
     just test-ssh-e2e

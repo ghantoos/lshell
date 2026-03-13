@@ -1,5 +1,6 @@
 """CLI entry points for lshell."""
 
+import ast
 import os
 import signal
 import sys
@@ -17,7 +18,15 @@ def main():
     # Set SHELL and process LSHELL_ARGS env variables.
     os.environ["SHELL"] = os.path.realpath(sys.argv[0])
     if "LSHELL_ARGS" in os.environ:
-        args = sys.argv[1:] + eval(os.environ["LSHELL_ARGS"])
+        try:
+            parsed_args = ast.literal_eval(os.environ["LSHELL_ARGS"])
+        except (ValueError, SyntaxError):
+            parsed_args = []
+        if not isinstance(parsed_args, (list, tuple)) or not all(
+            isinstance(item, str) for item in parsed_args
+        ):
+            parsed_args = []
+        args = sys.argv[1:] + list(parsed_args)
     else:
         args = sys.argv[1:]
 

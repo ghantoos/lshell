@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from lshell import policy
 from lshell import sec
 from lshell import utils
 
@@ -113,10 +114,13 @@ def _quoted_operator_sequence(draw):
     return " ".join(chunks), expected
 
 
-def _path_conf(allowed_path, denied_paths=None):
+def _path_conf(allowed_paths, denied_paths=None):
     """Create a minimal path-only security config for `sec.check_path`."""
+    if isinstance(allowed_paths, str):
+        allowed_paths = [allowed_paths]
+    allowed = allowed_paths or []
     denied = denied_paths or []
-    allow_acl = f"{os.path.realpath(allowed_path)}|"
+    allow_acl = "".join(f"{os.path.realpath(path)}|" for path in allowed)
     deny_acl = "".join(f"{os.path.realpath(path)}|" for path in denied)
     return {"path": [allow_acl, deny_acl]}
 
@@ -130,6 +134,28 @@ class TestSecurityPropertyBased(unittest.TestCase):
         """Parser should preserve explicit command/operator structure."""
         line, expected = sequence
         self.assertEqual(utils.split_command_sequence(line), expected)
+
+    @settings(max_examples=100, deadline=None)
+    @given(sequence=_quoted_operator_sequence())
+    def test_split_commands_matches_non_operator_tokens_for_valid_sequences(self, sequence):
+        """`split_commands` should keep only command segments from valid sequences."""
+        line, expected = sequence
+        expected_commands = [item for item in expected if item not in _OPERATOR_TOKENS]
+        self.assertEqual(utils.split_commands(line), expected_commands)
+
+    @settings(max_examples=100, deadline=None)
+    @given(
+        left=st.text(_PAYLOAD_ALPHABET, min_size=1, max_size=12),
+        operator_a=st.sampled_from(_OPERATOR_TOKENS),
+        operator_b=st.sampled_from(_OPERATOR_TOKENS),
+        right=st.text(_PAYLOAD_ALPHABET, min_size=1, max_size=12),
+    )
+    def test_split_command_sequence_rejects_adjacent_operators(
+        self, left, operator_a, operator_b, right
+    ):
+        """Two consecutive top-level operators should fail closed."""
+        line = f'echo "{left}" {operator_a} {operator_b} echo "{right}"'
+        self.assertIsNone(utils.split_command_sequence(line))
 
     @settings(max_examples=100, deadline=None)
     @given(payload=st.text(_PAYLOAD_ALPHABET, min_size=1, max_size=24))
@@ -277,3 +303,82 @@ class TestSecurityPropertyBased(unittest.TestCase):
             conf = _path_conf(allowed_dir)
             ret, _ = sec.check_path(f"ls {tempdir}/*", conf, completion=1, strict=0)
             self.assertEqual(ret, 1)
+
+    @settings(max_examples=60, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+    @given(
+        root_name=_NAME_STRATEGY,
+        deny_name=st.from_regex(r"[a-z0-9]{1,6}", fullmatch=True),
+        reallow_name=st.from_regex(r"[a-z0-9]{1,6}", fullmatch=True),
+        leaf_name=st.from_regex(r"[a-z0-9]{1,6}", fullmatch=True),
+    )
+    def test_check_path_uses_specificity_with_reallow_over_broader_deny(
+        self, root_name, deny_name, reallow_name, leaf_name
+    ):
+        """Most-specific ACL prefix should win for deny/re-allow path chains."""
+        with tempfile.TemporaryDirectory(prefix="lshell-path-prop-") as tempdir:
+            root_dir = os.path.join(tempdir, root_name)
+            denied_root = os.path.join(root_dir, deny_name)
+            reallowed_root = os.path.join(denied_root, reallow_name)
+            denied_leaf = os.path.join(denied_root, "blocked")
+            reallowed_leaf = os.path.join(reallowed_root, leaf_name)
+            os.makedirs(denied_leaf, exist_ok=True)
+            os.makedirs(reallowed_leaf, exist_ok=True)
+
+            conf = _path_conf([root_dir, reallowed_root], [denied_root])
+            denied_ret, _ = sec.check_path(
+                f"ls {denied_leaf}", conf, completion=1, strict=0
+            )
+            allowed_ret, _ = sec.check_path(
+                f"ls {reallowed_leaf}", conf, completion=1, strict=0
+            )
+            self.assertEqual(denied_ret, 1)
+            self.assertEqual(allowed_ret, 0)
+
+    @settings(max_examples=80, deadline=None)
+    @given(
+        command=st.from_regex(r"[a-z]{3,10}", fullmatch=True),
+        strict=st.sampled_from([0, 1]),
+    )
+    def test_policy_command_decision_unknown_command_reason_reflects_strict_mode(
+        self, command, strict
+    ):
+        """Policy decision reasons should differ between strict/non-strict modes."""
+        assume(command != "echo")
+        runtime_policy = {
+            "forbidden": [],
+            "allowed": ["echo"],
+            "strict": strict,
+            "sudo_commands": [],
+            "allowed_file_extensions": [],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision(f"{command} arg", runtime_policy)
+        self.assertFalse(decision["allowed"])
+        if strict:
+            self.assertIn("forbidden command", decision["reason"])
+        else:
+            self.assertIn("unknown syntax", decision["reason"])
+
+    @settings(max_examples=80, deadline=None)
+    @given(
+        variable=st.from_regex(r"[A-Z_][A-Z0-9_]{0,7}", fullmatch=True),
+        value=st.from_regex(r"[A-Za-z0-9_]{0,8}", fullmatch=True),
+    )
+    def test_policy_command_decision_allows_assignment_prefix_for_allowlisted_full_command(
+        self, variable, value
+    ):
+        """Allowlist checks should still pass when command uses assignment prefixes."""
+        runtime_policy = {
+            "forbidden": [],
+            "allowed": ["echo ok"],
+            "strict": 1,
+            "sudo_commands": [],
+            "allowed_file_extensions": [],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision(
+            f"{variable}={value} echo ok", runtime_policy
+        )
+        self.assertTrue(decision["allowed"])

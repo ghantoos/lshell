@@ -45,7 +45,7 @@ jobs:
     - name: Fuzz security parser/policy
       timeout-minutes: 45
       run: |
-        just fuzz-security-parser-policy 20000
+        just test-fuzz-security-parser 20000
 
   ssh-e2e:
     name: SSH E2E (Docker + Ansible)

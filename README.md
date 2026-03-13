@@ -211,7 +211,7 @@ just sample-ubuntu 01_baseline_allowlist.conf
 Run Atheris fuzzing in Debian Docker (dependencies installed in-container):
 
 ```bash
-just fuzz-security-parser-policy 20000
+just test-fuzz-security-parser 20000
 ```
 
 Optional local run (if you want to fuzz outside Docker):

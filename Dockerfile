@@ -55,8 +55,10 @@ COPY . /home/testuser/lshell
 RUN python3 -m pip install --no-cache-dir -r /home/testuser/lshell/requirements.txt \
     || python3 -m pip install --break-system-packages --no-cache-dir -r /home/testuser/lshell/requirements.txt
 
-# Install lshell from the source
-RUN python3 setup.py install
+# Install lshell from source via PEP 517/pyproject.toml.
+# Debian/Ubuntu images may require --break-system-packages (PEP 668).
+RUN python3 -m pip install --no-cache-dir --no-deps --no-build-isolation /home/testuser/lshell \
+    || python3 -m pip install --break-system-packages --no-cache-dir --no-deps --no-build-isolation /home/testuser/lshell
 
 # Switch to `testuser`
 USER testuser

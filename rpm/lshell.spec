@@ -13,6 +13,7 @@ Source3:        postuninstall
 BuildArch:      noarch
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
+BuildRequires:  pyproject-rpm-macros
 Requires:       python3
 Requires:       python3-pyparsing >= 3.0.0
 
@@ -25,12 +26,15 @@ restrictions, and more.
 %prep
 %setup -q
 
+%generate_buildrequires
+%pyproject_buildrequires
+
 %build
-%{__python3} setup.py build
+%pyproject_wheel
 
 %install
 rm -rf %{buildroot}
-%{__python3} setup.py install --skip-build --root %{buildroot}
+%pyproject_install
 
 %pre -f %{SOURCE1}
 
@@ -45,7 +49,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_prefix}/etc/lshell.conf
 %config(noreplace) %{_prefix}/etc/logrotate.d/lshell
 %{python3_sitelib}/lshell/
-%{python3_sitelib}/limited_shell-*.egg-info
+%{python3_sitelib}/limited_shell-*.dist-info
 %{_mandir}/man1/lshell.1*
 
 %changelog

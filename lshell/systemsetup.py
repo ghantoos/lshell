@@ -64,7 +64,7 @@ def _resolve_lshell_path(requested):
 
 
 def _ensure_shell_entry(shell_path):
-    shells_file = "/etc/shells"
+    shells_file = os.environ.get("LSHELL_SHELLS_FILE", "/etc/shells")
     if os.path.exists(shells_file):
         with open(shells_file, "r", encoding="utf-8") as stream:
             entries = [line.strip() for line in stream if line.strip()]

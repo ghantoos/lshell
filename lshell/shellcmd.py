@@ -20,6 +20,7 @@ from lshell import sec
 from lshell import completion
 from lshell import variables
 from lshell import policy as policy_mode
+from lshell import audit
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -90,9 +91,12 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
+            session_id = self.conf.get("session_id")
             self.conf = CheckConfig(
                 ["--config", self.conf["configfile"]], refresh=1
             ).returnconf()
+            if session_id:
+                self.conf["session_id"] = session_id
             self.conf["promptprint"] = utils.updateprompt(os.getcwd(), self.conf)
             self.log = self.conf["logpath"]
 
@@ -186,6 +190,12 @@ class ShellCmd(cmd.Cmd, object):
                         sys.exit(retcode)
                     else:
                         self.log.error("*** forbidden SFTP connection")
+                        audit.log_command_event(
+                            self.conf,
+                            self.conf["ssh"],
+                            allowed=False,
+                            reason="forbidden SFTP connection",
+                        )
                         sys.exit(1)
 
                 # check if scp is requested and allowed
@@ -201,6 +211,12 @@ class ShellCmd(cmd.Cmd, object):
                             else:
                                 self.log.error(
                                     f'SCP: download forbidden: "{self.conf["ssh"]}"'
+                                )
+                                audit.log_command_event(
+                                    self.conf,
+                                    self.conf["ssh"],
+                                    allowed=False,
+                                    reason="forbidden SCP download",
                                 )
                                 sys.exit(1)
                         elif " -t " in self.conf["ssh"]:
@@ -222,6 +238,12 @@ class ShellCmd(cmd.Cmd, object):
                             else:
                                 self.log.error(
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
+                                )
+                                audit.log_command_event(
+                                    self.conf,
+                                    self.conf["ssh"],
+                                    allowed=False,
+                                    reason="forbidden SCP upload",
                                 )
                                 sys.exit(1)
                         _validate_ssh_command()
@@ -262,6 +284,14 @@ class ShellCmd(cmd.Cmd, object):
                 )
                 if ret_check_secure:
                     self.log.error(f'*** forbidden shell escape: "{self.conf["ssh"]}"')
+                    audit.log_command_event(
+                        self.conf,
+                        self.conf["ssh"],
+                        allowed=False,
+                        reason=audit.pop_decision_reason(
+                            self.conf, "forbidden shell escape"
+                        ),
+                    )
                     sys.exit(1)
 
                 self.log.error(f'Shell escape: "{self.conf["ssh"]}"')
@@ -274,6 +304,12 @@ class ShellCmd(cmd.Cmd, object):
 
     def ssh_warn(self, message, command="", key=""):
         """log and warn if forbidden action over SSH"""
+        audit.log_command_event(
+            self.conf,
+            command,
+            allowed=False,
+            reason=f"forbidden over SSH: {message}",
+        )
         if key == "scp":
             self.log.critical(
                 messages.get_message(self.conf, "forbidden_scp_over_ssh", message=message)

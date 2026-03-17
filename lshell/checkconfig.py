@@ -19,6 +19,7 @@ from lshell import utils
 from lshell import variables
 from lshell import builtincmd
 from lshell import configschema
+from lshell import audit
 
 
 class CheckConfig:
@@ -208,11 +209,6 @@ class CheckConfig:
         for logfilter in logger.filters:
             logger.removeFilter(logfilter)
 
-        formatter = logging.Formatter(f"%(asctime)s ({getuser()}): %(message)s")
-        syslogformatter = logging.Formatter(
-            f"{logname}[{os.getpid()}]: {getuser()}: %(message)s"
-        )
-
         logger.setLevel(logging.DEBUG)
 
         # set log to output error on stderr
@@ -233,6 +229,20 @@ class CheckConfig:
         elif self.conf["loglevel"] < 0:
             self.conf["loglevel"] = 0
 
+        try:
+            structured_audit_enabled = int(self.conf.get("security_audit_json", 0)) == 1
+        except (TypeError, ValueError):
+            structured_audit_enabled = False
+
+        if structured_audit_enabled:
+            formatter = audit.EcsJsonFormatter()
+            syslogformatter = audit.EcsJsonFormatter()
+        else:
+            formatter = logging.Formatter(f"%(asctime)s ({getuser()}): %(message)s")
+            syslogformatter = logging.Formatter(
+                f"{logname}[{os.getpid()}]: {getuser()}: %(message)s"
+            )
+
         # read logfilename is exists, and set logfilename
         if self.conf.get("logfilename"):
             try:
@@ -251,6 +261,8 @@ class CheckConfig:
         else:
             logfilename = getuser()
 
+        log_directory = self.conf["logpath"]
+
         if self.conf["loglevel"] > 0:
             try:
                 if logfilename == "syslog":
@@ -260,12 +272,14 @@ class CheckConfig:
                     logger.addHandler(syslog)
                 else:
                     # if log file is writable add new log file handler
-                    logfile = os.path.join(self.conf["logpath"], logfilename + ".log")
+                    logfile = os.path.join(log_directory, logfilename + ".log")
                     # create log file if it does not exist, and set permissions
                     with open(logfile, "a", encoding="utf-8"):
                         pass
                     try:
-                        os.chmod(logfile, 0o600)
+                        # Group-writable logs support shared operational access
+                        # when /var/log/lshell is managed with group ownership.
+                        os.chmod(logfile, 0o660)
                     except OSError:
                         pass
                     # set logging handler
@@ -553,6 +567,7 @@ class CheckConfig:
             "disable_exit",
             "policy_commands",
             "quiet",
+            "security_audit_json",
         ]:
             try:
                 if len(self.conf_raw[item]) == 0:

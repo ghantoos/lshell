@@ -12,6 +12,7 @@ import glob
 # import lshell specifics
 from lshell import messages
 from lshell import utils
+from lshell import audit
 
 EXTENSION_RESTRICTION_EXEMPT_COMMANDS = {"cd", "clear", "fg", "bg", "ls"}
 MAX_WILDCARD_MATCHES = 4096
@@ -56,6 +57,9 @@ def warn_count(messagetype, command, conf, strict=None, ssh=None):
         )
     else:
         primary_message = messages.get_forbidden_message(conf, messagetype, command)
+    audit.set_decision_reason(
+        conf, f"forbidden {messagetype}: {str(command).strip()}"
+    )
 
     if ssh:
         return 1, conf
@@ -91,6 +95,7 @@ def warn_unknown_syntax(command, conf, strict=None, ssh=None):
 
     log = conf["logpath"]
     log.warning(f'INFO: unknown syntax -> "{command}"')
+    audit.set_decision_reason(conf, f"unknown syntax: {command}")
     # Keep legacy UX: unknown syntax is always printed to stderr.
     sys.stderr.write(messages.get_message(conf, "unknown_syntax", command=command) + "\n")
     return 1, conf

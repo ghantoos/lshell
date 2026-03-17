@@ -31,6 +31,7 @@ HISTORY_FILE = ".lhistory"
 USAGE = f"""Usage: lshell [OPTIONS]
   --config <file>   : Config file location (default {configfile})
   --<param> <value> : where <param> is *any* config file parameter
+  --security_audit_json=<0|1> : Emit structured JSON/ECS security audit events
   -h, --help        : Show this help message
   --version         : Show version
 
@@ -39,6 +40,14 @@ Usage: lshell policy-show [OPTIONS] --command <CMD>
   --user <name>     : Target username
   --group <name>    : Target group (repeat for multiple groups)
   --json            : Print JSON diagnostics output
+
+Usage: lshell setup-system [OPTIONS]
+  --group <name>            : Group for log directory (default lshell)
+  --log-dir <path>          : Log directory path (default /var/log/lshell)
+  --owner <user>            : Log directory owner (default root)
+  --mode <octal>            : Log directory mode (default 2770)
+  --set-shell-user <name>   : Assign lshell as login shell (repeatable)
+  --add-group-user <name>   : Add user to log-writer group (repeatable)
 """
 
 # Intro Text
@@ -89,6 +98,7 @@ configparams = [
     "disable_exit=",
     "policy_commands=",
     "include_dir=",
+    "security_audit_json=",
 ]
 
 FORBIDDEN_ENVIRON = (

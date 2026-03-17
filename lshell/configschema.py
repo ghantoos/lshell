@@ -41,6 +41,7 @@ INT_VALUE_KEYS = {
     "policy_commands",
     "quiet",
     "loglevel",
+    "security_audit_json",
 }
 DICT_VALUE_KEYS = {"aliases", "env_vars", "messages"}
 STRING_VALUE_KEYS = {

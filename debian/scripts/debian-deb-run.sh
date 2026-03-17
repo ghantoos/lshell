@@ -11,11 +11,6 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y "${DEB_FILE}"
 
 install -m 0644 /app/debian/lshell.deb-test.conf /etc/lshell.deb-test.conf
 
-# Use a single identity everywhere: testuser
-usermod -s /usr/bin/lshell testuser
-echo "testuser:password" | chpasswd
-usermod -aG lshell testuser || true
-
 if [ "${MODE}" = "tests" ]; then
   # Force test invocations to use the installed Debian package binary.
   ln -sf /usr/bin/lshell /home/testuser/lshell/bin/lshell
@@ -37,7 +32,7 @@ if [ "${MODE}" = "login" ]; then
     "" \
     "Accounts:" \
     "  - root (current shell)" \
-    "  - testuser / password: password (login shell: /usr/bin/lshell, group: lshell)" \
+    "  - testuser / password: password" \
     "" \
     "Main DEB test config (layered): /etc/lshell.deb-test.conf" \
     "Layers included in this file:" \

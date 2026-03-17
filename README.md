@@ -16,6 +16,12 @@ Install from PyPI:
 pip install limited-shell
 ```
 
+Prepare system resources (run as root once per host):
+
+```bash
+lshell setup-system --group lshell --log-dir /var/log/lshell --owner root --mode 2770
+```
+
 Build/install from source:
 
 ```bash
@@ -47,6 +53,12 @@ Set `lshell` as login shell:
 
 ```bash
 chsh -s /usr/bin/lshell user_name
+```
+
+For automated setup (including `/etc/shells` registration + user shell assignment):
+
+```bash
+lshell setup-system --set-shell-user user_name --add-group-user user_name
 ```
 
 ## Policy diagnostics
@@ -103,6 +115,7 @@ lshell --config /path/to/lshell.conf --log /var/log/lshell --umask 0077
 - Use `allowed_file_extensions` when users are expected to work with a known set of file types.
 - Keep `warning_counter` enabled (avoid `-1` unless you intentionally want warning-only behavior).
 - Use `policy-show` during reviews to validate effective policy before assigning it to users.
+- For pip installs, do not rely on installation side effects for system setup. Use `lshell setup-system` (or distro package post-install hooks) to create groups, `/var/log/lshell`, and login-shell registration.
 
 ### Section model and precedence
 

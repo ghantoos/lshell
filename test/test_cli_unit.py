@@ -62,3 +62,13 @@ class TestCliArgs(unittest.TestCase):
             with self.subTest(value=value):
                 args = self._run_main_and_capture_args(value)
                 self.assertEqual(args, ["--quiet=1"])
+
+    def test_main_routes_setup_system_subcommand(self):
+        """Dispatch setup-system subcommand to dedicated handler."""
+        with patch("lshell.cli.system_setup.main", return_value=7) as mock_setup_main:
+            with patch("lshell.cli.sys.argv", ["lshell", "setup-system", "--group", "ops"]):
+                with patch("lshell.cli.sys.exit", side_effect=SystemExit) as mock_exit:
+                    with self.assertRaises(SystemExit):
+                        cli.main()
+        mock_setup_main.assert_called_once_with(["--group", "ops"])
+        mock_exit.assert_called_once_with(7)

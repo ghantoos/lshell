@@ -1,4 +1,5 @@
 """ Utils for lshell """
+# pylint: disable=too-many-lines
 
 import re
 import subprocess
@@ -17,6 +18,7 @@ from lshell import variables
 from lshell import builtincmd
 from lshell import sec
 from lshell import messages
+from lshell import audit
 
 
 def usage(exitcode=1):
@@ -531,6 +533,13 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
             shell_context.conf,
             strict=shell_context.conf["strict"],
         )
+        audit.log_command_event(
+            shell_context.conf,
+            unknown_command,
+            allowed=False,
+            reason=audit.pop_decision_reason(shell_context.conf, "unknown syntax"),
+            level="warning",
+        )
         if ret == 1 and shell_context.conf["strict"]:
             # Keep strict-mode behavior aligned with forbidden actions.
             return 126
@@ -552,6 +561,14 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         forbidden_check_line, shell_context.conf, strict=shell_context.conf["strict"]
     )
     if ret_forbidden_chars == 1:
+        audit.log_command_event(
+            shell_context.conf,
+            command_line,
+            allowed=False,
+            reason=audit.pop_decision_reason(
+                shell_context.conf, "forbidden character in command"
+            ),
+        )
         # see http://tldp.org/LDP/abs/html/exitcodes.html
         retcode = 126
         return retcode
@@ -572,12 +589,24 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
             if executable is None:
                 return _handle_unknown_syntax(item)
             if assignments:
+                audit.log_command_event(
+                    shell_context.conf,
+                    item,
+                    allowed=False,
+                    reason="forbidden trusted SSH protocol command: env assignment",
+                )
                 shell_context.log.critical(
                     f'lshell: forbidden trusted SSH protocol command: "{item}"'
                 )
                 sys.stderr.write("lshell: forbidden trusted SSH protocol command\n")
                 return 126
             if executable not in trusted_protocol_binaries:
+                audit.log_command_event(
+                    shell_context.conf,
+                    item,
+                    allowed=False,
+                    reason=f"forbidden trusted SSH protocol command: {executable}",
+                )
                 shell_context.log.critical(
                     f'lshell: forbidden trusted SSH protocol command: "{item}"'
                 )
@@ -671,6 +700,14 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         for _executable_name, _argument, _split, assignments in parsed_parts:
             for var_name, _var_value in assignments:
                 if var_name in variables.FORBIDDEN_ENVIRON:
+                    reason = f"forbidden environment variable assignment: {var_name}"
+                    audit.set_decision_reason(shell_context.conf, reason)
+                    audit.log_command_event(
+                        shell_context.conf,
+                        full_command,
+                        allowed=False,
+                        reason=reason,
+                    )
                     shell_context.log.critical(
                         f"lshell: forbidden environment variable: {var_name}"
                     )
@@ -687,6 +724,12 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         if not executable and assignments:
             for var_name, var_value in assignments:
                 os.environ[var_name] = var_value
+            audit.log_command_event(
+                shell_context.conf,
+                full_command,
+                allowed=True,
+                reason="assignment-only command accepted",
+            )
             retcode = 0
             i = j + (2 if background else 1)
             continue
@@ -697,6 +740,14 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
                 full_command, shell_context.conf, strict=shell_context.conf["strict"]
             )
             if ret_check_secure == 1:
+                audit.log_command_event(
+                    shell_context.conf,
+                    full_command,
+                    allowed=False,
+                    reason=audit.pop_decision_reason(
+                        shell_context.conf, "forbidden command by security policy"
+                    ),
+                )
                 # see http://tldp.org/LDP/abs/html/exitcodes.html
                 retcode = 126
                 return retcode
@@ -706,6 +757,14 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
                 full_command, shell_context.conf, strict=shell_context.conf["strict"]
             )
             if ret_check_path == 1:
+                audit.log_command_event(
+                    shell_context.conf,
+                    full_command,
+                    allowed=False,
+                    reason=audit.pop_decision_reason(
+                        shell_context.conf, "forbidden path by security policy"
+                    ),
+                )
                 # see http://tldp.org/LDP/abs/html/exitcodes.html
                 retcode = 126
                 # in case request was sent by WinSCP, return error code has to be
@@ -718,6 +777,12 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
 
         # Execute command
         if len(pipeline_parts) == 1 and executable in builtincmd.builtins_list and not background:
+            audit.log_command_event(
+                shell_context.conf,
+                full_command,
+                allowed=True,
+                reason="allowed builtin command",
+            )
             retcode, shell_context.conf = handle_builtin_command(
                 full_command, executable, argument, shell_context
             )
@@ -743,6 +808,12 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
                         "command_not_found",
                         command=missing_executable,
                     )
+                    audit.log_command_event(
+                        shell_context.conf,
+                        full_command,
+                        allowed=False,
+                        reason=f"command not found: {missing_executable}",
+                    )
                     shell_context.log.critical(command_not_found_message)
                     return 127
 
@@ -755,6 +826,12 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
             )
             if "path_noexec" in shell_context.conf and not uses_shell_escape:
                 extra_env = {"LD_PRELOAD": shell_context.conf["path_noexec"]}
+            audit.log_command_event(
+                shell_context.conf,
+                full_command,
+                allowed=True,
+                reason="allowed by command and path policy",
+            )
             retcode = exec_cmd(
                 full_command, background=background, extra_env=extra_env
             )

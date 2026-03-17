@@ -14,12 +14,6 @@ fi
 
 install -m 0644 /app/rpm/lshell.rpm-test.conf /etc/lshell.rpm-test.conf
 
-# Prepare users and groups used by RPM test/login flows.
-# Use a single identity everywhere: testuser
-usermod -s /usr/bin/lshell testuser
-echo "testuser:password" | chpasswd
-usermod -aG lshell testuser || true
-
 if [ "${MODE}" = "tests" ]; then
   # Force test invocations to use the installed RPM binary.
   ln -sf /usr/bin/lshell /home/testuser/lshell/bin/lshell
@@ -41,7 +35,7 @@ if [ "${MODE}" = "login" ]; then
     "" \
     "Accounts:" \
     "  - root (current shell)" \
-    "  - testuser / password: password (login shell: /usr/bin/lshell, group: lshell)" \
+    "  - testuser / password: password" \
     "" \
     "Main RPM test config (layered): /etc/lshell.rpm-test.conf" \
     "Layers included in this file:" \

@@ -39,6 +39,7 @@ lshell = "lshell.cli:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
+include = ["lshell*"]
 exclude = ["test", "test.*"]
 
 [tool.setuptools.dynamic]

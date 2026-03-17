@@ -91,20 +91,25 @@ pkg-deb-install-debian:
 # - mode=login: open root shell with testuser configured as /usr/bin/lshell
 [private]
 pkg-deb-run-debian-mode mode='tests':
-    {{compose}} run --build --rm --user root -e MODE={{mode}} --entrypoint bash debian /app/debian/scripts/debian-deb-run.sh
+    {{compose}} run --rm --user root -e MODE={{mode}} --entrypoint bash debian /app/debian/scripts/debian-deb-run.sh
 
-# Run full tests against installed Debian package
 [private]
-pkg-deb-test-debian:
-    just pkg-deb-run-debian-mode tests
+pkg-deb-ensure-built:
+    ./scripts/pkg-ensure-built.sh build/deb/.source-state.sha256 'build/deb/lshell_*_all.deb' pkg-deb-build 'Debian package'
 
-# Full Debian flow: build, install verification, and installed-package tests
+# Build Debian package artifacts from current workspace
 pkg-deb-build:
     just pkg-deb-build-debian
-    just pkg-deb-install-debian
-    just pkg-deb-test-debian
+    ./scripts/pkg-write-source-stamp.sh build/deb/.source-state.sha256
 
-pkg-deb-run-debian:
+# Build if needed, then run installed-package test suite
+pkg-deb-test:
+    just pkg-deb-ensure-built
+    just pkg-deb-run-debian-mode tests
+
+# Build if needed, then open interactive login flow
+pkg-deb-run:
+    just pkg-deb-ensure-built
     just pkg-deb-run-debian-mode login
 
 # Ubuntu
@@ -148,22 +153,26 @@ pkg-rpm-install-fedora:
 # - mode=login: open root shell with testuser configured as /usr/bin/lshell
 [private]
 pkg-rpm-run-fedora-mode mode='tests':
-    {{compose}} run --build --rm --user root -e MODE={{mode}} --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-run.sh
+    {{compose}} run --rm --user root -e MODE={{mode}} --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-run.sh
 
-# Run full tests against installed RPM
 [private]
-pkg-rpm-test-fedora:
-    just pkg-rpm-run-fedora-mode tests
+pkg-rpm-ensure-built:
+    ./scripts/pkg-ensure-built.sh build/rpm/.source-state.sha256 'build/rpm/RPMS/noarch/lshell-*.rpm' pkg-rpm-build 'RPM package'
 
-# Open an interactive root shell with testuser preconfigured
-pkg-rpm-run-fedora:
-    just pkg-rpm-run-fedora-mode login
-
-# Full RPM flow: build, install verification, and installed-package tests
+# Build RPM package artifacts from current workspace
 pkg-rpm-build:
     just pkg-rpm-build-fedora
-    just pkg-rpm-install-fedora
-    just pkg-rpm-test-fedora
+    ./scripts/pkg-write-source-stamp.sh build/rpm/.source-state.sha256
+
+# Build if needed, then run installed-package test suite
+pkg-rpm-test:
+    just pkg-rpm-ensure-built
+    just pkg-rpm-run-fedora-mode tests
+
+# Build if needed, then open interactive login flow
+pkg-rpm-run:
+    just pkg-rpm-ensure-built
+    just pkg-rpm-run-fedora-mode login
 
 test-fedora-pypi:
     just run fedora-pypi

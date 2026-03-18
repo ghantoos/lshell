@@ -82,6 +82,21 @@ class TestRuntimeContainmentFunctional(unittest.TestCase):
         finally:
             self._safe_exit(child)
 
+    def test_command_timeout_kills_long_running_command(self):
+        """Terminate foreground command when command_timeout is exceeded."""
+        child = self._spawn_shell(
+            "--strict 1 --forbidden \"[]\" --allowed \"['sleep']\" "
+            "--command_timeout 1"
+        )
+        try:
+            child.expect(PROMPT)
+            child.sendline("sleep 3")
+            child.expect(PROMPT)
+            output = child.before
+            self.assertIn("command timed out after 1s", output)
+        finally:
+            self._safe_exit(child)
+
 
 if __name__ == "__main__":
     unittest.main()

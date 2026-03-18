@@ -3,10 +3,12 @@
 import json
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 from lshell import containment
+from lshell import utils
 from lshell.checkconfig import CheckConfig
 
 
@@ -24,6 +26,7 @@ class TestContainmentConfigValidation(unittest.TestCase):
         conf = CheckConfig(self.base_args).returnconf()
         self.assertEqual(conf["max_sessions_per_user"], 0)
         self.assertEqual(conf["max_background_jobs"], 0)
+        self.assertEqual(conf["command_timeout"], 0)
 
     def test_max_sessions_per_user_rejects_negative_values(self):
         """Runtime containment integer keys must be non-negative."""
@@ -89,6 +92,25 @@ class TestSessionAccounting(unittest.TestCase):
                 accountant.acquire()
                 self.assertFalse(os.path.exists(stale_path))
                 accountant.release()
+
+
+class TestRuntimeExecutionHelpers(unittest.TestCase):
+    """Validate timeout helper behavior."""
+
+    def test_exec_cmd_timeout_returns_124(self):
+        """Foreground commands should be killed when command_timeout is exceeded."""
+        conf = {
+            "command_timeout": 1,
+            "max_sessions_per_user": 0,
+            "max_background_jobs": 0,
+            "security_audit_json": 0,
+        }
+        started = time.monotonic()
+        ret = utils.exec_cmd("sleep 2", conf=conf)
+        elapsed = time.monotonic() - started
+
+        self.assertEqual(ret, 124)
+        self.assertLess(elapsed, 2.5)
 
 
 if __name__ == "__main__":

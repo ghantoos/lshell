@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - non-POSIX fallback.
 RUNTIME_LIMIT_INT_KEYS = (
     "max_sessions_per_user",
     "max_background_jobs",
+    "command_timeout",
 )
 
 _DEFAULT_SESSION_STATE_ROOT = os.path.join(tempfile.gettempdir(), "lshell", "sessions")
@@ -30,6 +31,7 @@ class RuntimeLimits:
 
     max_sessions_per_user: int = 0
     max_background_jobs: int = 0
+    command_timeout: int = 0
 
 
 class ContainmentViolation(Exception):
@@ -72,6 +74,7 @@ def get_runtime_limits(conf):
     return RuntimeLimits(
         max_sessions_per_user=_as_non_negative_int(conf, "max_sessions_per_user"),
         max_background_jobs=_as_non_negative_int(conf, "max_background_jobs"),
+        command_timeout=_as_non_negative_int(conf, "command_timeout"),
     )
 
 

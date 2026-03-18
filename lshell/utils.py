@@ -9,6 +9,7 @@ import random
 import string
 import shlex
 import shutil
+import threading
 from getpass import getuser
 from time import strftime, gmtime
 import signal
@@ -881,6 +882,8 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     proc = None
     detached_session = True
     exec_env = dict(os.environ)
+    runtime_limits = containment.get_runtime_limits(conf or {})
+    command_timeout = runtime_limits.command_timeout
     if extra_env:
         exec_env.update(extra_env)
     # Prevent non-interactive shell startup file injection.
@@ -917,6 +920,41 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             else:
                 os.kill(proc.pid, signal.SIGCONT)
 
+    def _kill_process_group(target):
+        if not target or target.poll() is not None:
+            return
+        try:
+            if detached_session:
+                os.killpg(os.getpgid(target.pid), signal.SIGKILL)
+            else:
+                os.kill(target.pid, signal.SIGKILL)
+        except OSError:
+            return
+
+    def _timeout_reason():
+        return containment.reason_with_details(
+            "runtime_limit.command_timeout_exceeded",
+            timeout=command_timeout,
+        )
+
+    def _emit_timeout_event():
+        if conf:
+            audit.log_command_event(
+                conf,
+                cmd,
+                allowed=False,
+                reason=_timeout_reason(),
+                level="warning",
+            )
+        if log:
+            log.warning(
+                "lshell: runtime containment timed out command: "
+                f'timeout={command_timeout}s, command="{cmd}"'
+            )
+        sys.stderr.write(
+            f"lshell: command timed out after {command_timeout}s: {cmd}\n"
+        )
+
     previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
     previous_sigcont_handler = signal.getsignal(signal.SIGCONT)
 
@@ -945,6 +983,19 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
                     popen_kwargs["preexec_fn"] = os.setsid
                 proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
+            proc.lshell_timeout_timer = None
+            if command_timeout > 0:
+
+                def _background_timeout():
+                    if proc and proc.poll() is None:
+                        proc.lshell_timeout_triggered = True
+                        _kill_process_group(proc)
+                        _emit_timeout_event()
+
+                timeout_timer = threading.Timer(command_timeout, _background_timeout)
+                timeout_timer.daemon = True
+                timeout_timer.start()
+                proc.lshell_timeout_timer = timeout_timer
             # add to background jobs and return
             builtincmd.BACKGROUND_JOBS.append(proc)
             job_id = len(builtincmd.BACKGROUND_JOBS)
@@ -956,7 +1007,10 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
                 popen_kwargs["preexec_fn"] = os.setsid
             proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
-            proc.communicate()
+            if command_timeout > 0:
+                proc.communicate(timeout=command_timeout)
+            else:
+                proc.communicate()
             retcode = proc.returncode if proc.returncode is not None else 0
 
     except FileNotFoundError:
@@ -964,6 +1018,12 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             "Command execution failed: required shell interpreter not found.\n"
         )
         retcode = 127
+    except subprocess.TimeoutExpired:
+        _kill_process_group(proc)
+        if proc:
+            proc.communicate()
+        _emit_timeout_event()
+        retcode = 124
     except CtrlZException:  # Handle Ctrl+Z
         retcode = 0
     except KeyboardInterrupt:  # Handle Ctrl+C
@@ -974,6 +1034,12 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
                 os.kill(proc.pid, signal.SIGINT)
         retcode = 130
     finally:
+        if (
+            proc is not None
+            and getattr(proc, "lshell_timeout_timer", None) is not None
+            and proc.poll() is not None
+        ):
+            proc.lshell_timeout_timer.cancel()
         signal.signal(signal.SIGTSTP, previous_sigtstp_handler)
         signal.signal(signal.SIGCONT, previous_sigcont_handler)
 

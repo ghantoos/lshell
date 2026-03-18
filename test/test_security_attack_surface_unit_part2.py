@@ -459,6 +459,8 @@ class TestAttackSurfacePart2(unittest.TestCase):
             "/usr/libexec/sftp-server",
             background=False,
             extra_env=unittest.mock.ANY,
+            conf=unittest.mock.ANY,
+            log=unittest.mock.ANY,
         )
 
     @patch("lshell.utils.exec_cmd", side_effect=[1, 0])

@@ -44,6 +44,13 @@ builtins_list = [
 ]
 
 
+def _cancel_job_timeout(job):
+    """Cancel a watchdog timer attached to a background job, if any."""
+    timer = getattr(job, "lshell_timeout_timer", None)
+    if timer is not None:
+        timer.cancel()
+
+
 def cmd_lpath(conf):
     """Show path policy in a concise, readable format."""
     current_dir = os.path.realpath(os.getcwd())
@@ -200,6 +207,11 @@ def check_background_jobs():
             active_jobs.append(job)
             continue
 
+        _cancel_job_timeout(job)
+        if getattr(job, "lshell_timeout_triggered", False):
+            print(f"[{idx}]+  Timed Out               {_job_command(job)}")
+            continue
+
         status = "Done" if job.returncode == 0 else "Failed"
         args = _job_command(job)
         # only print if the job has not been interrupted by the user
@@ -211,6 +223,8 @@ def check_background_jobs():
 
 def get_job_status(job):
     """Return the status of a background job."""
+    if getattr(job, "lshell_timeout_triggered", False):
+        return "Timed Out"
     if job.poll() is None:
         status = "Stopped"
     elif job.poll() == 0:
@@ -231,6 +245,7 @@ def jobs():
     active_jobs = []
     for job in BACKGROUND_JOBS:
         if job.poll() is not None:
+            _cancel_job_timeout(job)
             continue
 
         active_jobs.append(job)

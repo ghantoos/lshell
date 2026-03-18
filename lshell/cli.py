@@ -9,6 +9,8 @@ import uuid
 from lshell import policy as policy_mode
 from lshell import systemsetup as system_setup
 from lshell import hardeninit as harden_init
+from lshell import audit
+from lshell import containment
 from lshell.checkconfig import CheckConfig
 from lshell.shellcmd import LshellTimeOut, ShellCmd
 
@@ -40,6 +42,24 @@ def main():
     userconf = CheckConfig(args).returnconf()
     userconf["session_id"] = os.environ.get("LSHELL_SESSION_ID", uuid.uuid4().hex)
     os.environ["LSHELL_SESSION_ID"] = userconf["session_id"]
+    session_accountant = containment.SessionAccountant(userconf)
+    try:
+        session_accountant.acquire()
+    except containment.ContainmentViolation as exception:
+        logger = userconf.get("logpath")
+        if logger:
+            logger.critical(exception.log_message)
+        audit.log_security_event(
+            userconf,
+            action="session_start",
+            allowed=False,
+            reason=exception.reason_code,
+            command="lshell startup",
+            level="warning",
+            message="lshell runtime containment decision",
+        )
+        sys.stderr.write(exception.user_message + "\n")
+        sys.exit(1)
 
     def disable_ctrl_z(_signum, _frame):
         return None
@@ -63,3 +83,5 @@ def main():
     except LshellTimeOut:
         userconf["logpath"].error("Timer expired")
         sys.stdout.write("\nTime is up.\n")
+    finally:
+        session_accountant.release()

@@ -16,6 +16,12 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 - Changed `harden-init` default output path to `/etc/lshell.d/<profile>.conf`.
 - Enabled `include_dir : /etc/lshell.d/*.conf` in the default `/etc/lshell.conf` template.
 
+### v0.11.1rc3 18/03/2026
+- Added runtime containment `max_sessions_per_user` with lock-protected per-user session accounting and startup enforcement.
+- Added runtime containment `max_background_jobs` enforcement for interactive `&` job creation with denial audit reasons.
+- Added runtime containment `command_timeout` to terminate overlong foreground/background commands and report timeout denials.
+- Added runtime containment `max_processes` with best-effort `RLIMIT_NPROC` enforcement for spawned commands.
+
 ### v0.11.0 10/03/2026
 - Reworked command parsing with a new `pyparsing`-based parser for more reliable command handling.
 - Added policy diagnostics and built-ins: `policy-show`, `policy-path`, and `policy-sudo`.

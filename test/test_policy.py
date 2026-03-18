@@ -1,9 +1,11 @@
 """Unit tests for lshell policy diagnostics mode."""
 
+import io
 import os
 import tempfile
 import textwrap
 import unittest
+from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -422,6 +424,64 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual(retcode, 0)
         self.assertEqual(ctx.called, "echo hi")
+
+    def test_print_user_view_includes_containment_settings(self):
+        """EX11 | policy overview includes runtime containment limits."""
+        result = {
+            "policy": {
+                "username": "bleh",
+                "strict": 1,
+                "warning_counter": 2,
+                "allowed": ["ls"],
+                "aliases": {},
+                "sudo_commands": [],
+                "timer": 0,
+                "forbidden": [";"],
+                "allowed_file_extensions": [],
+                "max_sessions_per_user": 2,
+                "max_background_jobs": 3,
+                "command_timeout": 15,
+                "max_processes": 10,
+            }
+        }
+
+        with redirect_stdout(io.StringIO()) as output:
+            policy.print_user_view(result)
+        rendered = output.getvalue()
+
+        self.assertIn("Max sessions/user      : 2", rendered)
+        self.assertIn("Max background jobs    : 3", rendered)
+        self.assertIn("Command timeout (sec)  : 15s", rendered)
+        self.assertIn("Max processes          : 10", rendered)
+
+    def test_print_user_view_shows_unlimited_for_zero_containment_limits(self):
+        """EX12 | zero-valued containment limits should render as Unlimited."""
+        result = {
+            "policy": {
+                "username": "bleh",
+                "strict": 0,
+                "warning_counter": 2,
+                "allowed": ["ls"],
+                "aliases": {},
+                "sudo_commands": [],
+                "timer": 0,
+                "forbidden": [";"],
+                "allowed_file_extensions": [],
+                "max_sessions_per_user": 0,
+                "max_background_jobs": 0,
+                "command_timeout": 0,
+                "max_processes": 0,
+            }
+        }
+
+        with redirect_stdout(io.StringIO()) as output:
+            policy.print_user_view(result)
+        rendered = output.getvalue()
+
+        self.assertIn("Max sessions/user      : Unlimited", rendered)
+        self.assertIn("Max background jobs    : Unlimited", rendered)
+        self.assertIn("Command timeout (sec)  : Unlimited", rendered)
+        self.assertIn("Max processes          : Unlimited", rendered)
 
 
 if __name__ == "__main__":

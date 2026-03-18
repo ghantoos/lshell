@@ -13,6 +13,7 @@ import textwrap
 from getpass import getuser
 
 from lshell import builtincmd
+from lshell import containment
 from lshell import configschema
 from lshell import sec
 from lshell import utils
@@ -375,6 +376,9 @@ def _build_runtime_policy(conf_raw, username):
         if ";" in policy["forbidden"]:
             policy["forbidden"].remove(";")
 
+    runtime_limits = containment.get_runtime_limits(conf_raw)
+    for key in containment.RUNTIME_LIMIT_INT_KEYS:
+        policy[key] = getattr(runtime_limits, key)
     return policy
 
 
@@ -701,11 +705,29 @@ def print_user_view(result, command_line=None, decision=None):
     timer_value = policy.get("timer")
     forbidden = sorted(set(policy.get("forbidden", [])), key=str)
     extensions = policy.get("allowed_file_extensions", [])
+    def _limit_or_unlimited(value, suffix=""):
+        return f"{value}{suffix}" if int(value) > 0 else "Unlimited"
 
     print(_paint("Policy Overview", "bold", color))
     print("-" * 15)
     print(f"Strict mode            : {strict_mode}")
     print(f"Warnings remaining     : {warnings_value}")
+    print(
+        "Max sessions/user      : "
+        + _limit_or_unlimited(policy.get("max_sessions_per_user", 0))
+    )
+    print(
+        "Max background jobs    : "
+        + _limit_or_unlimited(policy.get("max_background_jobs", 0))
+    )
+    print(
+        "Command timeout (sec)  : "
+        + _limit_or_unlimited(policy.get("command_timeout", 0), "s")
+    )
+    print(
+        "Max processes          : "
+        + _limit_or_unlimited(policy.get("max_processes", 0))
+    )
     print("")
 
     print(_paint("Command Access", "bold", color))

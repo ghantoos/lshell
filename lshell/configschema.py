@@ -42,6 +42,10 @@ INT_VALUE_KEYS = {
     "quiet",
     "loglevel",
     "security_audit_json",
+    "max_sessions_per_user",
+    "max_background_jobs",
+    "command_timeout",
+    "max_processes",
 }
 DICT_VALUE_KEYS = {"aliases", "env_vars", "messages"}
 STRING_VALUE_KEYS = {

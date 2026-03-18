@@ -444,6 +444,25 @@ different user than the default root.
 .I timer
 a value in seconds for the session timer
 .TP
+.I max_sessions_per_user
+maximum concurrent lshell sessions for the same user.
+Set to \fB0\fR to disable this limit (default).
+.TP
+.I max_background_jobs
+maximum active background jobs (\fB&\fR) allowed in one lshell session.
+Set to \fB0\fR to disable this limit (default).
+.TP
+.I command_timeout
+wall-clock timeout in seconds applied per executed command. Commands exceeding
+this timeout are terminated and reported as denied by runtime containment.
+Set to \fB0\fR to disable this limit (default).
+.TP
+.I max_processes
+maximum processes per spawned command via \fBRLIMIT_NPROC\fR.
+Set to \fB0\fR to disable this limit (default).
+Best practice: keep \fBcommand_timeout\fR enabled whenever \fBmax_processes\fR
+is strict (especially \fB1\fR).
+.TP
 .I umask
 set process umask for the lshell session. Value must be octal (0000 to 0777),
 for example \fB0002\fR.

@@ -9,6 +9,7 @@ import random
 import string
 import shlex
 import shutil
+import threading
 from getpass import getuser
 from time import strftime, gmtime
 import signal
@@ -19,6 +20,7 @@ from lshell import builtincmd
 from lshell import sec
 from lshell import messages
 from lshell import audit
+from lshell import containment
 
 
 def usage(exitcode=1):
@@ -498,7 +500,7 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     elif executable == "cd":
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
     elif executable == "ls":
-        retcode = exec_cmd(full_command)
+        retcode = exec_cmd(full_command, conf=shell_context.conf, log=shell_context.log)
     elif executable in ["lpath", "policy-path"]:
         retcode = builtincmd.cmd_lpath(conf)
     elif executable in ["lsudo", "policy-sudo"]:
@@ -691,6 +693,33 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         full_command = " | ".join(pipeline_parts)
         background = bool(j + 1 < len(command_sequence) and command_sequence[j + 1] == "&")
 
+        if background:
+            limits = containment.get_runtime_limits(shell_context.conf)
+            if limits.max_background_jobs > 0:
+                active_jobs = len(builtincmd.jobs())
+                if active_jobs >= limits.max_background_jobs:
+                    reason = containment.reason_with_details(
+                        "runtime_limit.max_background_jobs_exceeded",
+                        active=active_jobs,
+                        limit=limits.max_background_jobs,
+                    )
+                    shell_context.log.critical(
+                        "lshell: runtime containment denied background command: "
+                        f"active_jobs={active_jobs}, limit={limits.max_background_jobs}, "
+                        f'command="{full_command}"'
+                    )
+                    sys.stderr.write(
+                        "lshell: background job denied: "
+                        f"max_background_jobs={limits.max_background_jobs} reached\n"
+                    )
+                    audit.log_command_event(
+                        shell_context.conf,
+                        full_command,
+                        allowed=False,
+                        reason=reason,
+                    )
+                    return 126
+
         parsed_parts = [_parse_command(part) for part in pipeline_parts]
         if any(part[0] is None for part in parsed_parts):
             return _handle_unknown_syntax(full_command)
@@ -833,7 +862,11 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
                 reason="allowed by command and path policy",
             )
             retcode = exec_cmd(
-                full_command, background=background, extra_env=extra_env
+                full_command,
+                background=background,
+                extra_env=extra_env,
+                conf=shell_context.conf,
+                log=shell_context.log,
             )
         else:
             retcode = _handle_unknown_syntax(full_command)
@@ -844,11 +877,24 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
     return retcode
 
 
-def exec_cmd(cmd, background=False, extra_env=None):
+def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
     detached_session = True
     exec_env = dict(os.environ)
+    runtime_limits = containment.get_runtime_limits(conf or {})
+    command_timeout = runtime_limits.command_timeout
+    unsupported_limits = containment.unsupported_rlimits(runtime_limits)
+    if conf is not None and log and unsupported_limits:
+        logged_key = "_runtime_unsupported_limits_logged"
+        already_logged = set(conf.get(logged_key, []))
+        pending = [item for item in unsupported_limits if item not in already_logged]
+        if pending:
+            log.warning(
+                "lshell: runtime containment limits unsupported on this platform: "
+                + ", ".join(sorted(pending))
+            )
+            conf[logged_key] = sorted(already_logged.union(pending))
     if extra_env:
         exec_env.update(extra_env)
     # Prevent non-interactive shell startup file injection.
@@ -885,6 +931,41 @@ def exec_cmd(cmd, background=False, extra_env=None):
             else:
                 os.kill(proc.pid, signal.SIGCONT)
 
+    def _kill_process_group(target):
+        if not target or target.poll() is not None:
+            return
+        try:
+            if detached_session:
+                os.killpg(os.getpgid(target.pid), signal.SIGKILL)
+            else:
+                os.kill(target.pid, signal.SIGKILL)
+        except OSError:
+            return
+
+    def _timeout_reason():
+        return containment.reason_with_details(
+            "runtime_limit.command_timeout_exceeded",
+            timeout=command_timeout,
+        )
+
+    def _emit_timeout_event():
+        if conf:
+            audit.log_command_event(
+                conf,
+                cmd,
+                allowed=False,
+                reason=_timeout_reason(),
+                level="warning",
+            )
+        if log:
+            log.warning(
+                "lshell: runtime containment timed out command: "
+                f'timeout={command_timeout}s, command="{cmd}"'
+            )
+        sys.stderr.write(
+            f"lshell: command timed out after {command_timeout}s: {cmd}\n"
+        )
+
     previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
     previous_sigcont_handler = signal.getsignal(signal.SIGCONT)
 
@@ -901,6 +982,10 @@ def exec_cmd(cmd, background=False, extra_env=None):
             cmd_args = split_cmd
             if not background:
                 detached_session = False
+        preexec_fn = None
+        needs_resource_limits = runtime_limits.max_processes > 0
+        if os.name == "posix" and (detached_session or needs_resource_limits):
+            preexec_fn = containment.build_preexec_fn(detached_session, runtime_limits)
         if background:
             with open(os.devnull, "r") as devnull_in:
                 popen_kwargs = {
@@ -909,10 +994,23 @@ def exec_cmd(cmd, background=False, extra_env=None):
                     "stderr": sys.stderr,
                     "env": exec_env,
                 }
-                if detached_session:
-                    popen_kwargs["preexec_fn"] = os.setsid
+                if preexec_fn is not None:
+                    popen_kwargs["preexec_fn"] = preexec_fn
                 proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
+            proc.lshell_timeout_timer = None
+            if command_timeout > 0:
+
+                def _background_timeout():
+                    if proc and proc.poll() is None:
+                        proc.lshell_timeout_triggered = True
+                        _kill_process_group(proc)
+                        _emit_timeout_event()
+
+                timeout_timer = threading.Timer(command_timeout, _background_timeout)
+                timeout_timer.daemon = True
+                timeout_timer.start()
+                proc.lshell_timeout_timer = timeout_timer
             # add to background jobs and return
             builtincmd.BACKGROUND_JOBS.append(proc)
             job_id = len(builtincmd.BACKGROUND_JOBS)
@@ -920,11 +1018,14 @@ def exec_cmd(cmd, background=False, extra_env=None):
             retcode = 0
         else:
             popen_kwargs = {"env": exec_env}
-            if detached_session:
-                popen_kwargs["preexec_fn"] = os.setsid
+            if preexec_fn is not None:
+                popen_kwargs["preexec_fn"] = preexec_fn
             proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
-            proc.communicate()
+            if command_timeout > 0:
+                proc.communicate(timeout=command_timeout)
+            else:
+                proc.communicate()
             retcode = proc.returncode if proc.returncode is not None else 0
 
     except FileNotFoundError:
@@ -932,6 +1033,34 @@ def exec_cmd(cmd, background=False, extra_env=None):
             "Command execution failed: required shell interpreter not found.\n"
         )
         retcode = 127
+    except subprocess.TimeoutExpired:
+        _kill_process_group(proc)
+        if proc:
+            proc.communicate()
+        _emit_timeout_event()
+        retcode = 124
+    except subprocess.SubprocessError as exception:
+        reason = containment.reason_with_details(
+            "runtime_limit.preexec_application_failed",
+            error=str(exception),
+        )
+        if conf:
+            audit.log_command_event(
+                conf,
+                cmd,
+                allowed=False,
+                reason=reason,
+                level="warning",
+            )
+        if log:
+            log.critical(
+                "lshell: runtime containment denied command execution: "
+                f"{reason}"
+            )
+        sys.stderr.write(
+            "lshell: command denied: unable to apply runtime containment limits\n"
+        )
+        retcode = 126
     except CtrlZException:  # Handle Ctrl+Z
         retcode = 0
     except KeyboardInterrupt:  # Handle Ctrl+C
@@ -942,6 +1071,12 @@ def exec_cmd(cmd, background=False, extra_env=None):
                 os.kill(proc.pid, signal.SIGINT)
         retcode = 130
     finally:
+        if (
+            proc is not None
+            and getattr(proc, "lshell_timeout_timer", None) is not None
+            and proc.poll() is not None
+        ):
+            proc.lshell_timeout_timer.cancel()
         signal.signal(signal.SIGTSTP, previous_sigtstp_handler)
         signal.signal(signal.SIGCONT, previous_sigcont_handler)
 

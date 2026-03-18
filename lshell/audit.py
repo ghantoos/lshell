@@ -98,6 +98,27 @@ def pop_decision_reason(conf, default="policy evaluation failed"):
 
 def log_command_event(conf, command, allowed, reason, level=None):
     """Emit one ECS-aligned command authorization event."""
+    log_security_event(
+        conf,
+        action="command_authorization",
+        allowed=allowed,
+        reason=reason,
+        command=command,
+        level=level,
+        message="lshell command authorization decision",
+    )
+
+
+def log_security_event(
+    conf,
+    action,
+    allowed,
+    reason,
+    command="",
+    level=None,
+    message="lshell security decision",
+):
+    """Emit one ECS-aligned runtime security event."""
     if not enabled(conf):
         return
 
@@ -106,7 +127,7 @@ def log_command_event(conf, command, allowed, reason, level=None):
     log_level = getattr(logging, log_method.upper(), logging.INFO)
     logger.log(
         log_level,
-        "lshell command authorization decision",
+        message,
         extra={
             "session_id": str(conf.get("session_id", "")),
             "source_ip": _source_ip(),
@@ -114,10 +135,10 @@ def log_command_event(conf, command, allowed, reason, level=None):
             "event_kind": "event",
             "event_category": ["authentication", "process"],
             "event_type": ["access"],
-            "event_action": "command_authorization",
+            "event_action": str(action),
             "event_outcome": "success" if allowed else "failure",
             "event_reason": str(reason),
-            "process_command_line": str(command),
+            "process_command_line": str(command or ""),
             "lshell_security_allowed": bool(allowed),
         },
     )

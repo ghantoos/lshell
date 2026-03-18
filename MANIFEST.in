@@ -3,5 +3,6 @@ include README.md
 include CHANGELOG.md
 include etc/lshell.conf
 include etc/logrotate.d/lshell
+include etc/bash_completion.d/lshell
 include man/lshell.1
 include MANIFEST.in

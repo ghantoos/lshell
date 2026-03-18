@@ -48,6 +48,16 @@ Usage: lshell setup-system [OPTIONS]
   --mode <octal>            : Log directory mode (default 2770)
   --set-shell-user <name>   : Assign lshell as login shell (repeatable)
   --add-group-user <name>   : Add user to log-writer group (repeatable)
+
+Usage: lshell harden-init [OPTIONS]
+  --list-templates          : List available hardened templates
+  --profile <name>          : Template name (sftp-only, rsync-backup, deploy-minimal, readonly-support)
+  --group <name>            : Add scoped [grp:<name>] section (repeatable)
+  --user <name>             : Add scoped [user:<name>] section (repeatable)
+  --output <path>           : Write rendered config file to path (default /etc/lshell.d/<profile>.conf)
+  --stdout                  : Print rendered config to stdout
+  --dry-run                 : Render and run sanity checks without writing
+  --explain                 : Print profile hardening rationale
 """
 
 # Intro Text

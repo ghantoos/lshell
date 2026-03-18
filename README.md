@@ -61,6 +61,18 @@ For automated setup (including `/etc/shells` registration + user shell assignmen
 lshell setup-system --set-shell-user user_name --add-group-user user_name
 ```
 
+Generate a hardened scoped include file for a specific group and user directly from CLI flags:
+
+```bash
+lshell harden-init \
+  --profile sftp-only \
+  --group sftpusers \
+  --user alice \
+  --output /etc/lshell.d/sftp-only.conf
+```
+
+If `--output` is omitted, `harden-init` writes to `/etc/lshell.d/<profile>.conf`.
+
 ## Policy diagnostics
 
 Explain the effective policy and decision for a command:
@@ -84,6 +96,34 @@ Hide these built-ins if needed:
 
 ```ini
 policy_commands : 0
+```
+
+## Hardened profile generator
+
+`harden-init` ships secure-by-default templates to bootstrap restricted accounts quickly:
+
+- `sftp-only`
+- `rsync-backup`
+- `deploy-minimal`
+- `readonly-support`
+
+Examples:
+
+```bash
+# Show available templates
+lshell harden-init --list-templates
+
+# Print generated profile to stdout
+lshell harden-init --profile readonly-support --stdout
+
+# Validate rendering and sanity checks without writing files
+lshell harden-init --profile rsync-backup --dry-run
+
+# Show rationale for security controls
+lshell harden-init --profile deploy-minimal --stdout --explain
+
+# Generate scoped sections (no [default] section)
+lshell harden-init --profile sftp-only --group sftpusers --user alice --stdout
 ```
 
 ## Configuration

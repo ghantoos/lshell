@@ -8,6 +8,15 @@ DEB_FILE="$(ls -1t /app/build/deb/lshell_*_all.deb | head -n1)"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y "${DEB_FILE}"
+DEBIAN_FRONTEND=noninteractive apt-get install -y bash-completion
+
+if ! grep -q "bash_completion/bash_completion" /root/.bashrc 2>/dev/null; then
+  cat >>/root/.bashrc <<'EOF'
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+  . /usr/share/bash-completion/bash_completion
+fi
+EOF
+fi
 
 install -m 0644 /app/debian/lshell.deb-test.conf /etc/lshell.deb-test.conf
 

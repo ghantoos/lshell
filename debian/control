@@ -10,7 +10,7 @@ Homepage: https://github.com/ghantoos/lshell
 Package: lshell
 Architecture: all
 Homepage: http://lshell.ghantoos.org/
-Depends: ${misc:Depends}, ${python3:Depends}, adduser
+Depends: ${misc:Depends}, ${python3:Depends}, adduser, bash-completion
 Description: restricts a user's shell environment to limited sets of commands
  lshell is a shell coded in Python that lets you restrict a user's environment
  to limited sets of commands, choose to enable/disable any command over SSH 

@@ -460,6 +460,8 @@ Set to \fB0\fR to disable this limit (default).
 .I max_processes
 maximum processes per spawned command via \fBRLIMIT_NPROC\fR.
 Set to \fB0\fR to disable this limit (default).
+Best practice: keep \fBcommand_timeout\fR enabled whenever \fBmax_processes\fR
+is strict (especially \fB1\fR).
 .TP
 .I umask
 set process umask for the lshell session. Value must be octal (0000 to 0777),

@@ -166,6 +166,7 @@ Operational notes:
 - `max_background_jobs` denies new `&` jobs once the configured active count is reached.
 - `command_timeout` enforces a per-command wall-clock timeout (foreground and background commands).
 - `max_processes` is applied via POSIX `RLIMIT_NPROC` on spawned command processes.
+- Best practice: keep `command_timeout` enabled whenever `max_processes` is strict (especially `1`).
 
 ### Best practices
 

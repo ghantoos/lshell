@@ -1,13 +1,63 @@
-name: Publish Python 🐍 distribution 📦 to PyPI and TestPyPI
+name: Publish Python 🐍 distribution 📦 to PyPI
 
-on: 
+on:
   push:
     tags:
-      - '*'
+      - "*"
+
+permissions:
+  contents: read
 
 jobs:
+  validate-release-channel:
+    name: Validate release channel
+    runs-on: ubuntu-latest
+    outputs:
+      branch_channel: ${{ steps.validate.outputs.branch_channel }}
+      release_type: ${{ steps.validate.outputs.release_type }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Validate tag and branch channel
+      id: validate
+      env:
+        TAG_NAME: ${{ github.ref_name }}
+        TAG_SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+        git fetch --no-tags origin main pre-release
+        TAG_VERSION="${TAG_NAME}"
+        PACKAGE_VERSION="$(python3 -c 'from lshell.variables import __version__; print(__version__)')"
+
+        if [[ "${TAG_VERSION}" != "${PACKAGE_VERSION}" ]]; then
+          echo "Tag/version mismatch: tag=${TAG_VERSION}, package=${PACKAGE_VERSION}" >&2
+          exit 1
+        fi
+
+        if [[ "${TAG_NAME}" == *rc* ]]; then
+          if git merge-base --is-ancestor "${TAG_SHA}" "origin/pre-release"; then
+            echo "branch_channel=pre-release" >> "${GITHUB_OUTPUT}"
+            echo "release_type=release-candidate" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Tag ${TAG_NAME} is an RC but is not based on pre-release." >&2
+            exit 1
+          fi
+        else
+          if git merge-base --is-ancestor "${TAG_SHA}" "origin/main"; then
+            echo "branch_channel=main" >> "${GITHUB_OUTPUT}"
+            echo "release_type=stable" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Tag ${TAG_NAME} is stable but is not based on main." >&2
+            exit 1
+          fi
+        fi
+
   build:
     name: Build distribution 📦
+    needs:
+    - validate-release-channel
     runs-on: ubuntu-latest
 
     steps:
@@ -34,6 +84,7 @@ jobs:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
     needs:
+    - validate-release-channel
     - build
     runs-on: ubuntu-latest
 
@@ -49,5 +100,11 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
+    - name: Print release channel
+      env:
+        RELEASE_TYPE: ${{ needs.validate-release-channel.outputs.release_type }}
+        BRANCH_CHANNEL: ${{ needs.validate-release-channel.outputs.branch_channel }}
+      run: |
+        echo "Publishing ${GITHUB_REF_NAME} as ${RELEASE_TYPE} from ${BRANCH_CHANNEL}"
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

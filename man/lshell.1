@@ -444,6 +444,10 @@ different user than the default root.
 .I timer
 a value in seconds for the session timer
 .TP
+.I max_sessions_per_user
+maximum concurrent lshell sessions for the same user.
+Set to \fB0\fR to disable this limit (default).
+.TP
 .I umask
 set process umask for the lshell session. Value must be octal (0000 to 0777),
 for example \fB0002\fR.

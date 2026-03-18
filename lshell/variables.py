@@ -109,6 +109,7 @@ configparams = [
     "policy_commands=",
     "include_dir=",
     "security_audit_json=",
+    "max_sessions_per_user=",
 ]
 
 FORBIDDEN_ENVIRON = (

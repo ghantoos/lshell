@@ -141,12 +141,25 @@ Key settings to review:
 - `messages`
 - `warning_counter`, `strict`
 - `umask`
+- runtime containment: `max_sessions_per_user`
 
 CLI overrides are supported, for example:
 
 ```bash
 lshell --config /path/to/lshell.conf --log /var/log/lshell --umask 0077
 ```
+
+### Runtime containment limits
+
+Runtime limits are optional and disabled by default when set to `0`.
+
+```ini
+max_sessions_per_user : 2
+```
+
+Operational notes:
+
+- `max_sessions_per_user` is tracked with lock-protected session records; stale entries are cleaned automatically.
 
 ### Best practices
 

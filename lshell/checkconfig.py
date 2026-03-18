@@ -20,6 +20,7 @@ from lshell import variables
 from lshell import builtincmd
 from lshell import configschema
 from lshell import audit
+from lshell import containment
 
 
 class CheckConfig:
@@ -568,6 +569,7 @@ class CheckConfig:
             "policy_commands",
             "quiet",
             "security_audit_json",
+            "max_sessions_per_user",
         ]:
             try:
                 if len(self.conf_raw[item]) == 0:
@@ -608,6 +610,12 @@ class CheckConfig:
 
         if self.conf["prompt_short"] not in [0, 1, 2]:
             self.log.critical("lshell: config: 'prompt_short' must be 0, 1, or 2")
+            sys.exit(1)
+
+        try:
+            containment.validate_runtime_config(self.conf)
+        except ValueError as exception:
+            self.log.critical(f"lshell: config: {exception}")
             sys.exit(1)
 
         self.conf["username"] = self.user

@@ -72,3 +72,13 @@ class TestCliArgs(unittest.TestCase):
                         cli.main()
         mock_setup_main.assert_called_once_with(["--group", "ops"])
         mock_exit.assert_called_once_with(7)
+
+    def test_main_routes_harden_init_subcommand(self):
+        """Dispatch harden-init subcommand to dedicated handler."""
+        with patch("lshell.cli.harden_init.main", return_value=3) as mock_harden_main:
+            with patch("lshell.cli.sys.argv", ["lshell", "harden-init", "--list-templates"]):
+                with patch("lshell.cli.sys.exit", side_effect=SystemExit) as mock_exit:
+                    with self.assertRaises(SystemExit):
+                        cli.main()
+        mock_harden_main.assert_called_once_with(["--list-templates"])
+        mock_exit.assert_called_once_with(3)

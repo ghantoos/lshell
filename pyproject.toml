@@ -30,7 +30,7 @@ dynamic = ["version"]
 
 [project.urls]
 GitHub = "https://github.com/ghantoos/lshell"
-Changelog = "https://github.com/ghantoos/lshell/blob/master/CHANGELOG.md"
+Changelog = "https://github.com/ghantoos/lshell/blob/main/CHANGELOG.md"
 
 [project.scripts]
 lshell = "lshell.cli:main"

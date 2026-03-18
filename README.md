@@ -1,6 +1,6 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/limited-shell?link=https%3A%2F%2Fpypi.org%2Fproject%2Flimited-shell%2F)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/limited-shell)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/lshell-tests.yml?branch=master&label=tests&link=https%3A%2F%2Fgithub.com%2Fghantoos%2Flshell%2Factions%2Fworkflows%2Flshell-tests.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/lshell-tests.yml?label=tests&link=https%3A%2F%2Fgithub.com%2Fghantoos%2Flshell%2Factions%2Fworkflows%2Flshell-tests.yml)
 
 # lshell
 
@@ -35,6 +35,13 @@ Uninstall:
 ```bash
 pip uninstall limited-shell
 ```
+
+## Branch and release workflow
+
+- `main`: stable release branch. Tag stable versions from this branch (for example `1.2.3`).
+- `pre-release`: integration branch for tested features before release. Tag release candidates from this branch (for example `1.2.4rc1`).
+- PyPI publishing uses one project ([limited-shell](https://pypi.org/project/limited-shell/)) and accepts both stable and `rc` versions.
+- CI (`lshell-tests`) runs on pushes and PRs targeting both `main` and `pre-release`.
 
 ## Quick start
 

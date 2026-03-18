@@ -102,3 +102,33 @@ class TestAuditLogging(unittest.TestCase):
         }
         audit.log_command_event(conf, "echo ok", allowed=True, reason="allowed")
         self.assertEqual(logger.entries, [])
+
+    def test_log_security_event_keeps_machine_readable_reason(self):
+        """Generic runtime security events should retain reason code strings."""
+        logger = _DummyAuditLogger()
+        conf = {
+            "security_audit_json": 1,
+            "logpath": logger,
+            "session_id": "session-abc",
+            "username": "testuser",
+        }
+
+        audit.log_security_event(
+            conf,
+            action="runtime_containment",
+            allowed=False,
+            reason="runtime_limit.max_background_jobs_exceeded",
+            command="sleep 60 &",
+            level="warning",
+            message="lshell runtime containment decision",
+        )
+
+        self.assertEqual(len(logger.entries), 1)
+        level, message, extra = logger.entries[0]
+        self.assertEqual(level, logging.WARNING)
+        self.assertEqual(message, "lshell runtime containment decision")
+        self.assertEqual(extra["event_action"], "runtime_containment")
+        self.assertEqual(
+            extra["event_reason"], "runtime_limit.max_background_jobs_exceeded"
+        )
+        self.assertEqual(extra["event_outcome"], "failure")

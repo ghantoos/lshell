@@ -141,7 +141,7 @@ Key settings to review:
 - `messages`
 - `warning_counter`, `strict`
 - `umask`
-- runtime containment: `max_sessions_per_user`
+- runtime containment: `max_sessions_per_user`, `max_background_jobs`
 
 CLI overrides are supported, for example:
 
@@ -155,11 +155,13 @@ Runtime limits are optional and disabled by default when set to `0`.
 
 ```ini
 max_sessions_per_user : 2
+max_background_jobs   : 4
 ```
 
 Operational notes:
 
 - `max_sessions_per_user` is tracked with lock-protected session records; stale entries are cleaned automatically.
+- `max_background_jobs` denies new `&` jobs once the configured active count is reached.
 
 ### Best practices
 

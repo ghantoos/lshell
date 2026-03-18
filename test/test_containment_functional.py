@@ -16,7 +16,7 @@ PROMPT = f"{USER}:~\\$"
 
 
 class TestRuntimeContainmentFunctional(unittest.TestCase):
-    """Validate max_sessions_per_user in a real shell session."""
+    """Validate runtime containment limits in a real shell session."""
 
     def _spawn_shell(self, extra_args, env=None, timeout=15):
         command = f"{LSHELL} --config {CONFIG} {extra_args}"
@@ -62,6 +62,25 @@ class TestRuntimeContainmentFunctional(unittest.TestCase):
                 if second is not None:
                     second.close(force=True)
                 self._safe_exit(first)
+
+    def test_max_background_jobs_enforced(self):
+        """Deny new background command when max_background_jobs is reached."""
+        child = self._spawn_shell(
+            "--strict 1 --forbidden \"[]\" --allowed \"['sleep']\" "
+            "--max_background_jobs 1"
+        )
+        try:
+            child.expect(PROMPT)
+            child.sendline("sleep 60 &")
+            child.expect(PROMPT)
+
+            child.sendline("sleep 60 &")
+            child.expect(PROMPT)
+            output = child.before
+            self.assertIn("background job denied", output)
+            self.assertIn("max_background_jobs=1", output)
+        finally:
+            self._safe_exit(child)
 
 
 if __name__ == "__main__":

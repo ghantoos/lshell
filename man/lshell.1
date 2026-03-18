@@ -448,6 +448,10 @@ a value in seconds for the session timer
 maximum concurrent lshell sessions for the same user.
 Set to \fB0\fR to disable this limit (default).
 .TP
+.I max_background_jobs
+maximum active background jobs (\fB&\fR) allowed in one lshell session.
+Set to \fB0\fR to disable this limit (default).
+.TP
 .I umask
 set process umask for the lshell session. Value must be octal (0000 to 0777),
 for example \fB0002\fR.

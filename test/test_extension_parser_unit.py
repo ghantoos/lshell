@@ -3,7 +3,7 @@
 import io
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from lshell import sec
 from lshell import utils
@@ -105,7 +105,11 @@ class TestExtensionParser(unittest.TestCase):
         shell_context = DummyShellContext(conf)
         retcode = utils.cmd_parse_execute("ls /tmp", shell_context=shell_context)
         self.assertEqual(retcode, 0)
-        mock_exec_cmd.assert_called_once_with("ls /tmp")
+        mock_exec_cmd.assert_called_once_with(
+            "ls /tmp",
+            conf=ANY,
+            log=ANY,
+        )
 
 
 if __name__ == "__main__":

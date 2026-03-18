@@ -110,6 +110,7 @@ configparams = [
     "include_dir=",
     "security_audit_json=",
     "max_sessions_per_user=",
+    "max_background_jobs=",
 ]
 
 FORBIDDEN_ENVIRON = (

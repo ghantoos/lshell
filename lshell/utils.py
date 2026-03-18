@@ -19,6 +19,7 @@ from lshell import builtincmd
 from lshell import sec
 from lshell import messages
 from lshell import audit
+from lshell import containment
 
 
 def usage(exitcode=1):
@@ -498,7 +499,7 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     elif executable == "cd":
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
     elif executable == "ls":
-        retcode = exec_cmd(full_command)
+        retcode = exec_cmd(full_command, conf=shell_context.conf, log=shell_context.log)
     elif executable in ["lpath", "policy-path"]:
         retcode = builtincmd.cmd_lpath(conf)
     elif executable in ["lsudo", "policy-sudo"]:
@@ -691,6 +692,33 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
         full_command = " | ".join(pipeline_parts)
         background = bool(j + 1 < len(command_sequence) and command_sequence[j + 1] == "&")
 
+        if background:
+            limits = containment.get_runtime_limits(shell_context.conf)
+            if limits.max_background_jobs > 0:
+                active_jobs = len(builtincmd.jobs())
+                if active_jobs >= limits.max_background_jobs:
+                    reason = containment.reason_with_details(
+                        "runtime_limit.max_background_jobs_exceeded",
+                        active=active_jobs,
+                        limit=limits.max_background_jobs,
+                    )
+                    shell_context.log.critical(
+                        "lshell: runtime containment denied background command: "
+                        f"active_jobs={active_jobs}, limit={limits.max_background_jobs}, "
+                        f'command="{full_command}"'
+                    )
+                    sys.stderr.write(
+                        "lshell: background job denied: "
+                        f"max_background_jobs={limits.max_background_jobs} reached\n"
+                    )
+                    audit.log_command_event(
+                        shell_context.conf,
+                        full_command,
+                        allowed=False,
+                        reason=reason,
+                    )
+                    return 126
+
         parsed_parts = [_parse_command(part) for part in pipeline_parts]
         if any(part[0] is None for part in parsed_parts):
             return _handle_unknown_syntax(full_command)
@@ -833,7 +861,11 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
                 reason="allowed by command and path policy",
             )
             retcode = exec_cmd(
-                full_command, background=background, extra_env=extra_env
+                full_command,
+                background=background,
+                extra_env=extra_env,
+                conf=shell_context.conf,
+                log=shell_context.log,
             )
         else:
             retcode = _handle_unknown_syntax(full_command)
@@ -844,7 +876,7 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
     return retcode
 
 
-def exec_cmd(cmd, background=False, extra_env=None):
+def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
     detached_session = True

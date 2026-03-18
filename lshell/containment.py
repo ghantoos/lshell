@@ -16,7 +16,10 @@ except ImportError:  # pragma: no cover - non-POSIX fallback.
     fcntl = None
 
 
-RUNTIME_LIMIT_INT_KEYS = ("max_sessions_per_user",)
+RUNTIME_LIMIT_INT_KEYS = (
+    "max_sessions_per_user",
+    "max_background_jobs",
+)
 
 _DEFAULT_SESSION_STATE_ROOT = os.path.join(tempfile.gettempdir(), "lshell", "sessions")
 
@@ -26,6 +29,7 @@ class RuntimeLimits:
     """Resolved runtime limits for one shell session."""
 
     max_sessions_per_user: int = 0
+    max_background_jobs: int = 0
 
 
 class ContainmentViolation(Exception):
@@ -67,6 +71,7 @@ def get_runtime_limits(conf):
     """Return parsed runtime limits with disabled defaults."""
     return RuntimeLimits(
         max_sessions_per_user=_as_non_negative_int(conf, "max_sessions_per_user"),
+        max_background_jobs=_as_non_negative_int(conf, "max_background_jobs"),
     )
 
 

@@ -20,14 +20,17 @@ class TestContainmentConfigValidation(unittest.TestCase):
     base_args = [f"--config={CONFIG}", "--quiet=1"]
 
     def test_max_sessions_per_user_defaults_disabled(self):
-        """max_sessions_per_user should default to 0."""
+        """Runtime containment keys should default to disabled mode."""
         conf = CheckConfig(self.base_args).returnconf()
         self.assertEqual(conf["max_sessions_per_user"], 0)
+        self.assertEqual(conf["max_background_jobs"], 0)
 
     def test_max_sessions_per_user_rejects_negative_values(self):
-        """max_sessions_per_user must be non-negative."""
-        with self.assertRaises(SystemExit):
-            CheckConfig(self.base_args + ["--max_sessions_per_user=-1"]).returnconf()
+        """Runtime containment integer keys must be non-negative."""
+        for key in containment.RUNTIME_LIMIT_INT_KEYS:
+            with self.subTest(key=key):
+                with self.assertRaises(SystemExit):
+                    CheckConfig(self.base_args + [f"--{key}=-1"]).returnconf()
 
 
 class TestSessionAccounting(unittest.TestCase):

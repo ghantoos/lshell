@@ -18,6 +18,7 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 
 ### v0.11.1rc3 18/03/2026
 - Added runtime containment `max_sessions_per_user` with lock-protected per-user session accounting and startup enforcement.
+- Added runtime containment `max_background_jobs` enforcement for interactive `&` job creation with denial audit reasons.
 
 ### v0.11.0 10/03/2026
 - Reworked command parsing with a new `pyparsing`-based parser for more reliable command handling.

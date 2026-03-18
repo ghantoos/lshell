@@ -253,7 +253,12 @@ class TestFunctions(unittest.TestCase):
 
         # Interrupt the foreground process (should not affect background)
         child.sendcontrol("c")
-        child.expect(PROMPT)
+        try:
+            child.expect(PROMPT, timeout=5)
+        except pexpect.TIMEOUT:
+            # Some PTY/readline combinations only redraw on next Enter.
+            child.sendline("")
+            child.expect(PROMPT, timeout=5)
 
         # Verify the background command is still running
         child.sendline("jobs")

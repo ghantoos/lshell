@@ -381,58 +381,69 @@ class ShellCmd(cmd.Cmd, object):
             partial_line = ""
             stop = None
             while not stop:
-                # Check background jobs after each command
-                builtincmd.check_background_jobs()
-                if self.cmdqueue:
-                    line = self.cmdqueue.pop(0)
-                else:
-                    if self.use_rawinput:
-                        try:
-                            line = input(self.conf["promptprint"])
-                        except EOFError:
-                            line = "EOF"
-                        except KeyboardInterrupt:
-                            self.stdout.write("\n")
-                            if partial_line:
-                                partial_line = ""
-                                self.conf["promptprint"] = utils.updateprompt(
-                                    os.getcwd(), self.conf
-                                )
-                            continue
+                try:
+                    # Check background jobs after each command
+                    builtincmd.check_background_jobs()
+                    if self.cmdqueue:
+                        line = self.cmdqueue.pop(0)
                     else:
-                        self.stdout.write(self.conf["promptprint"])
-                        self.stdout.flush()
-                        line = self.stdin.readline()
-                        if not line:
-                            line = "EOF"
+                        if self.use_rawinput:
+                            try:
+                                line = input(self.conf["promptprint"])
+                            except EOFError:
+                                line = "EOF"
+                            except KeyboardInterrupt:
+                                self.stdout.write("\n")
+                                if partial_line:
+                                    partial_line = ""
+                                    self.conf["promptprint"] = utils.updateprompt(
+                                        os.getcwd(), self.conf
+                                    )
+                                continue
                         else:
-                            # chop \n
-                            line = line[:-1]
-                    if len(line) > 1 and line.startswith("\\"):
-                        # implying previous partial line
-                        line = line[:1].replace("\\", "", 1)
-                    if partial_line:
-                        line = partial_line + line
-                    if line.endswith("\\"):
-                        # continuation character. First partial line.
-                        # We shall expect the command to continue in
-                        # a new line. Change to bash like PS2 prompt to
-                        # indicate this continuation to the user
-                        partial_line = line.strip("\\")
-                        self.conf["promptprint"] = self.prompt2  # switching to PS2
-                        continue
-                    elif line.count('"') % 2 != 0 or line.count("'") % 2 != 0:
-                        # unclosed quotes detected
-                        partial_line = line
-                        self.conf["promptprint"] = self.prompt2  # switching to PS2
-                        continue
+                            self.stdout.write(self.conf["promptprint"])
+                            self.stdout.flush()
+                            line = self.stdin.readline()
+                            if not line:
+                                line = "EOF"
+                            else:
+                                # chop \n
+                                line = line[:-1]
+                        if len(line) > 1 and line.startswith("\\"):
+                            # implying previous partial line
+                            line = line[:1].replace("\\", "", 1)
+                        if partial_line:
+                            line = partial_line + line
+                        if line.endswith("\\"):
+                            # continuation character. First partial line.
+                            # We shall expect the command to continue in
+                            # a new line. Change to bash like PS2 prompt to
+                            # indicate this continuation to the user
+                            partial_line = line.strip("\\")
+                            self.conf["promptprint"] = self.prompt2  # switching to PS2
+                            continue
+                        elif line.count('"') % 2 != 0 or line.count("'") % 2 != 0:
+                            # unclosed quotes detected
+                            partial_line = line
+                            self.conf["promptprint"] = self.prompt2  # switching to PS2
+                            continue
+                        partial_line = ""
+                        self.conf["promptprint"] = utils.updateprompt(
+                            os.getcwd(), self.conf
+                        )
+                    line = self.precmd(line)
+                    stop = self.onecmd(line)
+                    stop = self.postcmd(stop, line)
+                except KeyboardInterrupt:
+                    # Keep prompt handling local to cmdloop even when Ctrl+C
+                    # races outside input() (e.g. background-job checks).
+                    self.stdout.write("\n")
+                    self.stdout.flush()
                     partial_line = ""
                     self.conf["promptprint"] = utils.updateprompt(
                         os.getcwd(), self.conf
                     )
-                line = self.precmd(line)
-                stop = self.onecmd(line)
-                stop = self.postcmd(stop, line)
+                    continue
             self.postloop()
         finally:
             if self.use_rawinput and self.completekey:

@@ -1,0 +1,45 @@
+# Bash completion for lshell
+
+_lshell_completion() {
+    local cur prev subcommand opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    subcommand="${COMP_WORDS[1]}"
+
+    case "$prev" in
+        --config|--log|--output|--log-dir|--shell-path)
+            COMPREPLY=( $(compgen -f -- "$cur") )
+            return 0
+            ;;
+        --profile)
+            COMPREPLY=( $(compgen -W "sftp-only rsync-backup deploy-minimal readonly-support" -- "$cur") )
+            return 0
+            ;;
+    esac
+
+    if [ "$COMP_CWORD" -eq 1 ]; then
+        COMPREPLY=( $(compgen -W "policy-show setup-system harden-init --config --log --help --version" -- "$cur") )
+        return 0
+    fi
+
+    case "$subcommand" in
+        policy-show)
+            opts="--config --user --group --json --command --help"
+            ;;
+        setup-system)
+            opts="--group --log-dir --owner --mode --shell-path --skip-shell-registration --set-shell-user --add-group-user --help"
+            ;;
+        harden-init)
+            opts="--list-templates --profile --group --user --output --stdout --dry-run --explain --help"
+            ;;
+        *)
+            opts="--config --log --help --version"
+            ;;
+    esac
+
+    COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+    return 0
+}
+
+complete -F _lshell_completion lshell

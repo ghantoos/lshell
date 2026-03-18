@@ -16,6 +16,7 @@ BuildRequires:  python3-setuptools
 BuildRequires:  pyproject-rpm-macros
 Requires:       python3
 Requires:       python3-pyparsing >= 3.0.0
+Requires:       bash-completion
 
 %description
 lshell is a shell coded in Python that lets you restrict a user's environment
@@ -48,6 +49,7 @@ rm -rf %{buildroot}
 %{_bindir}/lshell
 %config(noreplace) %{_prefix}/etc/lshell.conf
 %config(noreplace) %{_prefix}/etc/logrotate.d/lshell
+%{_datadir}/bash-completion/completions/lshell
 %{python3_sitelib}/lshell/
 %{python3_sitelib}/limited_shell-*.dist-info
 %{_mandir}/man1/lshell.1*

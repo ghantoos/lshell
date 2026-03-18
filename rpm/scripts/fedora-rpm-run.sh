@@ -7,6 +7,15 @@ MODE="${MODE#mode=}"
 RPM_FILE="$(ls -1t /app/build/rpm/RPMS/noarch/lshell-*.rpm | head -n1)"
 
 dnf install -y "${RPM_FILE}"
+dnf install -y bash-completion
+
+if ! grep -q "bash_completion" /root/.bashrc 2>/dev/null; then
+  cat >>/root/.bashrc <<'EOF'
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+  . /usr/share/bash-completion/bash_completion
+fi
+EOF
+fi
 
 if [ -f /usr/etc/lshell.conf ] && [ ! -f /etc/lshell.conf ]; then
   cp -a /usr/etc/lshell.conf /etc/lshell.conf

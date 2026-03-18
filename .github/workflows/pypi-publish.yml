@@ -2,109 +2,89 @@ name: Publish Python 🐍 distribution 📦 to PyPI
 
 on:
   push:
+    branches:
+    - pre-release
     tags:
-      - "*"
+    - "*"
 
 permissions:
   contents: read
 
 jobs:
-  validate-release-channel:
-    name: Validate release channel
+  publish:
     runs-on: ubuntu-latest
-    outputs:
-      branch_channel: ${{ steps.validate.outputs.branch_channel }}
-      release_type: ${{ steps.validate.outputs.release_type }}
+    permissions:
+      id-token: write
 
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0
-    - name: Validate tag and branch channel
-      id: validate
-      env:
-        TAG_NAME: ${{ github.ref_name }}
-        TAG_SHA: ${{ github.sha }}
-      run: |
-        set -euo pipefail
-        git fetch --no-tags origin main pre-release
-        TAG_VERSION="${TAG_NAME}"
-        PACKAGE_VERSION="$(python3 -c 'from lshell.variables import __version__; print(__version__)')"
-
-        if [[ "${TAG_VERSION}" != "${PACKAGE_VERSION}" ]]; then
-          echo "Tag/version mismatch: tag=${TAG_VERSION}, package=${PACKAGE_VERSION}" >&2
-          exit 1
-        fi
-
-        if [[ "${TAG_NAME}" == *rc* ]]; then
-          if git merge-base --is-ancestor "${TAG_SHA}" "origin/pre-release"; then
-            echo "branch_channel=pre-release" >> "${GITHUB_OUTPUT}"
-            echo "release_type=release-candidate" >> "${GITHUB_OUTPUT}"
-          else
-            echo "Tag ${TAG_NAME} is an RC but is not based on pre-release." >&2
-            exit 1
-          fi
-        else
-          if git merge-base --is-ancestor "${TAG_SHA}" "origin/main"; then
-            echo "branch_channel=main" >> "${GITHUB_OUTPUT}"
-            echo "release_type=stable" >> "${GITHUB_OUTPUT}"
-          else
-            echo "Tag ${TAG_NAME} is stable but is not based on main." >&2
-            exit 1
-          fi
-        fi
-
-  build:
-    name: Build distribution 📦
-    needs:
-    - validate-release-channel
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
+        fetch-depth: 2
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.x"
-    - name: Install pypa/build
-      run: >-
-        python3 -m
-        pip install
-        build
-        --user
-    - name: Build a binary wheel and a source tarball
-      run: python3 -m build
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-
-  publish-to-pypi:
-    name: >-
-      Publish Python 🐍 distribution 📦 to PyPI
-    needs:
-    - validate-release-channel
-    - build
-    runs-on: ubuntu-latest
-
-    environment:
-      name: pypi
-      url: https://pypi.org/p/limited-shell
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
-    steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    - name: Print release channel
+    - name: Decide whether to publish
+      id: decide
       env:
-        RELEASE_TYPE: ${{ needs.validate-release-channel.outputs.release_type }}
-        BRANCH_CHANNEL: ${{ needs.validate-release-channel.outputs.branch_channel }}
+        REF_TYPE: ${{ github.ref_type }}
+        REF_NAME: ${{ github.ref_name }}
+        SHA: ${{ github.sha }}
+        BEFORE_SHA: ${{ github.event.before }}
       run: |
-        echo "Publishing ${GITHUB_REF_NAME} as ${RELEASE_TYPE} from ${BRANCH_CHANNEL}"
+        set -euo pipefail
+        CURRENT_VERSION="$(python3 -c 'from lshell.variables import __version__; print(__version__)')"
+        echo "version=${CURRENT_VERSION}" >> "${GITHUB_OUTPUT}"
+
+        # Official releases: tag is required and must match package version.
+        if [[ "${REF_TYPE}" == "tag" ]]; then
+          if [[ "${REF_NAME}" == "${CURRENT_VERSION}" ]]; then
+            echo "should_publish=true" >> "${GITHUB_OUTPUT}"
+            echo "reason=tag_release" >> "${GITHUB_OUTPUT}"
+          else
+            echo "should_publish=false" >> "${GITHUB_OUTPUT}"
+            echo "reason=tag_version_mismatch" >> "${GITHUB_OUTPUT}"
+          fi
+          exit 0
+        fi
+
+        # Auto RC release from pre-release only when version file changed.
+        if [[ "${REF_NAME}" != "pre-release" ]]; then
+          echo "should_publish=false" >> "${GITHUB_OUTPUT}"
+          echo "reason=not_pre_release_branch" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        if [[ "${CURRENT_VERSION}" != *rc* ]]; then
+          echo "should_publish=false" >> "${GITHUB_OUTPUT}"
+          echo "reason=not_rc_version" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        if [[ -z "${BEFORE_SHA}" || "${BEFORE_SHA}" =~ ^0+$ ]]; then
+          echo "should_publish=false" >> "${GITHUB_OUTPUT}"
+          echo "reason=missing_before_sha" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        if ! git diff --name-only "${BEFORE_SHA}..${SHA}" | grep -qx "lshell/variables.py"; then
+          echo "should_publish=false" >> "${GITHUB_OUTPUT}"
+          echo "reason=version_file_not_changed" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        echo "should_publish=true" >> "${GITHUB_OUTPUT}"
+        echo "reason=rc_version_file_changed" >> "${GITHUB_OUTPUT}"
+    - name: Decision summary
+      run: |
+        echo "should_publish=${{ steps.decide.outputs.should_publish }}"
+        echo "version=${{ steps.decide.outputs.version }}"
+        echo "reason=${{ steps.decide.outputs.reason }}"
+    - name: Build distribution 📦
+      if: steps.decide.outputs.should_publish == 'true'
+      run: |
+        python3 -m pip install --upgrade build
+        python3 -m build
     - name: Publish distribution 📦 to PyPI
+      if: steps.decide.outputs.should_publish == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1

@@ -40,7 +40,7 @@ pip uninstall limited-shell
 
 - `main`: stable release branch. Tag stable versions from this branch (for example `1.2.3`).
 - `pre-release`: integration branch for tested features before release. Tag release candidates from this branch (for example `1.2.4rc1`).
-- PyPI publishing uses one project (`limited-shell`) and accepts both stable and `rc` versions.
+- PyPI publishing uses one project ([limited-shell](https://pypi.org/project/limited-shell/)) and accepts both stable and `rc` versions.
 - CI (`lshell-tests`) runs on pushes and PRs targeting both `main` and `pre-release`.
 
 ## Quick start

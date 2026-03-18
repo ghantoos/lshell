@@ -314,3 +314,25 @@ class TestFunctions(unittest.TestCase):
         assert (
             output == expected_output
         ), f"Expected '{expected_output}', got '{output}'"
+
+    def test_78_ctrl_d_with_stopped_jobs_no_unknown_syntax(self):
+        """F78 | Ctrl+D with stopped jobs should warn without unknown EOF syntax."""
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['tail']\"")
+        child.expect(PROMPT)
+
+        child.sendline("tail -f")
+        time.sleep(1)
+        child.sendcontrol("z")
+        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+        child.expect(PROMPT)
+
+        # First Ctrl+D should warn and keep shell alive.
+        child.sendeof()
+        child.expect("There are stopped jobs.", timeout=5)
+        child.expect(PROMPT, timeout=5)
+        output = child.before.decode("utf-8")
+        assert "unknown syntax: EOF" not in output, output
+
+        # Second Ctrl+D should exit (kill remaining stopped jobs).
+        child.sendeof()
+        child.expect(pexpect.EOF, timeout=5)

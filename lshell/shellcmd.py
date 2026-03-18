@@ -100,9 +100,6 @@ class ShellCmd(cmd.Cmd, object):
             self.conf["promptprint"] = utils.updateprompt(os.getcwd(), self.conf)
             self.log = self.conf["logpath"]
 
-        if self.g_cmd in ["quit", "exit", "EOF"]:
-            self.do_exit()
-
         if self.conf["timer"] > 0:
             self.mytimer(0)
 
@@ -573,6 +570,14 @@ class ShellCmd(cmd.Cmd, object):
         list_tmp = list(dict.fromkeys(self.completenames("", "")).keys())
         list_tmp.sort()
         self.columnize(list_tmp)
+
+    def do_EOF(self, arg=None):  # pylint: disable=invalid-name
+        """Handle Ctrl+D / EOF exactly like exit."""
+        return self.do_exit(arg)
+
+    def do_quit(self, arg=None):
+        """Handle quit exactly like exit."""
+        return self.do_exit(arg)
 
     def do_policy_show(self, arg=None):
         """Show resolved policy values and optional decision for a command."""

@@ -572,6 +572,7 @@ class CheckConfig:
             "max_sessions_per_user",
             "max_background_jobs",
             "command_timeout",
+            "max_processes",
         ]:
             try:
                 if len(self.conf_raw[item]) == 0:

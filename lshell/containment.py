@@ -15,11 +15,17 @@ try:  # POSIX-only file lock support.
 except ImportError:  # pragma: no cover - non-POSIX fallback.
     fcntl = None
 
+try:  # POSIX rlimits.
+    import resource
+except ImportError:  # pragma: no cover - non-POSIX fallback.
+    resource = None
+
 
 RUNTIME_LIMIT_INT_KEYS = (
     "max_sessions_per_user",
     "max_background_jobs",
     "command_timeout",
+    "max_processes",
 )
 
 _DEFAULT_SESSION_STATE_ROOT = os.path.join(tempfile.gettempdir(), "lshell", "sessions")
@@ -32,6 +38,7 @@ class RuntimeLimits:
     max_sessions_per_user: int = 0
     max_background_jobs: int = 0
     command_timeout: int = 0
+    max_processes: int = 0
 
 
 class ContainmentViolation(Exception):
@@ -75,6 +82,7 @@ def get_runtime_limits(conf):
         max_sessions_per_user=_as_non_negative_int(conf, "max_sessions_per_user"),
         max_background_jobs=_as_non_negative_int(conf, "max_background_jobs"),
         command_timeout=_as_non_negative_int(conf, "command_timeout"),
+        max_processes=_as_non_negative_int(conf, "max_processes"),
     )
 
 
@@ -279,3 +287,58 @@ class SessionAccountant:
             return
         signal.signal(signum, signal.SIG_DFL)
         os.kill(os.getpid(), signum)
+
+
+def apply_rlimits(limits, resource_module=None):
+    """Apply configured rlimits in the current process context."""
+    if resource_module is None:
+        resource_module = resource
+
+    unsupported = []
+    if resource_module is None:
+        if limits.max_processes > 0:
+            unsupported.append("max_processes")
+        return unsupported
+
+    if limits.max_processes > 0:
+        rlimit_nproc = getattr(resource_module, "RLIMIT_NPROC", None)
+        if rlimit_nproc is None:
+            unsupported.append("max_processes")
+        else:
+            try:
+                resource_module.setrlimit(
+                    rlimit_nproc,
+                    (limits.max_processes, limits.max_processes),
+                )
+            except (OSError, ValueError):
+                unsupported.append("max_processes")
+
+    return unsupported
+
+
+def unsupported_rlimits(limits, resource_module=None):
+    """Return containment limit keys unsupported by the current platform."""
+    if resource_module is None:
+        resource_module = resource
+
+    unsupported = []
+    if resource_module is None:
+        if limits.max_processes > 0:
+            unsupported.append("max_processes")
+        return unsupported
+
+    if limits.max_processes > 0 and getattr(resource_module, "RLIMIT_NPROC", None) is None:
+        unsupported.append("max_processes")
+
+    return unsupported
+
+
+def build_preexec_fn(detached_session, limits):
+    """Build subprocess pre-exec hook to apply process/session limits."""
+
+    def _preexec():
+        if detached_session:
+            os.setsid()
+        apply_rlimits(limits)
+
+    return _preexec

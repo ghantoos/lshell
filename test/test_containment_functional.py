@@ -97,6 +97,28 @@ class TestRuntimeContainmentFunctional(unittest.TestCase):
         finally:
             self._safe_exit(child)
 
+    def _last_non_empty_line(self, text):
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        return lines[-1] if lines else ""
+
+    def test_max_processes_denies_forking_pipeline(self):
+        """Low max_processes should fail a command requiring child process forks."""
+        child = self._spawn_shell(
+            "--strict 1 --forbidden \"[]\" --allowed \"['cat','echo']\" "
+            "--max_processes 1 --command_timeout 2"
+        )
+        try:
+            child.expect(PROMPT)
+            child.sendline("echo hi | cat")
+            child.expect(PROMPT)
+
+            child.sendline("echo $?")
+            child.expect(PROMPT)
+            exit_line = self._last_non_empty_line(child.before)
+            self.assertNotEqual(exit_line, "0")
+        finally:
+            self._safe_exit(child)
+
 
 if __name__ == "__main__":
     unittest.main()

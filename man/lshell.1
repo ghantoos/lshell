@@ -457,6 +457,10 @@ wall-clock timeout in seconds applied per executed command. Commands exceeding
 this timeout are terminated and reported as denied by runtime containment.
 Set to \fB0\fR to disable this limit (default).
 .TP
+.I max_processes
+maximum processes per spawned command via \fBRLIMIT_NPROC\fR.
+Set to \fB0\fR to disable this limit (default).
+.TP
 .I umask
 set process umask for the lshell session. Value must be octal (0000 to 0777),
 for example \fB0002\fR.

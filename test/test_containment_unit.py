@@ -112,6 +112,46 @@ class TestRuntimeExecutionHelpers(unittest.TestCase):
         self.assertEqual(ret, 124)
         self.assertLess(elapsed, 2.5)
 
+    def test_apply_rlimits_applies_max_processes(self):
+        """rlimit helper should apply max_processes via RLIMIT_NPROC."""
+
+        class FakeResource:
+            """Minimal resource-module stub capturing setrlimit calls."""
+
+            RLIMIT_NPROC = 1
+
+            def __init__(self):
+                self.calls = []
+
+            def setrlimit(self, key, value):
+                """Record the requested resource limit tuple."""
+                self.calls.append((key, value))
+
+        fake_resource = FakeResource()
+        limits = containment.RuntimeLimits(max_processes=10)
+        unsupported = containment.apply_rlimits(limits, resource_module=fake_resource)
+
+        self.assertEqual(unsupported, [])
+        self.assertIn((FakeResource.RLIMIT_NPROC, (10, 10)), fake_resource.calls)
+
+    def test_apply_rlimits_reports_unsupported_max_processes(self):
+        """Missing RLIMIT_NPROC should be reported, not crash."""
+
+        class MissingResource:
+            """Resource stub without RLIMIT constants for unsupported-path tests."""
+
+            def setrlimit(self, _key, _value):
+                """Fail if called since no RLIMIT constants are exposed."""
+                raise AssertionError("setrlimit should not be called without constants")
+
+        limits = containment.RuntimeLimits(max_processes=1)
+        unsupported = containment.apply_rlimits(
+            limits,
+            resource_module=MissingResource(),
+        )
+
+        self.assertIn("max_processes", unsupported)
+
 
 if __name__ == "__main__":
     unittest.main()

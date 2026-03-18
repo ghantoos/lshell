@@ -884,6 +884,17 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     exec_env = dict(os.environ)
     runtime_limits = containment.get_runtime_limits(conf or {})
     command_timeout = runtime_limits.command_timeout
+    unsupported_limits = containment.unsupported_rlimits(runtime_limits)
+    if conf is not None and log and unsupported_limits:
+        logged_key = "_runtime_unsupported_limits_logged"
+        already_logged = set(conf.get(logged_key, []))
+        pending = [item for item in unsupported_limits if item not in already_logged]
+        if pending:
+            log.warning(
+                "lshell: runtime containment limits unsupported on this platform: "
+                + ", ".join(sorted(pending))
+            )
+            conf[logged_key] = sorted(already_logged.union(pending))
     if extra_env:
         exec_env.update(extra_env)
     # Prevent non-interactive shell startup file injection.
@@ -971,6 +982,10 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             cmd_args = split_cmd
             if not background:
                 detached_session = False
+        preexec_fn = None
+        needs_resource_limits = runtime_limits.max_processes > 0
+        if os.name == "posix" and (detached_session or needs_resource_limits):
+            preexec_fn = containment.build_preexec_fn(detached_session, runtime_limits)
         if background:
             with open(os.devnull, "r") as devnull_in:
                 popen_kwargs = {
@@ -979,8 +994,8 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
                     "stderr": sys.stderr,
                     "env": exec_env,
                 }
-                if detached_session:
-                    popen_kwargs["preexec_fn"] = os.setsid
+                if preexec_fn is not None:
+                    popen_kwargs["preexec_fn"] = preexec_fn
                 proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
             proc.lshell_timeout_timer = None
@@ -1003,8 +1018,8 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             retcode = 0
         else:
             popen_kwargs = {"env": exec_env}
-            if detached_session:
-                popen_kwargs["preexec_fn"] = os.setsid
+            if preexec_fn is not None:
+                popen_kwargs["preexec_fn"] = preexec_fn
             proc = subprocess.Popen(cmd_args, **popen_kwargs)
             proc.lshell_cmd = cmd
             if command_timeout > 0:
@@ -1024,6 +1039,28 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             proc.communicate()
         _emit_timeout_event()
         retcode = 124
+    except subprocess.SubprocessError as exception:
+        reason = containment.reason_with_details(
+            "runtime_limit.preexec_application_failed",
+            error=str(exception),
+        )
+        if conf:
+            audit.log_command_event(
+                conf,
+                cmd,
+                allowed=False,
+                reason=reason,
+                level="warning",
+            )
+        if log:
+            log.critical(
+                "lshell: runtime containment denied command execution: "
+                f"{reason}"
+            )
+        sys.stderr.write(
+            "lshell: command denied: unable to apply runtime containment limits\n"
+        )
+        retcode = 126
     except CtrlZException:  # Handle Ctrl+Z
         retcode = 0
     except KeyboardInterrupt:  # Handle Ctrl+C

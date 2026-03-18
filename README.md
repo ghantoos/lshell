@@ -141,7 +141,7 @@ Key settings to review:
 - `messages`
 - `warning_counter`, `strict`
 - `umask`
-- runtime containment: `max_sessions_per_user`, `max_background_jobs`, `command_timeout`
+- runtime containment: `max_sessions_per_user`, `max_background_jobs`, `command_timeout`, `max_processes`
 
 CLI overrides are supported, for example:
 
@@ -157,6 +157,7 @@ Runtime limits are optional and disabled by default when set to `0`.
 max_sessions_per_user : 2
 max_background_jobs   : 4
 command_timeout       : 30
+max_processes         : 64
 ```
 
 Operational notes:
@@ -164,6 +165,7 @@ Operational notes:
 - `max_sessions_per_user` is tracked with lock-protected session records; stale entries are cleaned automatically.
 - `max_background_jobs` denies new `&` jobs once the configured active count is reached.
 - `command_timeout` enforces a per-command wall-clock timeout (foreground and background commands).
+- `max_processes` is applied via POSIX `RLIMIT_NPROC` on spawned command processes.
 
 ### Best practices
 

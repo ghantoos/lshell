@@ -398,6 +398,31 @@ class TestAttackSurfacePart2(unittest.TestCase):
                 ),
             )
 
+    def test_check_path_rejects_nul_byte_path_without_crashing(self):
+        """Malformed NUL-byte path operands should fail closed without exceptions."""
+        conf = CheckConfig(
+            self.args + ["--path=['/tmp']", "--strict=0"]
+        ).returnconf()
+        ret, _conf = sec.check_path("ls /tmp/\x00crash", conf, completion=1, strict=0)
+        self.assertEqual(ret, 1)
+
+    def test_check_path_rejects_nul_byte_tilde_path_without_crashing(self):
+        """Malformed tilde-prefixed NUL paths should fail closed without exceptions."""
+        conf = CheckConfig(
+            self.args + ["--path=['/tmp']", "--strict=0"]
+        ).returnconf()
+        ret, _conf = sec.check_path("ls ~\x00crash", conf, completion=1, strict=0)
+        self.assertEqual(ret, 1)
+
+    @patch("lshell.sec._safe_realpath", side_effect=lambda path: path)
+    @patch("lshell.sec.glob.iglob")
+    def test_expand_shell_wildcards_rejects_excessive_matches(self, mock_iglob, _mock_realpath):
+        """Massive wildcard expansions should fail closed instead of exhausting memory."""
+        mock_iglob.return_value = (
+            f"/tmp/match-{index}" for index in range(sec.MAX_WILDCARD_MATCHES + 1)
+        )
+        self.assertEqual(sec.expand_shell_wildcards("/tmp/**"), [])
+
     @patch("lshell.utils.exec_cmd")
     def test_cmd_parse_execute_trusted_protocol_blocks_non_protocol_chained_command(
         self, mock_exec
@@ -434,6 +459,8 @@ class TestAttackSurfacePart2(unittest.TestCase):
             "/usr/libexec/sftp-server",
             background=False,
             extra_env=unittest.mock.ANY,
+            conf=unittest.mock.ANY,
+            log=unittest.mock.ANY,
         )
 
     @patch("lshell.utils.exec_cmd", side_effect=[1, 0])
@@ -463,6 +490,18 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
         self.assertTrue(allowed)
         self.assertIsNone(blocked)
+
+    def test_check_allowed_file_extensions_handles_nul_byte_path_without_crashing(self):
+        """Malformed NUL-byte values should be processed safely."""
+        allowed, blocked = sec.check_allowed_file_extensions("cat /tmp/\x00bad", [".txt"])
+        self.assertFalse(allowed)
+        self.assertEqual(blocked, ["<none>"])
+
+    def test_check_allowed_file_extensions_handles_nul_byte_tilde_without_crashing(self):
+        """Malformed tilde-prefixed NUL values should be processed safely."""
+        allowed, blocked = sec.check_allowed_file_extensions("cat ~\x00bad", [".txt"])
+        self.assertFalse(allowed)
+        self.assertEqual(blocked, ["<none>"])
 
     def test_config_rejects_message_override_with_unknown_placeholder(self):
         """Fail closed when a custom message references unsupported placeholders."""

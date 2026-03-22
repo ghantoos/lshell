@@ -12,6 +12,9 @@ lshell \- Limited Shell
 .br
 .B lshell policy-show
 [\fIOPTIONS\fR]
+.br
+.B lshell harden-init
+[\fIOPTIONS\fR]
 
 .SH DESCRIPTION
 \fBlshell\fR provides a limited shell configured per user via a configuration file.
@@ -58,6 +61,35 @@ command to evaluate against final policy
 .TP
 .B \--json
 print diagnostics as JSON
+.RE
+.TP
+.B harden-init
+Generate a hardened baseline configuration profile. Use with:
+.RS
+.TP
+.B \--list-templates
+list available hardened templates
+.TP
+.B \--profile \fI<NAME>\fR
+template name (\fBsftp-only\fR, \fBrsync-backup\fR, \fBdeploy-minimal\fR, \fBreadonly-support\fR)
+.TP
+.B \--group \fI<NAME>\fR
+add scoped \fB[grp:<name>]\fR section (repeatable)
+.TP
+.B \--user \fI<NAME>\fR
+add scoped \fB[user:<name>]\fR section (repeatable)
+.TP
+.B \--output \fI<FILE>\fR
+write rendered config to file (default: /etc/lshell.d/<profile>.conf)
+.TP
+.B \--stdout
+print rendered config to stdout
+.TP
+.B \--dry-run
+render and run sanity checks without writing files
+.TP
+.B \--explain
+print profile hardening rationale
 .RE
 
 .SH CONFIGURATION
@@ -412,6 +444,25 @@ different user than the default root.
 .I timer
 a value in seconds for the session timer
 .TP
+.I max_sessions_per_user
+maximum concurrent lshell sessions for the same user.
+Set to \fB0\fR to disable this limit (default).
+.TP
+.I max_background_jobs
+maximum active background jobs (\fB&\fR) allowed in one lshell session.
+Set to \fB0\fR to disable this limit (default).
+.TP
+.I command_timeout
+wall-clock timeout in seconds applied per executed command. Commands exceeding
+this timeout are terminated and reported as denied by runtime containment.
+Set to \fB0\fR to disable this limit (default).
+.TP
+.I max_processes
+maximum processes per spawned command via \fBRLIMIT_NPROC\fR.
+Set to \fB0\fR to disable this limit (default).
+Best practice: keep \fBcommand_timeout\fR enabled whenever \fBmax_processes\fR
+is strict (especially \fB1\fR).
+.TP
 .I umask
 set process umask for the lshell session. Value must be octal (0000 to 0777),
 for example \fB0002\fR.
@@ -563,6 +614,33 @@ file
 .RS
 Runs lshell with a private session umask; new files default to 600 and
 directories to 700.
+.RE
+.TP
+.B $ lshell harden-init --profile sftp-only --group sftpusers --user alice --output /etc/lshell.d/sftp-only.conf
+.RS
+Generate a hardened scoped include file for a specific group and user directly from CLI flags:
+.sp
+.nf
+.ft 3
+
+# /etc/lshell.d/sftp-only.conf
+[grp:sftpusers]
+allowed         : ['pwd','ls','cd']
+allowed_shell_escape : []
+forbidden       : [';','&','|','`','>','<','$(','${']
+warning_counter : 2
+strict          : 1
+scp             : 0
+scp_upload      : 0
+scp_download    : 0
+sftp            : 1
+overssh         : []
+
+[user:alice]
+allowed         : ['pwd','ls','cd']
+warning_counter : 1
+.ft
+.fi
 .RE
 .TP
 .B $ ./test_script.lsh

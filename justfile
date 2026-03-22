@@ -18,6 +18,7 @@ up service:
     {{compose}} up --build {{service}}
 
 # Build one or more services, e.g. `just build ubuntu_tests ubuntu`
+[private]
 build +services:
     {{compose}} build {{services}}
 
@@ -42,23 +43,7 @@ sample-list:
 # Example: just sample-lshell debian 04_sudo_and_aliases.conf
 [private]
 sample-lshell distro sample='01_baseline_allowlist.conf':
-    @bash -ceu '\
-      sample="{{sample}}"; \
-      sample="${sample#sample=}"; \
-      distro="{{distro}}"; \
-      if [[ ! -f "test/samples/${sample}" ]]; then \
-        echo "Unknown sample: ${sample}"; \
-        echo "Use: just sample-list"; \
-        exit 1; \
-      fi; \
-      if [[ "${distro}" != "debian" && "${distro}" != "ubuntu" && "${distro}" != "fedora" ]]; then \
-        echo "Unsupported distro: ${distro}"; \
-        echo "Allowed values: debian, ubuntu, fedora"; \
-        exit 1; \
-      fi; \
-      echo "Starting interactive lshell on ${distro} with test/samples/${sample}"; \
-      {{compose}} run --build --rm --entrypoint lshell "${distro}" --config "/app/test/samples/${sample}" \
-    '
+    COMPOSE="{{compose}}" ./scripts/compose-sample-lshell.sh "{{distro}}" "{{sample}}"
 
 # User-friendly distro shortcuts:
 sample-debian sample='01_baseline_allowlist.conf':
@@ -70,9 +55,17 @@ sample-ubuntu sample='01_baseline_allowlist.conf':
 sample-fedora sample='01_baseline_allowlist.conf':
     just sample-lshell fedora {{sample}}
 
+# Open a distro container as root with package-style suggested checks.
+[private]
+distro-login-shell distro pkg_cmd cfg='/app/etc/lshell.conf':
+    COMPOSE="{{compose}}" ./scripts/compose-distro-login-shell.sh "{{distro}}" "{{pkg_cmd}}" "{{cfg}}"
+
 # Debian
-debian:
+run-debian:
     just run debian
+
+run-debian-root:
+    just distro-login-shell debian "dpkg -s lshell"
 
 test-debian:
     just run debian_tests
@@ -83,9 +76,48 @@ test-debian-pypi:
 test-debian-pypi-pre:
     just run debian-pypi-pre
 
+# Build a Debian package from the current workspace using Debian tooling
+[private]
+pkg-deb-build-debian:
+    {{compose}} run --build --rm --user root --entrypoint bash debian /app/debian/scripts/debian-deb-build.sh
+
+# Install latest built Debian package and verify CLI smoke checks
+[private]
+pkg-deb-install-debian:
+    {{compose}} run --build --rm --user root --entrypoint bash debian /app/debian/scripts/debian-deb-install-smoke.sh
+
+# Run against installed Debian package in two modes:
+# - mode=tests (default): run full /app/test suite as testuser
+# - mode=login: open root shell with testuser configured as /usr/bin/lshell
+[private]
+pkg-deb-run-debian-mode mode='tests':
+    {{compose}} run --rm --user root -e MODE={{mode}} --entrypoint bash debian /app/debian/scripts/debian-deb-run.sh
+
+[private]
+pkg-deb-ensure-built:
+    ./scripts/pkg-ensure-built.sh build/deb/.source-state.sha256 'build/deb/lshell_*_all.deb' pkg-deb-build 'Debian package'
+
+# Build Debian package artifacts from current workspace
+pkg-deb-build:
+    just pkg-deb-build-debian
+    ./scripts/pkg-write-source-stamp.sh build/deb/.source-state.sha256
+
+# Build if needed, then run installed-package test suite
+pkg-deb-test:
+    just pkg-deb-ensure-built
+    just pkg-deb-run-debian-mode tests
+
+# Build if needed, then open interactive login flow
+pkg-deb-run:
+    just pkg-deb-ensure-built
+    just pkg-deb-run-debian-mode login
+
 # Ubuntu
-ubuntu:
+run-ubuntu:
     just run ubuntu
+
+run-ubuntu-root:
+    just distro-login-shell ubuntu "dpkg -s lshell"
 
 test-ubuntu:
     just run ubuntu_tests
@@ -97,11 +129,50 @@ test-ubuntu-pypi-pre:
     just run ubuntu-pypi-pre
 
 # Fedora
-fedora:
+run-fedora:
     just run fedora
+
+run-fedora-root:
+    just distro-login-shell fedora "rpm -qi lshell"
 
 test-fedora:
     just run fedora_tests
+
+# Build an RPM from the current workspace using Fedora tooling
+[private]
+pkg-rpm-build-fedora:
+    {{compose}} run --build --rm --user root --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-build.sh
+
+# Install latest built RPM in Fedora container and verify CLI smoke checks
+[private]
+pkg-rpm-install-fedora:
+    {{compose}} run --build --rm --user root --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-install-smoke.sh
+
+# Run against installed RPM in two modes:
+# - mode=tests (default): run full /app/test suite as testuser
+# - mode=login: open root shell with testuser configured as /usr/bin/lshell
+[private]
+pkg-rpm-run-fedora-mode mode='tests':
+    {{compose}} run --rm --user root -e MODE={{mode}} --entrypoint bash fedora /app/rpm/scripts/fedora-rpm-run.sh
+
+[private]
+pkg-rpm-ensure-built:
+    ./scripts/pkg-ensure-built.sh build/rpm/.source-state.sha256 'build/rpm/RPMS/noarch/lshell-*.rpm' pkg-rpm-build 'RPM package'
+
+# Build RPM package artifacts from current workspace
+pkg-rpm-build:
+    just pkg-rpm-build-fedora
+    ./scripts/pkg-write-source-stamp.sh build/rpm/.source-state.sha256
+
+# Build if needed, then run installed-package test suite
+pkg-rpm-test:
+    just pkg-rpm-ensure-built
+    just pkg-rpm-run-fedora-mode tests
+
+# Build if needed, then open interactive login flow
+pkg-rpm-run:
+    just pkg-rpm-ensure-built
+    just pkg-rpm-run-fedora-mode login
 
 test-fedora-pypi:
     just run fedora-pypi
@@ -111,26 +182,20 @@ test-fedora-pypi-pre:
 
 # Real SSH end-to-end tests with Docker + Ansible only
 test-ssh-e2e:
-    @bash -ceu '\
-      rc=0; \
-      {{e2e_compose}} up --build -d lshell-ssh-target; \
-      {{e2e_compose}} run --build --rm ansible-runner || rc=$?; \
-      {{e2e_compose}} down -v --remove-orphans; \
-      exit $rc\
-    '
+    ./scripts/test-ssh-e2e.sh "{{e2e_compose}}"
 
 # Lint Python sources
 test-lint-flake8:
-    pylint $(git ls-files '*.py')
+    pylint lshell test
     flake8 lshell test
+
+# Run Atheris fuzzing in Debian Docker container (host deps not required)
+test-fuzz-security-parser runs='20000':
+    {{compose}} run --build --rm --entrypoint bash debian -lc "CLANG_BIN=clang python3 -m pip install --user --break-system-packages -r /app/requirements-fuzz.txt && PYTHONPATH=/app python3 /app/fuzz/fuzz_parser_policy.py -runs={{runs}}"
 
 # Full local validation in one command
 test-all:
     just test-lint-flake8
-    @bash -ceu '\
-      rc=0; \
-      {{compose}} up --build ubuntu_tests debian_tests fedora_tests || rc=$?; \
-      {{compose}} down -v --remove-orphans; \
-      exit $rc\
-    '
+    ./scripts/test-all.sh "{{compose}}"
+    just test-fuzz-security-parser
     just test-ssh-e2e

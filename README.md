@@ -1,21 +1,28 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/limited-shell?link=https%3A%2F%2Fpypi.org%2Fproject%2Flimited-shell%2F)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/limited-shell)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/pytest.yml?branch=master&label=pytest&link=https%3A%2F%2Fgithub.com%2Fghantoos%2Flshell%2Factions%2Fworkflows%2Fpytest.yml)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/pylint.yml?branch=master&label=pylint&link=https%3A%2F%2Fgithub.com%2Fghantoos%2Flshell%2Factions%2Fworkflows%2Fpylint.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ghantoos/lshell/lshell-tests.yml?label=tests&link=https%3A%2F%2Fgithub.com%2Fghantoos%2Flshell%2Factions%2Fworkflows%2Flshell-tests.yml)
 
 # lshell
 
-`lshell` is a Python-based limited shell. It is designed to restrict a user to a defined command set, enforce path and character restrictions, control SSH command behavior (`scp`, `sftp`, `rsync`, ...), and log activity.
+`lshell` is a Python-based restricted shell that limits users to a defined set of commands, enforces path and SSH transfer controls (`scp`, `sftp`, `rsync`, ...), logs user activity, supports session/time restrictions, and more.
+
+PyPI project page: https://pypi.org/project/limited-shell/
 
 ## Installation
 
-### Install from PyPI
+Install from PyPI:
 
 ```bash
 pip install limited-shell
 ```
 
-### Build and install from source
+Prepare system resources (run as root once per host):
+
+```bash
+lshell setup-system --group lshell --log-dir /var/log/lshell --owner root --mode 2770
+```
+
+Build/install from source:
 
 ```bash
 python3 -m pip install build --user
@@ -23,23 +30,59 @@ python3 -m build
 pip install . --break-system-packages
 ```
 
-### Uninstall
+Uninstall:
 
 ```bash
 pip uninstall limited-shell
 ```
 
-## Usage
+## Branch and release workflow
 
-### Run lshell
+- `main`: stable release branch. Tag stable versions from this branch (for example `1.2.3`).
+- `pre-release`: integration branch for tested features before release. Tag release candidates from this branch (for example `1.2.4rc1`).
+- PyPI publishing uses one project ([limited-shell](https://pypi.org/project/limited-shell/)) and accepts both stable and `rc` versions.
+- CI (`lshell-tests`) runs on pushes and PRs targeting both `main` and `pre-release`.
+
+## Quick start
+
+Run `lshell` with an explicit config:
 
 ```bash
 lshell --config /path/to/lshell.conf
 ```
 
-### Admin diagnostics (`lshell policy-show`)
+Default config location:
 
-Explain effective policy resolution for a target user/group set and a command:
+- Linux: `/etc/lshell.conf`
+- *BSD: `/usr/{pkg,local}/etc/lshell.conf`
+
+Set `lshell` as login shell:
+
+```bash
+chsh -s /usr/bin/lshell user_name
+```
+
+For automated setup (including `/etc/shells` registration + user shell assignment):
+
+```bash
+lshell setup-system --set-shell-user user_name --add-group-user user_name
+```
+
+Generate a hardened scoped include file for a specific group and user directly from CLI flags:
+
+```bash
+lshell harden-init \
+  --profile sftp-only \
+  --group sftpusers \
+  --user alice \
+  --output /etc/lshell.d/sftp-only.conf
+```
+
+If `--output` is omitted, `harden-init` writes to `/etc/lshell.d/<profile>.conf`.
+
+## Policy diagnostics
+
+Explain the effective policy and decision for a command:
 
 ```bash
 lshell policy-show \
@@ -50,77 +93,87 @@ lshell policy-show \
   --command "sudo systemctl restart nginx"
 ```
 
-- prints precedence resolution (`default -> groups -> user`)
-- lists included config files (`include_dir`)
-- shows key-level overrides and final merged policy
-- returns command decision (`ALLOW` / `DENY`) with reason
+Inside an interactive session:
 
-### Interactive policy builtins
+- `policy-show [<command...>]`
+- `policy-path` (`lpath` alias)
+- `policy-sudo` (`lsudo` alias)
 
-Inside an `lshell` session:
-
-- `policy-show [<command...>]`: show resolved values and optionally check a command
-- `policy-path`: show allowed/denied paths
-- `policy-sudo`: show allowed sudo commands
-
-Backward-compatible aliases:
-
-- `lpath` -> `policy-path`
-- `lsudo` -> `policy-sudo`
-
-You can hide these policy commands from users with:
+Hide these built-ins if needed:
 
 ```ini
 policy_commands : 0
 ```
 
-Default config location:
+## Hardened profile generator
 
-- Linux: `/etc/lshell.conf`
-- *BSD: `/usr/{pkg,local}/etc/lshell.conf`
+`harden-init` ships secure-by-default templates to bootstrap restricted accounts quickly:
 
-You can also override configuration values from CLI:
+- `sftp-only`
+- `rsync-backup`
+- `deploy-minimal`
+- `readonly-support`
+
+Examples:
+
+```bash
+# Show available templates
+lshell harden-init --list-templates
+
+# Print generated profile to stdout
+lshell harden-init --profile readonly-support --stdout
+
+# Validate rendering and sanity checks without writing files
+lshell harden-init --profile rsync-backup --dry-run
+
+# Show rationale for security controls
+lshell harden-init --profile deploy-minimal --stdout --explain
+
+# Generate scoped sections (no [default] section)
+lshell harden-init --profile sftp-only --group sftpusers --user alice --stdout
+```
+
+## Configuration
+
+Primary template: [`etc/lshell.conf`](etc/lshell.conf)
+
+Key settings to review:
+
+- `allowed` / `forbidden`
+- `path`
+- `sudo_commands`
+- `overssh`, `scp`, `sftp`, `scp_upload`, `scp_download`
+- `allowed_shell_escape`
+- `allowed_file_extensions`
+- `messages`
+- `warning_counter`, `strict`
+- `umask`
+- runtime containment: `max_sessions_per_user`, `max_background_jobs`, `command_timeout`, `max_processes`
+
+CLI overrides are supported, for example:
 
 ```bash
 lshell --config /path/to/lshell.conf --log /var/log/lshell --umask 0077
 ```
 
-### Use lshell in scripts
+### Runtime containment limits
 
-Use the lshell shebang and keep the `.lsh` extension:
+Runtime limits are optional and disabled by default when set to `0`.
 
-```bash
-#!/usr/bin/lshell
-echo "test"
+```ini
+max_sessions_per_user : 2
+max_background_jobs   : 4
+command_timeout       : 30
+max_processes         : 64
 ```
 
-## System setup
+Operational notes:
 
-### Add user to `lshell` group (for log access)
-
-```bash
-usermod -aG lshell username
-```
-
-### Set lshell as login shell
-
-Linux:
-
-```bash
-chsh -s /usr/bin/lshell user_name
-```
-
-*BSD:
-
-```bash
-chsh -s /usr/{pkg,local}/bin/lshell user_name
-```
-
-Make sure lshell is present in `/etc/shells`.
-
-## Configuration
-
-The main template is [`etc/lshell.conf`](etc/lshell.conf). Full reference is available in the man page.
+- `max_sessions_per_user` is tracked with lock-protected session records; stale entries are cleaned automatically.
+- `max_background_jobs` denies new `&` jobs once the configured active count is reached.
+- `command_timeout` enforces a per-command wall-clock timeout (foreground and background commands).
+- `max_processes` is applied via POSIX `RLIMIT_NPROC` on spawned command processes.
+- Best practice: keep `command_timeout` enabled whenever `max_processes` is strict (especially `1`).
 
 ### Best practices
 
@@ -129,6 +182,7 @@ The main template is [`etc/lshell.conf`](etc/lshell.conf). Full reference is ava
 - Use `allowed_file_extensions` when users are expected to work with a known set of file types.
 - Keep `warning_counter` enabled (avoid `-1` unless you intentionally want warning-only behavior).
 - Use `policy-show` during reviews to validate effective policy before assigning it to users.
+- For pip installs, do not rely on installation side effects for system setup. Use `lshell setup-system` (or distro package post-install hooks) to create groups, `/var/log/lshell`, and login-shell registration.
 
 ### Section model and precedence
 
@@ -144,100 +198,6 @@ Precedence order:
 1. User section
 2. Group section
 3. Default section
-
-### `allowed`: exact vs generic commands
-
-`allowed` accepts command names and exact command lines.
-
-```ini
-allowed: ['ls', 'echo asd', 'telnet localhost']
-```
-
-- `ls` allows `ls` with any arguments.
-- `echo asd` allows only that exact command line.
-- `telnet localhost` allows only `localhost` as host.
-
-For local executables, add explicit relative paths (for example `./deploy.sh`).
-
-### `warning_counter` and `strict`
-
-`warning_counter` is decremented on forbidden command/path/character attempts.
-When `strict = 1`, unknown syntax/commands also decrement `warning_counter`.
-`strict = 1` is typically preferred for higher-assurance restricted environments.
-
-### `messages`
-
-`messages` is an optional dictionary for customizing user-facing shell messages.
-Unsupported keys and unsupported placeholders are rejected during config parsing.
-
-Supported keys and placeholders:
-
-- `unknown_syntax`: `{command}`
-- `forbidden_generic`: `{messagetype}`, `{command}`
-- `forbidden_command`: `{command}`
-- `forbidden_path`: `{command}`
-- `forbidden_character`: `{command}`
-- `forbidden_control_char`: `{command}`
-- `forbidden_command_over_ssh`: `{message}`, `{command}`
-- `forbidden_scp_over_ssh`: `{message}`
-- `warning_remaining`: `{remaining}`, `{violation_label}`
-- `session_terminated`: no placeholders
-- `incident_reported`: no placeholders
-
-Example:
-
-```ini
-messages : {
-  'unknown_syntax': 'lshell: unknown syntax: {command}',
-  'forbidden_generic': 'lshell: forbidden {messagetype}: "{command}"',
-  'forbidden_command': 'lshell: forbidden command: "{command}"',
-  'forbidden_path': 'lshell: forbidden path: "{command}"',
-  'forbidden_character': 'lshell: forbidden character: "{command}"',
-  'forbidden_control_char': 'lshell: forbidden control char: "{command}"',
-  'forbidden_command_over_ssh': 'lshell: forbidden {message}: "{command}"',
-  'forbidden_scp_over_ssh': 'lshell: forbidden {message}',
-  'warning_remaining': '*** You have {remaining} warning(s) left, before getting kicked out.',
-  'session_terminated': 'lshell: session terminated: warning limit exceeded',
-  'incident_reported': 'This incident has been reported.'
-}
-```
-
-### Security-related settings
-
-- `path_noexec`: if available, lshell uses `sudo_noexec.so` to reduce command escape vectors.
-- `allowed_shell_escape`: explicit list of commands allowed to run child programs. Do not set it to `'all'`.
-- `allowed_file_extensions`: optional allow-list for file extensions passed in command lines.
-
-### Prompt accessibility
-
-- Keep the default prompt text-based and readable in monochrome terminals.
-- If you use ANSI colors in `prompt` or `$LPS1`, avoid color-only meaning (for example, include separators like `user@host:path`).
-- Verify contrast and readability over SSH clients commonly used in your environment.
-
-### `umask`
-
-Set a persistent session umask in config:
-
-```ini
-umask : 0002
-```
-
-- `0002` -> files `664`, directories `775`
-- `0022` -> files `644`, directories `755`
-- `0077` -> files `600`, directories `700`
-
-`umask` must be octal (`0000` to `0777`).  
-If you set umask in `login_script`, it does not persist because `login_script` runs in a child shell.
-
-Quick check inside an lshell session:
-
-```bash
-umask
-touch test_file
-mkdir test_dir
-ls -ld test_file test_dir
-```
-
 ### Example configuration
 
 For users `foo` and `bar` in UNIX group `users`:
@@ -252,19 +212,6 @@ loglevel        : 2
 allowed         : ['ls','pwd']
 forbidden       : [';', '&', '|']
 warning_counter : 2
-messages        : {
-                    'unknown_syntax': 'lshell: unknown syntax: {command}',
-                    'forbidden_generic': 'lshell: forbidden {messagetype}: "{command}"',
-                    'forbidden_command': 'lshell: forbidden command: "{command}"',
-                    'forbidden_path': 'lshell: forbidden path: "{command}"',
-                    'forbidden_character': 'lshell: forbidden character: "{command}"',
-                    'forbidden_control_char': 'lshell: forbidden control char: "{command}"',
-                    'forbidden_command_over_ssh': 'lshell: forbidden {message}: "{command}"',
-                    'forbidden_scp_over_ssh': 'lshell: forbidden {message}',
-                    'warning_remaining': 'lshell: warning: {remaining} {violation_label} remaining before session termination',
-                    'session_terminated': 'lshell: session terminated: warning limit exceeded',
-                    'incident_reported': 'This incident has been reported.'
-                  }
 timer           : 0
 path            : ['/etc', '/usr']
 env_path        : '/sbin:/usr/foo'
@@ -290,32 +237,68 @@ scpforce        : '/home/bar/uploads/'
 # CONFIGURATION END
 ```
 
-## Testing with Docker Compose
+For full option details, use:
 
-Run tests on multiple distributions in parallel:
+- `man lshell`
+- `man ./man/lshell.1`
+
+## Testing
+
+Run test services directly:
 
 ```bash
 docker compose up ubuntu_tests debian_tests fedora_tests
 ```
 
-This runs `pytest`, `pylint`, and `flake8` in the configured test services.
-
-Run full local validation (including real SSH end-to-end scenarios configured with Ansible):
+Run full validation:
 
 ```bash
 just test-all
 ```
 
-Run only real SSH end-to-end checks:
+Run only SSH end-to-end checks:
 
 ```bash
-just ssh-e2e
+just test-ssh-e2e
 ```
 
-## Documentation
+### Justfile usage
 
-- `man lshell` (installed)
-- `man ./man/lshell.1` (from repository)
+List commands:
+
+```bash
+just --list
+```
+
+Run distro-specific tests:
+
+```bash
+just test-debian
+just test-ubuntu
+just test-fedora
+```
+
+Run sample configs interactively:
+
+```bash
+just sample-list
+just sample-ubuntu 01_baseline_allowlist.conf
+```
+
+### Fuzzing parser/policy checks
+
+Run Atheris fuzzing in Debian Docker (dependencies installed in-container):
+
+```bash
+just test-fuzz-security-parser 20000
+```
+
+Optional local run (if you want to fuzz outside Docker):
+
+```bash
+pip install -r requirements-fuzz.txt
+python3 fuzz/fuzz_parser_policy.py -runs=20000
+```
 
 ## Contributing
 

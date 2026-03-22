@@ -3,6 +3,20 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.11.1 21/03/2026
+- Feature: Added `lshell setup-system` to provision logging paths/permissions and user/group wiring for deployments.
+- Feature: Added `lshell harden-init` with hardened templates (`sftp-only`, `rsync-backup`, `deploy-minimal`, `readonly-support`) plus `--dry-run`, scoped `[grp:*]`/`[user:*]`, and validation checks.
+- Feature: Added configurable handling for `command not found` messages.
+- Feature: Hardened CLI env argument parsing for `LSHELL_ARGS`.
+- Feature: Added ECS-compatible JSON security audit events via `security_audit_json`.
+- Feature: Added runtime containment controls: `max_sessions_per_user`, `max_background_jobs`, `command_timeout`, and `max_processes` (`RLIMIT_NPROC`), and surfaced them in policy diagnostics.
+- Feature: Improved shell signal behavior for `Ctrl+C`/interrupt flows and `Ctrl+D` handling when stopped/background jobs exist.
+- Package: Added packaged Bash completion support (`etc/bash_completion.d/lshell`).
+- Package: Updated DEB/RPM packaging and smoke-test scripts for more stable build/install validation.
+- Package: Migrated packaging/build metadata to `pyproject.toml` (PEP 517) and removed `setup.py`.
+- Tests: Expanded audit test coverage for structured security events.
+- Tests: Added parser fuzzing support (`Atheris`) and expanded security/property-based tests.
+
 ### v0.11.0 10/03/2026
 - Reworked command parsing with a new `pyparsing`-based parser for more reliable command handling.
 - Added policy diagnostics and built-ins: `policy-show`, `policy-path`, and `policy-sudo`.

@@ -20,6 +20,7 @@ from lshell import sec
 from lshell import completion
 from lshell import variables
 from lshell import policy as policy_mode
+from lshell import audit
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -90,14 +91,14 @@ class ShellCmd(cmd.Cmd, object):
 
         # in case the configuration file has been modified, reload it
         if self.conf["config_mtime"] != os.path.getmtime(self.conf["configfile"]):
+            session_id = self.conf.get("session_id")
             self.conf = CheckConfig(
                 ["--config", self.conf["configfile"]], refresh=1
             ).returnconf()
+            if session_id:
+                self.conf["session_id"] = session_id
             self.conf["promptprint"] = utils.updateprompt(os.getcwd(), self.conf)
             self.log = self.conf["logpath"]
-
-        if self.g_cmd in ["quit", "exit", "EOF"]:
-            self.do_exit()
 
         if self.conf["timer"] > 0:
             self.mytimer(0)
@@ -186,6 +187,12 @@ class ShellCmd(cmd.Cmd, object):
                         sys.exit(retcode)
                     else:
                         self.log.error("*** forbidden SFTP connection")
+                        audit.log_command_event(
+                            self.conf,
+                            self.conf["ssh"],
+                            allowed=False,
+                            reason="forbidden SFTP connection",
+                        )
                         sys.exit(1)
 
                 # check if scp is requested and allowed
@@ -201,6 +208,12 @@ class ShellCmd(cmd.Cmd, object):
                             else:
                                 self.log.error(
                                     f'SCP: download forbidden: "{self.conf["ssh"]}"'
+                                )
+                                audit.log_command_event(
+                                    self.conf,
+                                    self.conf["ssh"],
+                                    allowed=False,
+                                    reason="forbidden SCP download",
                                 )
                                 sys.exit(1)
                         elif " -t " in self.conf["ssh"]:
@@ -222,6 +235,12 @@ class ShellCmd(cmd.Cmd, object):
                             else:
                                 self.log.error(
                                     f'SCP: upload forbidden: "{self.conf["ssh"]}"'
+                                )
+                                audit.log_command_event(
+                                    self.conf,
+                                    self.conf["ssh"],
+                                    allowed=False,
+                                    reason="forbidden SCP upload",
                                 )
                                 sys.exit(1)
                         _validate_ssh_command()
@@ -262,6 +281,14 @@ class ShellCmd(cmd.Cmd, object):
                 )
                 if ret_check_secure:
                     self.log.error(f'*** forbidden shell escape: "{self.conf["ssh"]}"')
+                    audit.log_command_event(
+                        self.conf,
+                        self.conf["ssh"],
+                        allowed=False,
+                        reason=audit.pop_decision_reason(
+                            self.conf, "forbidden shell escape"
+                        ),
+                    )
                     sys.exit(1)
 
                 self.log.error(f'Shell escape: "{self.conf["ssh"]}"')
@@ -274,6 +301,12 @@ class ShellCmd(cmd.Cmd, object):
 
     def ssh_warn(self, message, command="", key=""):
         """log and warn if forbidden action over SSH"""
+        audit.log_command_event(
+            self.conf,
+            command,
+            allowed=False,
+            reason=f"forbidden over SSH: {message}",
+        )
         if key == "scp":
             self.log.critical(
                 messages.get_message(self.conf, "forbidden_scp_over_ssh", message=message)
@@ -345,58 +378,69 @@ class ShellCmd(cmd.Cmd, object):
             partial_line = ""
             stop = None
             while not stop:
-                # Check background jobs after each command
-                builtincmd.check_background_jobs()
-                if self.cmdqueue:
-                    line = self.cmdqueue.pop(0)
-                else:
-                    if self.use_rawinput:
-                        try:
-                            line = input(self.conf["promptprint"])
-                        except EOFError:
-                            line = "EOF"
-                        except KeyboardInterrupt:
-                            self.stdout.write("\n")
-                            if partial_line:
-                                partial_line = ""
-                                self.conf["promptprint"] = utils.updateprompt(
-                                    os.getcwd(), self.conf
-                                )
-                            continue
+                try:
+                    # Check background jobs after each command
+                    builtincmd.check_background_jobs()
+                    if self.cmdqueue:
+                        line = self.cmdqueue.pop(0)
                     else:
-                        self.stdout.write(self.conf["promptprint"])
-                        self.stdout.flush()
-                        line = self.stdin.readline()
-                        if not line:
-                            line = "EOF"
+                        if self.use_rawinput:
+                            try:
+                                line = input(self.conf["promptprint"])
+                            except EOFError:
+                                line = "EOF"
+                            except KeyboardInterrupt:
+                                self.stdout.write("\n")
+                                if partial_line:
+                                    partial_line = ""
+                                    self.conf["promptprint"] = utils.updateprompt(
+                                        os.getcwd(), self.conf
+                                    )
+                                continue
                         else:
-                            # chop \n
-                            line = line[:-1]
-                    if len(line) > 1 and line.startswith("\\"):
-                        # implying previous partial line
-                        line = line[:1].replace("\\", "", 1)
-                    if partial_line:
-                        line = partial_line + line
-                    if line.endswith("\\"):
-                        # continuation character. First partial line.
-                        # We shall expect the command to continue in
-                        # a new line. Change to bash like PS2 prompt to
-                        # indicate this continuation to the user
-                        partial_line = line.strip("\\")
-                        self.conf["promptprint"] = self.prompt2  # switching to PS2
-                        continue
-                    elif line.count('"') % 2 != 0 or line.count("'") % 2 != 0:
-                        # unclosed quotes detected
-                        partial_line = line
-                        self.conf["promptprint"] = self.prompt2  # switching to PS2
-                        continue
+                            self.stdout.write(self.conf["promptprint"])
+                            self.stdout.flush()
+                            line = self.stdin.readline()
+                            if not line:
+                                line = "EOF"
+                            else:
+                                # chop \n
+                                line = line[:-1]
+                        if len(line) > 1 and line.startswith("\\"):
+                            # implying previous partial line
+                            line = line[:1].replace("\\", "", 1)
+                        if partial_line:
+                            line = partial_line + line
+                        if line.endswith("\\"):
+                            # continuation character. First partial line.
+                            # We shall expect the command to continue in
+                            # a new line. Change to bash like PS2 prompt to
+                            # indicate this continuation to the user
+                            partial_line = line.strip("\\")
+                            self.conf["promptprint"] = self.prompt2  # switching to PS2
+                            continue
+                        elif line.count('"') % 2 != 0 or line.count("'") % 2 != 0:
+                            # unclosed quotes detected
+                            partial_line = line
+                            self.conf["promptprint"] = self.prompt2  # switching to PS2
+                            continue
+                        partial_line = ""
+                        self.conf["promptprint"] = utils.updateprompt(
+                            os.getcwd(), self.conf
+                        )
+                    line = self.precmd(line)
+                    stop = self.onecmd(line)
+                    stop = self.postcmd(stop, line)
+                except KeyboardInterrupt:
+                    # Keep prompt handling local to cmdloop even when Ctrl+C
+                    # races outside input() (e.g. background-job checks).
+                    self.stdout.write("\n")
+                    self.stdout.flush()
                     partial_line = ""
                     self.conf["promptprint"] = utils.updateprompt(
                         os.getcwd(), self.conf
                     )
-                line = self.precmd(line)
-                stop = self.onecmd(line)
-                stop = self.postcmd(stop, line)
+                    continue
             self.postloop()
         finally:
             if self.use_rawinput and self.completekey:
@@ -526,6 +570,14 @@ class ShellCmd(cmd.Cmd, object):
         list_tmp = list(dict.fromkeys(self.completenames("", "")).keys())
         list_tmp.sort()
         self.columnize(list_tmp)
+
+    def do_EOF(self, arg=None):  # pylint: disable=invalid-name
+        """Handle Ctrl+D / EOF exactly like exit."""
+        return self.do_exit(arg)
+
+    def do_quit(self, arg=None):
+        """Handle quit exactly like exit."""
+        return self.do_exit(arg)
 
     def do_policy_show(self, arg=None):
         """Show resolved policy values and optional decision for a command."""

@@ -3,7 +3,6 @@
 import glob
 import sys
 import os
-import re
 import shlex
 import readline
 import signal
@@ -11,6 +10,7 @@ import signal
 # import lshell specifics
 from lshell import variables
 from lshell import utils
+from lshell import sec as sec_policy
 
 
 # Store background jobs
@@ -54,12 +54,15 @@ def _cancel_job_timeout(job):
 def cmd_lpath(conf):
     """Show path policy in a concise, readable format."""
     current_dir = os.path.realpath(os.getcwd())
-    current_match = current_dir if current_dir.endswith("/") else f"{current_dir}/"
-    allowed_re = str(conf["path"][0])
-    denied_re = str(conf["path"][1][:-1])
-    current_allowed = bool(re.findall(allowed_re, current_match))
-    current_denied = bool(re.findall(denied_re, current_match)) if denied_re else False
-    current_status = "allowed" if current_allowed and not current_denied else "denied"
+    path_acl = conf.get("path", ["", ""])
+    allow = path_acl[0] if len(path_acl) > 0 else ""
+    deny = path_acl[1] if len(path_acl) > 1 else ""
+    allowed_roots = sec_policy._split_path_acl_entries(allow)
+    denied_roots = sec_policy._split_path_acl_entries(deny)
+    current_allowed = sec_policy._is_path_allowed(
+        current_dir, allowed_roots, denied_roots
+    )
+    current_status = "allowed" if current_allowed else "denied"
 
     sys.stdout.write("Path Policy\n")
     sys.stdout.write("-----------\n")

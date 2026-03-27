@@ -9,10 +9,11 @@ import io
 import os
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 from lshell.checkconfig import CheckConfig
+from lshell import builtincmd
 from lshell import sec
 from lshell.shellcmd import ShellCmd
 from lshell import utils
@@ -344,6 +345,102 @@ class TestAttackSurfacePart2(unittest.TestCase):
         ).returnconf()
         self.assertEqual(sec.check_secure("echo $(printf ok)", conf)[0], 1)
 
+    def test_check_secure_allows_command_substitution_with_quoted_parenthesis(self):
+        """Quoted ')' inside $() should not truncate nested command parsing."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(printf ')')", conf)[0], 0)
+
+    def test_check_secure_handles_nested_command_substitutions(self):
+        """Nested $() constructs should recurse correctly through allow-list checks."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(echo $(echo ok))", conf)[0], 0)
+
+    def test_check_secure_handles_parameter_expansion_with_logical_operators(self):
+        """${VAR:-a||b&&c} should parse as one expansion body without false splits."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${LSHELL_WORD:-a||b&&c}", conf)[0], 0)
+
+    def test_check_secure_blocks_single_operators_at_command_boundaries(self):
+        """Single '&' and '|' must be blocked even at start/end boundaries."""
+        def _new_conf():
+            return CheckConfig(
+                self.args
+                + [
+                    "--allowed=['echo']",
+                    "--forbidden=['&','|']",
+                    "--strict=0",
+                ]
+            ).returnconf()
+
+        self.assertEqual(sec.check_secure("echo ok &", _new_conf())[0], 1)
+        self.assertEqual(sec.check_secure("& echo ok", _new_conf())[0], 1)
+        self.assertEqual(sec.check_secure("| echo ok", _new_conf())[0], 1)
+
+    def test_check_forbidden_chars_allows_double_pipe_when_single_pipe_forbidden(self):
+        """Permit || when only single | is forbidden by policy."""
+        conf = CheckConfig(self.args + ["--forbidden=['|']", "--strict=0"]).returnconf()
+        ret, _conf = sec.check_forbidden_chars("echo ok || echo still_ok", conf)
+        self.assertEqual(ret, 0)
+
+    def test_check_secure_ignores_single_quoted_substitution_literals(self):
+        """Single-quoted substitution text should not trigger recursive security checks."""
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo '$(cat /etc/passwd)'", conf)[0], 0)
+        self.assertEqual(sec.check_secure("echo '`cat /etc/passwd`'", conf)[0], 0)
+
+    def test_check_secure_enforces_substitution_inside_double_quotes(self):
+        """Double-quoted substitutions should still be parsed and validated."""
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure('echo "$(cat /etc/passwd)"', conf)[0], 1)
+        self.assertEqual(sec.check_secure('echo "`cat /etc/passwd`"', conf)[0], 1)
+
+    def test_check_secure_ignores_escaped_substitution_markers(self):
+        """Escaped expansion markers should remain literal."""
+        conf = CheckConfig(
+            self.args + ["--allowed=['echo']", "--forbidden=[]", "--strict=0"]
+        ).returnconf()
+        self.assertEqual(sec.check_secure(r"echo \$(cat /etc/passwd)", conf)[0], 0)
+        self.assertEqual(sec.check_secure(r"echo \${HOME}", conf)[0], 0)
+        self.assertEqual(sec.check_secure(r"echo \`cat /etc/passwd\`", conf)[0], 0)
+
+    def test_scan_shell_expansions_mixed_order_respects_escaping(self):
+        """Scanner should parse real expansions in-order and skip escaped/literal forms."""
+        line = r"echo '$(skip)' \$(skip) `echo ok` ${A:-x} $(printf done)"
+        expansions = sec._scan_shell_expansions(line)
+        self.assertEqual(
+            expansions,
+            [
+                sec._ShellExpansion("backtick", "echo ok"),
+                sec._ShellExpansion("parameter_expansion", "A:-x"),
+                sec._ShellExpansion("command_substitution", "printf done"),
+            ],
+        )
+
     @patch("lshell.utils.exec_cmd", return_value=0)
     def test_cmd_parse_execute_passes_parameter_expansion_forms_when_config_allows_them(
         self, mock_exec
@@ -370,6 +467,31 @@ class TestAttackSurfacePart2(unittest.TestCase):
             mock_exec.call_args.args[0],
             "echo ${LSHELL_MISSING:-fallback} ${#HOME}",
         )
+
+    def test_cmd_lpath_handles_paths_with_regex_metacharacters(self):
+        """Path policy output should use canonical ACL checks, not regex matching."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell+lpath-", dir="/tmp") as tmpdir:
+                conf = CheckConfig(
+                    self.args
+                    + [
+                        f"--path=['{tmpdir}']",
+                        "--strict=0",
+                    ]
+                ).returnconf()
+
+                os.chdir(tmpdir)
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    builtincmd.cmd_lpath(conf)
+
+                self.assertIn(
+                    f"Current directory      : {os.path.realpath(tmpdir)} (allowed)",
+                    output.getvalue(),
+                )
+        finally:
+            os.chdir(previous_cwd)
 
     def test_check_path_should_expand_brace_operands_like_shell(self):
         """Expected shell parity: brace-expanded path operands should all be validated."""

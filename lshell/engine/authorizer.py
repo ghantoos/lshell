@@ -98,47 +98,8 @@ def _authorize_nested(inner_line, policy, mode, ssh, depth):
 
 
 def _quoted_literals_without_assignment(line):
-    """Extract quoted literals, excluding immediate assignment values (e.g. X=\"...\")."""
-    literals = []
-    index = 0
-    length = len(line)
-
-    while index < length:
-        quote = line[index]
-        if quote not in {"'", '"'}:
-            index += 1
-            continue
-
-        previous = line[index - 1] if index > 0 else ""
-        index += 1
-        chunk = []
-        escaped = False
-
-        while index < length:
-            char = line[index]
-            if quote == '"' and escaped:
-                chunk.append(char)
-                escaped = False
-                index += 1
-                continue
-            if quote == '"' and char == "\\":
-                escaped = True
-                index += 1
-                continue
-            if char == quote:
-                break
-            chunk.append(char)
-            index += 1
-
-        if index < length and line[index] == quote:
-            chunk_text = "".join(chunk)
-            if previous != "=":
-                literals.append(chunk_text)
-            if quote == "'":
-                literals.extend(_quoted_literals_without_assignment(chunk_text))
-        index += 1
-
-    return literals
+    """Mirror sec.check_secure quoted-literal parsing to avoid policy drift."""
+    return sec._quoted_literals_without_assignment(line)
 
 
 def authorize(
@@ -194,9 +155,12 @@ def authorize(
             line=oline,
         )
 
-    executions = re.findall(r"\$\([^)]+[)]", line)
-    for item in executions:
-        inner = item[2:-1].strip()
+    expansions = sec._scan_shell_expansions(line)
+
+    for expansion in expansions:
+        if expansion.kind != "command_substitution":
+            continue
+        inner = expansion.body.strip()
         violation = _first_path_violation(inner, policy, check_current_dir=False)
         if violation:
             return _deny(
@@ -210,25 +174,19 @@ def authorize(
         if not nested_decision.allowed:
             return nested_decision
 
-    backticks = re.findall(r"\`[^`]+[`]", line)
-    for item in backticks:
+    for expansion in expansions:
+        if expansion.kind != "backtick":
+            continue
         nested_decision = _authorize_nested(
-            item[1:-1].strip(), policy, mode, ssh, depth
+            expansion.body.strip(), policy, mode, ssh, depth
         )
         if not nested_decision.allowed:
             return nested_decision
 
-    curly = re.findall(r"\$\{[^}]+[}]", line)
-    for item in curly:
-        if re.findall(r"=|\+|\?|\-", item):
-            variable = re.split(r"=|\+|\?|\-", item, maxsplit=1)
-        else:
-            variable = item
-
-        try:
-            variable_text = variable[1][:-1]
-        except (IndexError, TypeError):
-            variable_text = ""
+    for expansion in expansions:
+        if expansion.kind != "parameter_expansion":
+            continue
+        variable_text = sec._parameter_expansion_path_probe(expansion.body).strip()
 
         violation = _first_path_violation(
             variable_text, policy, check_current_dir=False

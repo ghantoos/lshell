@@ -156,6 +156,67 @@ class TestEnginePipeline(unittest.TestCase):
             self.assertFalse(decision.allowed)
             self.assertEqual(decision.reason.code, reasons.FORBIDDEN_PATH)
 
+    def test_authorizer_parses_command_substitution_with_quoted_parenthesis(self):
+        """Quoted ')' inside $() should not truncate nested command parsing."""
+        decision = authorizer.authorize_line(
+            "echo $(printf ')')",
+            _policy(allowed=["echo", "printf"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_parses_nested_command_substitutions(self):
+        """Nested $() expansions should recurse through inner allow-list checks."""
+        decision = authorizer.authorize_line(
+            "echo $(echo $(echo ok))",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_handles_parameter_expansion_with_logical_operators(self):
+        """${...} operands containing ||/&& should parse as a single expansion body."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD:-a||b&&c}",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_ignores_single_quoted_command_substitution_literal(self):
+        """Single-quoted $() text should remain literal and not recurse."""
+        decision = authorizer.authorize_line(
+            "echo '$(cat /etc/passwd)'",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_enforces_command_substitution_inside_double_quotes(self):
+        """Double-quoted $() should still recurse and enforce allow-list."""
+        decision = authorizer.authorize_line(
+            'echo "$(cat /etc/passwd)"',
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_ignores_escaped_command_substitution_marker(self):
+        """Escaped '$(' should remain literal and not be parsed as substitution."""
+        decision = authorizer.authorize_line(
+            r"echo \$(cat /etc/passwd)",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
 
 if __name__ == "__main__":
     unittest.main()

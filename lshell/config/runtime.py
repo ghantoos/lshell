@@ -675,7 +675,7 @@ class CheckConfig:
                 dict.fromkeys(x for x in self.conf["allowed"] if x not in exclude)
             )
 
-        # sort lsudo commands
+        # sort sudo commands
         self.conf["sudo_commands"].sort()
 
         # Enable colored `ls` output by default while preserving explicit aliases.

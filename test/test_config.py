@@ -220,8 +220,8 @@ class TestFunctions(unittest.TestCase):
 
         self.do_exit(child)
 
-    def test_66_sudo_commands_all_quoted_reflected_in_policy_sudo(self):
-        """F66 | sudo_commands='all' should expose effective sudo allow-list."""
+    def test_66_sudo_commands_all_quoted_reflected_in_lshow(self):
+        """F66 | sudo_commands='all' should expose effective sudo allow-list in lshow."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
             "--allowed \"['ls','echo','cat']\" "
@@ -229,7 +229,7 @@ class TestFunctions(unittest.TestCase):
         )
         child.expect(PROMPT)
 
-        child.sendline("policy-sudo")
+        child.sendline("lshow")
         child.expect(PROMPT)
         output = child.before.decode("utf-8")
         self.assertIn("Sudo access            : enabled", output)

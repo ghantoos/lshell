@@ -17,11 +17,7 @@ from lshell import sec as sec_policy
 BACKGROUND_JOBS = []
 
 POLICY_COMMANDS = [
-    "policy-show",
-    "policy-path",
-    "policy-sudo",
-    "lpath",
-    "lsudo",
+    "lshow",
 ]
 
 builtins_list = [
@@ -31,11 +27,7 @@ builtins_list = [
     "exit",
     "export",
     "history",
-    "policy-show",
-    "policy-path",
-    "policy-sudo",
-    "lpath",
-    "lsudo",
+    "lshow",
     "help",
     "fg",
     "bg",

@@ -417,8 +417,8 @@ class TestPolicy(unittest.TestCase):
                 policy.resolve_policy(config, "bleh", [])
             self.assertIn("allowed", str(exc.exception))
 
-    def test_builtin_policy_show_dispatches_from_utils(self):
-        """EX10 | builtin dispatcher calls shell_context.do_policy_show."""
+    def test_builtin_lshow_dispatches_from_utils(self):
+        """EX10 | builtin dispatcher calls shell_context.do_lshow."""
 
         class DummyContext:
             """Minimal shell context stub for builtin dispatcher tests."""
@@ -428,14 +428,14 @@ class TestPolicy(unittest.TestCase):
                 self.conf = {}
                 self.called = None
 
-            def do_policy_show(self, arg):
+            def do_lshow(self, arg):
                 """Record argument and mimic a successful builtin call."""
                 self.called = arg
                 return 0
 
         ctx = DummyContext()
         retcode, _ = utils.handle_builtin_command(
-            "policy-show echo hi", "policy-show", "echo hi", ctx
+            "lshow echo hi", "lshow", "echo hi", ctx
         )
         self.assertEqual(retcode, 0)
         self.assertEqual(ctx.called, "echo hi")
@@ -453,6 +453,7 @@ class TestPolicy(unittest.TestCase):
                 "timer": 0,
                 "forbidden": [";"],
                 "allowed_file_extensions": [],
+                "path": ["/tmp/|", ""],
                 "max_sessions_per_user": 2,
                 "max_background_jobs": 3,
                 "command_timeout": 15,
@@ -468,6 +469,9 @@ class TestPolicy(unittest.TestCase):
         self.assertIn("Max background jobs    : 3", rendered)
         self.assertIn("Command timeout (sec)  : 15s", rendered)
         self.assertIn("Max processes          : 10", rendered)
+        self.assertIn("Allowed paths", rendered)
+        self.assertNotIn("Path Policy", rendered)
+        self.assertIn("Sudo Policy", rendered)
 
     def test_print_user_view_shows_unlimited_for_zero_containment_limits(self):
         """EX12 | zero-valued containment limits should render as Unlimited."""
@@ -482,6 +486,7 @@ class TestPolicy(unittest.TestCase):
                 "timer": 0,
                 "forbidden": [";"],
                 "allowed_file_extensions": [],
+                "path": ["/tmp/|", ""],
                 "max_sessions_per_user": 0,
                 "max_background_jobs": 0,
                 "command_timeout": 0,
@@ -497,6 +502,39 @@ class TestPolicy(unittest.TestCase):
         self.assertIn("Max background jobs    : Unlimited", rendered)
         self.assertIn("Command timeout (sec)  : Unlimited", rendered)
         self.assertIn("Max processes          : Unlimited", rendered)
+
+    def test_print_user_view_embeds_allowed_paths_and_sudo_content(self):
+        """EX13 | lshow output includes allowed paths and sudo policy sections."""
+        result = {
+            "policy": {
+                "username": "bleh",
+                "strict": 1,
+                "warning_counter": 2,
+                "allowed": ["ls"],
+                "aliases": {},
+                "sudo_commands": ["id", "ls"],
+                "timer": 0,
+                "forbidden": [";"],
+                "allowed_file_extensions": [],
+                "path": ["/tmp/|", "/etc/|"],
+                "max_sessions_per_user": 0,
+                "max_background_jobs": 0,
+                "command_timeout": 0,
+                "max_processes": 0,
+            }
+        }
+
+        with redirect_stdout(io.StringIO()) as output:
+            policy.print_user_view(result)
+        rendered = output.getvalue()
+
+        self.assertNotIn("Path Policy", rendered)
+        self.assertNotIn("Current directory", rendered)
+        self.assertIn("Allowed paths", rendered)
+        self.assertIn("Denied paths", rendered)
+        self.assertIn("Sudo Policy", rendered)
+        self.assertNotIn("Allowed sudo           :", rendered)
+        self.assertIn("Allowed via sudo       : id, ls", rendered)
 
 
 if __name__ == "__main__":

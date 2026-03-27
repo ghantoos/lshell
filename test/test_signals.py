@@ -181,7 +181,8 @@ class TestFunctions(unittest.TestCase):
         child.sendline("tail -f")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+        # CI/container scheduling can delay job-control status emission slightly.
+        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=3)
 
         # Attempt to exit
         child.sendline("exit")

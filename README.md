@@ -95,9 +95,10 @@ lshell policy-show \
 
 Inside an interactive session:
 
-- `policy-show [<command...>]`
-- `policy-path` (`lpath` alias)
-- `policy-sudo` (`lsudo` alias)
+- `lshow [<command...>]`
+
+`lshow` includes effective command policy, allowed/denied paths, and sudo
+policy in one output.
 
 Hide these built-ins if needed:
 

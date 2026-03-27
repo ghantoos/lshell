@@ -45,11 +45,7 @@ class TestFunctions(unittest.TestCase):
             "help",
             "history",
             "jobs",
-            "lpath",
-            "lsudo",
-            "policy-path",
-            "policy-show",
-            "policy-sudo",
+            "lshow",
             "source",
         ]:
             self.assertIn(command, result)

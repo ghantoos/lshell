@@ -454,7 +454,7 @@ def _print_text(result, command_line=None, decision=None):
 
 
 def print_user_view(result, command_line=None, decision=None):
-    """Print a concise user-facing policy summary and optional decision."""
+    """Print a concise user-facing policy-show summary and optional decision."""
     color = _use_color()
     policy = result["policy"]
     strict_mode = "on" if policy.get("strict") else "off"
@@ -466,7 +466,6 @@ def print_user_view(result, command_line=None, decision=None):
     alias_entries = []
     if isinstance(aliases, dict):
         alias_entries = [f"{key} -> {value}" for key, value in sorted(aliases.items())]
-    sudo_commands = sorted(set(policy.get("sudo_commands", [])), key=str)
     timer_value = policy.get("timer")
     forbidden = sorted(set(policy.get("forbidden", [])), key=str)
     extensions = policy.get("allowed_file_extensions", [])
@@ -500,8 +499,6 @@ def print_user_view(result, command_line=None, decision=None):
     print("-" * 14)
     print("Allowed commands       : ", end="")
     print(_format_wrapped_list(allowed_entries, indent=24))
-    print("Allowed sudo           : ", end="")
-    print(_format_wrapped_list(sudo_commands, indent=24))
     print("Aliases                : ", end="")
     print(_format_wrapped_list(alias_entries, indent=24))
     print(f"Timer                  : {timer_value}")
@@ -518,6 +515,30 @@ def print_user_view(result, command_line=None, decision=None):
     else:
         allowed_extensions = "any"
     print("Allowed extensions     : " + allowed_extensions)
+    print("")
+
+    path_acl = policy.get("path", ["", ""])
+    allowed_paths_raw = path_acl[0] if len(path_acl) > 0 else ""
+    denied_paths_raw = path_acl[1] if len(path_acl) > 1 else ""
+    allowed_paths = sorted(path for path in allowed_paths_raw.split("|") if path)
+    denied_paths = sorted(path for path in denied_paths_raw.split("|") if path)
+
+    print("Allowed paths")
+    print("-------------")
+    if allowed_paths:
+        for path in allowed_paths:
+            print(path)
+    else:
+        print("none")
+
+    if denied_paths:
+        print("")
+        print("Denied paths")
+        print("------------")
+        for path in denied_paths:
+            print(path)
+    print("")
+    builtincmd.cmd_lsudo(policy)
     print("")
 
     if command_line is not None and decision is not None:

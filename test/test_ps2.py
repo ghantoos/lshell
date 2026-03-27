@@ -20,11 +20,7 @@ POLICY_HELP_COMMANDS = [
     "help",
     "history",
     "jobs",
-    "lpath",
-    "lsudo",
-    "policy-path",
-    "policy-show",
-    "policy-sudo",
+    "lshow",
     "source",
 ]
 

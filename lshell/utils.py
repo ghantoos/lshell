@@ -480,7 +480,7 @@ def _command_exists(executable):
 
 def handle_builtin_command(full_command, executable, argument, shell_context):
     """
-    Handle built-in commands like cd, lpath, lsudo, etc.
+    Handle built-in commands like cd and lshow.
     Returns tuple of (retcode, conf)
     """
 
@@ -489,8 +489,8 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
 
     if executable == "help":
         shell_context.do_help(executable)
-    elif executable == "policy-show":
-        shell_context.do_policy_show(argument)
+    elif executable == "lshow":
+        shell_context.do_lshow(argument)
     elif executable == "exit":
         shell_context.do_exit(full_command)
     elif executable == "history":
@@ -499,10 +499,6 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
     elif executable == "ls":
         retcode = exec_cmd(full_command, conf=shell_context.conf, log=shell_context.log)
-    elif executable in ["lpath", "policy-path"]:
-        retcode = builtincmd.cmd_lpath(conf)
-    elif executable in ["lsudo", "policy-sudo"]:
-        retcode = builtincmd.cmd_lsudo(conf)
     elif executable == "export":
         retcode, var = builtincmd.cmd_export(full_command)
         if retcode == 1:

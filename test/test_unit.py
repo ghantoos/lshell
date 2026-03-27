@@ -470,21 +470,13 @@ class TestFunctions(unittest.TestCase):
     def test_45_policy_commands_enabled_by_default(self):
         """U45 | policy commands should be available by default."""
         userconf = CheckConfig(self.args).returnconf()
-        self.assertIn("policy-show", userconf["allowed"])
-        self.assertIn("policy-path", userconf["allowed"])
-        self.assertIn("policy-sudo", userconf["allowed"])
-        self.assertIn("lpath", userconf["allowed"])
-        self.assertIn("lsudo", userconf["allowed"])
+        self.assertIn("lshow", userconf["allowed"])
 
     def test_46_policy_commands_can_be_hidden(self):
         """U46 | policy commands can be hidden via --policy_commands=0."""
         args = self.args + ["--policy_commands=0"]
         userconf = CheckConfig(args).returnconf()
-        self.assertNotIn("policy-show", userconf["allowed"])
-        self.assertNotIn("policy-path", userconf["allowed"])
-        self.assertNotIn("policy-sudo", userconf["allowed"])
-        self.assertNotIn("lpath", userconf["allowed"])
-        self.assertNotIn("lsudo", userconf["allowed"])
+        self.assertNotIn("lshow", userconf["allowed"])
 
     def test_47_invalid_allowed_type_rejected(self):
         """U47 | allowed must be a list, scalar values should be rejected."""

@@ -6,6 +6,7 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 ### v0.12.0 (UNRELEASED)
 - Security: Removed regex-driven shell parsing from the authorization flow.
 - Engine: Migrated security parsing to a deterministic scanner.
+- Refactor: Removed legacy `lshell.parser` compatibility wrapper; runtime and diagnostics now rely on canonical `lshell.engine.*` parsing paths only.
 - Refactor: Reorganized configuration code into `lshell/config/` with focused modules (`runtime.py`, `diagnostics.py`, `resolve.py`, `schema.py`) and updated imports accordingly.
 - Config: Unified runtime (`CheckConfig`) and diagnostics (`policy-show`) merge logic into a shared resolver to keep section precedence, include overlays, +/- list operations, `all` expansion, and glob-path handling aligned.
 - Tests: Added runtime-vs-diagnostics parity coverage for precedence, include overlays, `allowed=all` minus operations, and schema error behavior.

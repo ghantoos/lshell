@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell import builtincmd
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"

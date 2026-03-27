@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell import utils
 from lshell.engine import authorizer
 from lshell.engine import reasons

@@ -1,4 +1,12 @@
-"""Diagnostics mode for policy resolution and command decisions."""
+"""Resolve and inspect effective lshell configuration for diagnostics.
+
+This module powers ``policy-show`` style diagnostics:
+- resolve effective config using the same resolver as runtime
+- preserve a trace of section/key transformations for explainability
+- render user-facing and machine-facing diagnostics output
+
+Unlike runtime loading, diagnostics raises ``ValueError`` on invalid config.
+"""
 
 import argparse
 import configparser
@@ -7,25 +15,15 @@ import grp
 import json
 import os
 import pwd
-import re
 import sys
 import textwrap
 from getpass import getuser
 
 from lshell import builtincmd
 from lshell import containment
-from lshell import configschema
+from lshell.config import schema
+from lshell.config import resolve
 from lshell import variables
-
-
-MERGE_LIST_KEYS = {
-    "path",
-    "overssh",
-    "allowed",
-    "allowed_shell_escape",
-    "allowed_file_extensions",
-    "forbidden",
-}
 
 DISPLAY_KEY_ORDER = [
     "allowed",
@@ -61,74 +59,7 @@ DISPLAY_KEY_ORDER = [
 
 def _safe_eval(value, key=""):
     """Safely parse config values with shared schema validation."""
-    return configschema.parse_config_value(value, key)
-
-
-def _expand_all():
-    """Expand 'all' into executable names from PATH plus shell builtins."""
-    expanded_all = [
-        "bg",
-        "break",
-        "case",
-        "cd",
-        "continue",
-        "eval",
-        "exec",
-        "exit",
-        "fg",
-        "if",
-        "jobs",
-        "kill",
-        "login",
-        "logout",
-        "set",
-        "shift",
-        "stop",
-        "suspend",
-        "umask",
-        "unset",
-        "wait",
-        "while",
-    ]
-
-    for directory in os.environ.get("PATH", "").split(":"):
-        if not directory:
-            continue
-        if os.path.exists(directory):
-            for item in os.listdir(directory):
-                if os.access(os.path.join(directory, item), os.X_OK):
-                    expanded_all.append(item)
-
-    return str(expanded_all)
-
-
-def _minusplus(conf_raw, key, extra):
-    """Update configuration lists containing -/+ operators."""
-    if key in conf_raw:
-        current = _safe_eval(conf_raw[key], key)
-    elif key == "path":
-        current = ["", ""]
-    else:
-        current = []
-
-    sublist = _safe_eval(extra[1:], key)
-    if extra.startswith("+"):
-        if key == "path":
-            for path in sublist:
-                current[0] += os.path.realpath(path) + "/|"
-        else:
-            for item in sublist:
-                current.append(item)
-    elif extra.startswith("-"):
-        if key == "path":
-            for path in sublist:
-                current[1] += os.path.realpath(path) + "/|"
-        else:
-            for item in sublist:
-                if item in current:
-                    current.remove(item)
-
-    return {key: str(current)}
+    return schema.parse_config_value(value, key)
 
 
 def _read_config_with_sources(configfile, include_dir):
@@ -151,134 +82,9 @@ def _read_config_with_sources(configfile, include_dir):
     return parser, include_files, key_sources
 
 
-def _merge_section(conf_raw, section, section_items, key_sources, trace):
-    """Apply a single section to conf_raw while recording trace details."""
-    for key, value in section_items:
-        source = key_sources.get((section, key))
-        split = [""]
-        if isinstance(value, str):
-            split = re.split(r"((?:\+|-)\s*\[[^\]]+\])", value)
-
-        previous = conf_raw.get(key)
-
-        if len(split) > 1 and key in MERGE_LIST_KEYS:
-            for token in split:
-                if not token.strip():
-                    continue
-                if token.startswith("-") or token.startswith("+"):
-                    conf_raw.update(_minusplus(conf_raw, key, token))
-                    trace.append(
-                        {
-                            "section": section,
-                            "source": source,
-                            "key": key,
-                            "op": token[0],
-                            "token": token[1:],
-                            "before": previous,
-                            "after": conf_raw.get(key),
-                        }
-                    )
-                    previous = conf_raw.get(key)
-                elif configschema.is_all_literal(token):
-                    if key == "allowed_shell_escape":
-                        raise ValueError(
-                            "'allowed_shell_escape' cannot be set to 'all'"
-                        )
-                    if key == "allowed":
-                        conf_raw.update({key: _expand_all()})
-                    else:
-                        raise ValueError(f"'{key}' cannot be set to 'all'")
-                    trace.append(
-                        {
-                            "section": section,
-                            "source": source,
-                            "key": key,
-                            "op": "set_all",
-                            "token": token,
-                            "before": previous,
-                            "after": conf_raw.get(key),
-                        }
-                    )
-                    previous = conf_raw.get(key)
-                elif key == "path":
-                    allow_deny = ["", ""]
-                    for path_pattern in _safe_eval(token, key):
-                        for item in glob.glob(path_pattern):
-                            allow_deny[0] += os.path.realpath(item) + "/|"
-                    allow_deny[0] = allow_deny[0].replace("//", "/")
-                    conf_raw.update({key: str(allow_deny)})
-                    trace.append(
-                        {
-                            "section": section,
-                            "source": source,
-                            "key": key,
-                            "op": "set",
-                            "token": token,
-                            "before": previous,
-                            "after": conf_raw.get(key),
-                        }
-                    )
-                    previous = conf_raw.get(key)
-                elif isinstance(_safe_eval(token, key), list):
-                    conf_raw.update({key: token})
-                    trace.append(
-                        {
-                            "section": section,
-                            "source": source,
-                            "key": key,
-                            "op": "set",
-                            "token": token,
-                            "before": previous,
-                            "after": conf_raw.get(key),
-                        }
-                    )
-                    previous = conf_raw.get(key)
-        elif key == "allowed" and configschema.is_all_literal(split[0]):
-            conf_raw.update({key: _expand_all()})
-            trace.append(
-                {
-                    "section": section,
-                    "source": source,
-                    "key": key,
-                    "op": "set_all",
-                    "token": split[0],
-                    "before": previous,
-                    "after": conf_raw.get(key),
-                }
-            )
-        elif key == "allowed_shell_escape" and configschema.is_all_literal(split[0]):
-            raise ValueError("'allowed_shell_escape' cannot be set to 'all'")
-        elif key == "path":
-            allow_deny = ["", ""]
-            for path_pattern in _safe_eval(value, "path"):
-                for item in glob.glob(path_pattern):
-                    allow_deny[0] += os.path.realpath(item) + "/|"
-            allow_deny[0] = allow_deny[0].replace("//", "/")
-            conf_raw.update({key: str(allow_deny)})
-            trace.append(
-                {
-                    "section": section,
-                    "source": source,
-                    "key": key,
-                    "op": "set",
-                    "token": value,
-                    "before": previous,
-                    "after": conf_raw.get(key),
-                }
-            )
-        else:
-            conf_raw[key] = value
-            trace.append(
-                {
-                    "section": section,
-                    "source": source,
-                    "key": key,
-                    "op": "set",
-                    "token": value,
-                    "before": previous,
-                    "after": conf_raw.get(key),
-                }
-            )
+def _merge_error(message):
+    """Raise merge-time errors in diagnostics mode."""
+    raise ValueError(message)
 
 
 def _build_runtime_policy(conf_raw, username):
@@ -356,7 +162,7 @@ def _build_runtime_policy(conf_raw, username):
                 if os.access(cmd, os.X_OK):
                     policy["allowed"].append(item)
 
-    if "sudo_commands" in conf_raw and configschema.is_all_literal(
+    if "sudo_commands" in conf_raw and schema.is_all_literal(
         str(conf_raw["sudo_commands"])
     ):
         exclude = [cmd for cmd in builtincmd.builtins_list if cmd != "ls"] + ["sudo"]
@@ -410,12 +216,17 @@ def resolve_policy(configfile, username, groups):
     for section in precedence_chain:
         if parser.has_section(section):
             applied_sections.append(section)
-            _merge_section(
-                conf_raw,
-                section,
-                list(parser.items(section)),
-                key_sources,
-                trace,
+            resolve.merge_section(
+                conf_raw=conf_raw,
+                section=section,
+                section_items=list(parser.items(section)),
+                parse_value=_safe_eval,
+                expand_all_value=lambda: resolve.expand_all(
+                    os.environ.get("PATH", "")
+                ),
+                on_error=_merge_error,
+                trace=trace,
+                key_sources=key_sources,
             )
 
     for required_key in variables.required_config:

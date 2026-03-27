@@ -6,12 +6,12 @@ import signal
 import sys
 import uuid
 
-from lshell import policy as policy_mode
+from lshell.config import diagnostics as policy_mode
 from lshell import systemsetup as system_setup
 from lshell import hardeninit as harden_init
 from lshell import audit
 from lshell import containment
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell.shellcmd import LshellTimeOut, ShellCmd
 
 

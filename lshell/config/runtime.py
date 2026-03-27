@@ -1,4 +1,12 @@
-"""This module contains the checkconfig class of lshell"""
+"""Build and apply the effective runtime lshell configuration.
+
+This module owns the runtime configuration workflow for interactive sessions:
+- load global/default/group/user config layers (with include_dir support)
+- resolve final raw values through ``lshell.config.resolve``
+- validate schema/constraints and apply runtime side effects (logging, env, cwd)
+
+It is intentionally imperative and exits on fatal configuration errors.
+"""
 
 import sys
 import os
@@ -18,13 +26,14 @@ from logging.handlers import SysLogHandler
 from lshell import utils
 from lshell import variables
 from lshell import builtincmd
-from lshell import configschema
+from lshell.config import schema
 from lshell import audit
 from lshell import containment
+from lshell.config import resolve
 
 
 class CheckConfig:
-    """Check the configuration file."""
+    """Load, resolve, validate, and apply runtime config for one session."""
 
     def noexec_library_usable(self, path_noexec):
         """Return True when a noexec library can be safely preloaded."""
@@ -345,143 +354,50 @@ class CheckConfig:
 
         if self.config.has_section(section):
             conf = list(self.config.items(section)) + conf
-            for item in conf:
-                key = item[0]
-                value = item[1]
-                # if string, then split
-                split = [""]
-                if isinstance(value, str):
-                    split = re.split(r"((?:\+|-)\s*\[[^\]]+\])", value)
-                if len(split) > 1 and key in [
-                    "path",
-                    "overssh",
-                    "allowed",
-                    "allowed_shell_escape",
-                    "allowed_file_extensions",
-                    "forbidden",
-                ]:
-                    for stuff in split:
-                        if not stuff.strip():
-                            continue
-                        if stuff.startswith("-") or stuff.startswith("+"):
-                            self.conf_raw.update(
-                                self.minusplus(self.conf_raw, key, stuff)
-                            )
-                        elif configschema.is_all_literal(stuff):
-                            if key == "allowed":
-                                self.conf_raw.update({key: self.expand_all()})
-                            else:
-                                self.log.critical(
-                                    f"lshell: config: '{key}' cannot be set to 'all'"
-                                )
-                                sys.exit(1)
-                        elif stuff and key == "path":
-                            liste = ["", ""]
-                            for path in self._parse_config_value(stuff, key):
-                                for item in glob.glob(path):
-                                    liste[0] += os.path.realpath(item) + "/|"
-                            # remove double slashes
-                            liste[0] = liste[0].replace("//", "/")
-                            self.conf_raw.update({key: str(liste)})
-                        elif stuff and isinstance(
-                            self._parse_config_value(stuff, key), list
-                        ):
-                            self.conf_raw.update({key: stuff})
-                # case allowed/sudo_commands is set to all
-                elif key == "allowed" and configschema.is_all_literal(split[0]):
-                    self.conf_raw.update({key: self.expand_all()})
-                elif key == "allowed_shell_escape" and configschema.is_all_literal(
-                    split[0]
-                ):
-                    self.log.critical(
-                        "lshell: config: 'allowed_shell_escape' cannot be set to 'all'"
-                    )
-                    sys.exit(1)
-                elif key == "path":
-                    liste = ["", ""]
-                    for path in self._parse_config_value(value, "path"):
-                        for item in glob.glob(path):
-                            liste[0] += os.path.realpath(item) + "/|"
-                    # remove double slashes
-                    liste[0] = liste[0].replace("//", "/")
-                    self.conf_raw.update({key: str(liste)})
-                else:
-                    self.conf_raw.update(dict([item]))
+            resolve.merge_section(
+                conf_raw=self.conf_raw,
+                section=section,
+                section_items=conf,
+                parse_value=self._parse_config_value,
+                expand_all_value=self.expand_all,
+                on_error=self._merge_error,
+                on_missing_remove=self._on_minusplus_remove_missing,
+            )
+
+    def _merge_error(self, message):
+        """Handle merge-time errors with legacy runtime fatal behavior."""
+        self.log.critical(f"lshell: config: {message}")
+        sys.exit(1)
+
+    def _on_minusplus_remove_missing(self, key, item):
+        """Keep legacy warning when removing a non-existing list item."""
+        self.log.error(f"lshell: config: -['{item}'] ignored in '{key}' list.")
+
+    def _on_expand_all_missing_path(self, directory):
+        """Keep legacy warning for non-existing PATH entries."""
+        self.log.error(f'lshell: config: PATH entry "{directory}" does not exist')
 
     def minusplus(self, confdict, key, extra):
         """update configuration lists containing -/+ operators"""
-        if key in confdict:
-            liste = self._parse_config_value(confdict[key], key)
-        elif key == "path":
-            liste = ["", ""]
-        else:
-            liste = []
-
-        sublist = self._parse_config_value(extra[1:], key)
-        if extra.startswith("+"):
-            if key == "path":
-                for path in sublist:
-                    liste[0] += os.path.realpath(path) + "/|"
-            else:
-                for item in sublist:
-                    liste.append(item)
-        elif extra.startswith("-"):
-            if key == "path":
-                for path in sublist:
-                    liste[1] += os.path.realpath(path) + "/|"
-            else:
-                for item in sublist:
-                    if item in liste:
-                        liste.remove(item)
-                    else:
-                        self.log.error(
-                            f"lshell: config: -['{item}'] ignored in '{key}' list."
-                        )
-        return {key: str(liste)}
+        return resolve.minusplus(
+            conf_raw=confdict,
+            key=key,
+            extra=extra,
+            parse_value=self._parse_config_value,
+            on_missing_remove=self._on_minusplus_remove_missing,
+        )
 
     def expand_all(self):
         """expand allowed, if set to 'all'"""
-        # initialize list to common shell built-ins
-        expanded_all = [
-            "bg",
-            "break",
-            "case",
-            "cd",
-            "continue",
-            "eval",
-            "exec",
-            "exit",
-            "fg",
-            "if",
-            "jobs",
-            "kill",
-            "login",
-            "logout",
-            "set",
-            "shift",
-            "stop",
-            "suspend",
-            "umask",
-            "unset",
-            "wait",
-            "while",
-        ]
-        for directory in os.environ["PATH"].split(":"):
-            if os.path.exists(directory):
-                for item in os.listdir(directory):
-                    if os.access(os.path.join(directory, item), os.X_OK):
-                        expanded_all.append(item)
-            else:
-                self.log.error(
-                    f'lshell: config: PATH entry "{directory}" does not exist'
-                )
-
-        return str(expanded_all)
+        return resolve.expand_all(
+            path_env=os.environ["PATH"],
+            on_missing_path=self._on_expand_all_missing_path,
+        )
 
     def _parse_config_value(self, value, key=""):
         """Safely parse config values and enforce key schema."""
         try:
-            return configschema.parse_config_value(value, key)
+            return schema.parse_config_value(value, key)
         except ValueError as exception:
             self.log.critical(f"lshell: config: {exception}")
             sys.exit(1)
@@ -749,7 +665,7 @@ class CheckConfig:
                         self.conf["allowed"].append(item)
 
         # case sudo_commands set to 'all', expand to all 'allowed' commands
-        if "sudo_commands" in self.conf_raw and configschema.is_all_literal(
+        if "sudo_commands" in self.conf_raw and schema.is_all_literal(
             str(self.conf_raw["sudo_commands"])
         ):
             # Keep shell-internal builtins out of sudo all-expansion while

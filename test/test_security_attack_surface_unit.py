@@ -12,7 +12,7 @@ import unittest
 from contextlib import redirect_stderr
 from unittest.mock import patch
 
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell.shellcmd import ShellCmd
 from lshell import sec
 from lshell import utils

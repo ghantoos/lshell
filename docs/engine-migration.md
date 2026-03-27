@@ -20,7 +20,7 @@ Runtime entrypoint:
 
 Policy diagnostics entrypoint:
 
-- `lshell.policy.policy_command_decision` -> canonical authorizer path
+- `lshell.config.diagnostics.policy_command_decision` -> canonical authorizer path
 
 ## Engine Modules
 

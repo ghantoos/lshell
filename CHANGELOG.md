@@ -3,6 +3,13 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.12.0 (UNRELEASED)
+- Security: Removed regex-driven shell parsing from the authorization flow.
+- Engine: Migrated security parsing to a deterministic scanner.
+- Refactor: Reorganized configuration code into `lshell/config/` with focused modules (`runtime.py`, `diagnostics.py`, `resolve.py`, `schema.py`) and updated imports accordingly.
+- Config: Unified runtime (`CheckConfig`) and diagnostics (`policy-show`) merge logic into a shared resolver to keep section precedence, include overlays, +/- list operations, `all` expansion, and glob-path handling aligned.
+- Tests: Added runtime-vs-diagnostics parity coverage for precedence, include overlays, `allowed=all` minus operations, and schema error behavior.
+
 ### v0.11.1 21/03/2026
 - Feature: Added `lshell setup-system` to provision logging paths/permissions and user/group wiring for deployments.
 - Feature: Added `lshell harden-init` with hardened templates (`sftp-only`, `rsync-backup`, `deploy-minimal`, `readonly-support`) plus `--dry-run`, scoped `[grp:*]`/`[user:*]`, and validation checks.

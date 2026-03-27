@@ -11,7 +11,7 @@ from time import strftime, gmtime
 from unittest.mock import patch
 
 # import lshell specifics
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell.utils import get_aliases, updateprompt, parse_ps1, getpromptbase
 from lshell import builtincmd
 from lshell import sec
@@ -383,7 +383,7 @@ class TestFunctions(unittest.TestCase):
         prompt = updateprompt(currentpath, userconf)
         self.assertEqual(prompt, expected)
 
-    @patch("lshell.checkconfig.os.umask")
+    @patch("lshell.config.runtime.os.umask")
     def test_41_umask_sets_process_mask(self, mock_umask):
         """U41 | --umask should be parsed as octal and applied to process mask"""
         args = self.args + ["--umask=0002"]
@@ -512,7 +512,7 @@ class TestFunctions(unittest.TestCase):
             userconf["history_file"], history_path.replace("%u", userconf["username"])
         )
 
-    @patch("lshell.checkconfig.CheckConfig.noexec_library_usable", return_value=False)
+    @patch("lshell.config.runtime.CheckConfig.noexec_library_usable", return_value=False)
     def test_50_incompatible_noexec_library_is_disabled(self, _mock_usable):
         """U50 | incompatible --path_noexec should be removed from runtime config."""
         with tempfile.NamedTemporaryFile() as fake_lib:

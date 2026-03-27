@@ -12,14 +12,14 @@ import signal
 import readline
 
 # import lshell specifics
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell import utils
 from lshell import builtincmd
 from lshell import messages
 from lshell import sec
 from lshell import completion
 from lshell import variables
-from lshell import policy as policy_mode
+from lshell.config import diagnostics as policy_mode
 from lshell import audit
 
 

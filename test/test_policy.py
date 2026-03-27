@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from lshell import policy
+from lshell.config import diagnostics as policy
 from lshell import utils
 
 
@@ -280,9 +280,9 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual([r["key"] for r in grouped["user:bleh"]], ["umask"])
 
-    @patch("lshell.policy.grp.getgrall")
-    @patch("lshell.policy.grp.getgrgid")
-    @patch("lshell.policy.pwd.getpwnam")
+    @patch("lshell.config.diagnostics.grp.getgrall")
+    @patch("lshell.config.diagnostics.grp.getgrgid")
+    @patch("lshell.config.diagnostics.pwd.getpwnam")
     def test_resolve_user_groups_auto_lookup(
         self, mock_getpwnam, mock_getgrgid, mock_getgrall
     ):

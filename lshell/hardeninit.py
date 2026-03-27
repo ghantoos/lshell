@@ -7,7 +7,7 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from lshell import configschema
+from lshell.config import schema as configschema
 
 
 SAFE_FORBIDDEN_OPERATORS = [";", "&", "|", "`", ">", "<", "$(", "${"]

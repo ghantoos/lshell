@@ -13,7 +13,7 @@ except ImportError as exc:  # pragma: no cover - optional dependency
 
 with atheris.instrument_imports():
     from lshell import parser as lshell_parser
-    from lshell import policy
+    from lshell.config import diagnostics as policy
     from lshell import sec
     from lshell import utils
 

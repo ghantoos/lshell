@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from lshell import audit
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"

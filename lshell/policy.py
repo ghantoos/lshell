@@ -15,8 +15,6 @@ from getpass import getuser
 from lshell import builtincmd
 from lshell import containment
 from lshell import configschema
-from lshell import sec
-from lshell import utils
 from lshell import variables
 
 
@@ -440,67 +438,23 @@ def resolve_policy(configfile, username, groups):
 
 def policy_command_decision(command_line, policy):
     """Determine whether a command would be allowed and why."""
-    if re.findall(r"[\x01-\x1F\x7F]", command_line):
-        return {"allowed": False, "reason": "forbidden control character"}
+    from lshell.engine import authorizer as engine_authorizer  # pylint: disable=import-outside-toplevel
+    from lshell.engine import normalizer as engine_normalizer  # pylint: disable=import-outside-toplevel
+    from lshell.engine import parser as engine_parser  # pylint: disable=import-outside-toplevel
+    from lshell.engine import reasons as engine_reasons  # pylint: disable=import-outside-toplevel
 
-    for item in policy["forbidden"]:
-        if item in ["&", "|"]:
-            escaped = re.escape(item)
-            if re.search(rf"(?<!{escaped}){escaped}(?!{escaped})", command_line):
-                return {"allowed": False, "reason": f"forbidden character '{item}'"}
-        elif item in command_line:
-            return {"allowed": False, "reason": f"forbidden character '{item}'"}
-
-    lines = utils.split_commands(command_line.strip())
-    for separate_line in lines:
-        line = re.sub(r"\)$", "", separate_line)
-        line = " ".join(line.split())
-        command, command_args_list, full_command = sec._split_command_for_auth(line)
-
-        if command == "sudo" and command_args_list:
-            if command_args_list[0] == "-u":
-                if len(command_args_list) < 3:
-                    return {
-                        "allowed": False,
-                        "reason": "forbidden sudo command (missing target command)",
-                    }
-                sudocmd = command_args_list[2]
-            else:
-                sudocmd = command_args_list[0]
-            if sudocmd not in policy["sudo_commands"]:
-                return {
-                    "allowed": False,
-                    "reason": f"forbidden sudo command '{sudocmd}'",
-                }
-
-        if (
-            full_command not in policy["allowed"]
-            and command not in policy["allowed"]
-            and command
-        ):
-            if policy.get("strict"):
-                return {"allowed": False, "reason": f"forbidden command '{command}'"}
-            return {"allowed": False, "reason": f"unknown syntax '{full_command}'"}
-
-        allowed_extensions = policy.get("allowed_file_extensions")
-        if allowed_extensions and sec.should_enforce_file_extensions(command):
-            check_extensions, disallowed_extensions = sec.check_allowed_file_extensions(
-                full_command, allowed_extensions
-            )
-            if check_extensions is False:
-                return {
-                    "allowed": False,
-                    "reason": (
-                        "forbidden file extension(s) "
-                        + ", ".join(disallowed_extensions)
-                    ),
-                }
-
-    path_ret, _ = sec.check_path(command_line, {"path": policy["path"]}, completion=1)
-    if path_ret == 1:
-        return {"allowed": False, "reason": "forbidden path"}
-
-    return {"allowed": True, "reason": "allowed by final policy"}
+    parsed = engine_parser.parse(command_line)
+    canonical = engine_normalizer.normalize(parsed)
+    decision = engine_authorizer.authorize(
+        canonical,
+        policy,
+        mode="policy",
+        check_current_dir=False,
+    )
+    return {
+        "allowed": decision.allowed,
+        "reason": engine_reasons.to_policy_message(decision.reason),
+    }
 
 
 def _parse_groups(group_values):
@@ -705,6 +659,7 @@ def print_user_view(result, command_line=None, decision=None):
     timer_value = policy.get("timer")
     forbidden = sorted(set(policy.get("forbidden", [])), key=str)
     extensions = policy.get("allowed_file_extensions", [])
+
     def _limit_or_unlimited(value, suffix=""):
         return f"{value}{suffix}" if int(value) > 0 else "Unlimited"
 

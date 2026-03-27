@@ -345,9 +345,9 @@ class TestAttackSurface(unittest.TestCase):
         self.assertEqual(conf["warning_counter"], starting_counter - 1)
         self.assertIn("lshell: warning:", stderr.getvalue())
 
-    @patch("lshell.utils.sec.check_forbidden_chars")
-    @patch("lshell.utils.sec.check_secure")
-    @patch("lshell.utils.sec.check_path")
+    @patch("lshell.sec.check_forbidden_chars")
+    @patch("lshell.sec.check_secure")
+    @patch("lshell.sec.check_path")
     @patch("lshell.utils.exec_cmd")
     def test_cmd_parse_execute_short_circuit_skips_failed_and_branch(
         self, mock_exec, mock_path, mock_secure, mock_forbidden
@@ -384,9 +384,9 @@ class TestAttackSurface(unittest.TestCase):
         executed = [call.args[0] for call in mock_exec.call_args_list]
         self.assertEqual(executed, ["false", "echo recovered"])
 
-    @patch("lshell.utils.sec.check_forbidden_chars")
-    @patch("lshell.utils.sec.check_secure")
-    @patch("lshell.utils.sec.check_path")
+    @patch("lshell.sec.check_forbidden_chars")
+    @patch("lshell.sec.check_secure")
+    @patch("lshell.sec.check_path")
     @patch("lshell.utils.exec_cmd")
     def test_cmd_parse_execute_assignment_only_updates_parent_env_without_exec(
         self, mock_exec, mock_path, mock_secure, mock_forbidden
@@ -413,9 +413,9 @@ class TestAttackSurface(unittest.TestCase):
             else:
                 os.environ["LSHELL_ATTACK_SURFACE"] = original
 
-    @patch("lshell.utils.sec.check_forbidden_chars")
-    @patch("lshell.utils.sec.check_secure")
-    @patch("lshell.utils.sec.check_path")
+    @patch("lshell.sec.check_forbidden_chars")
+    @patch("lshell.sec.check_secure")
+    @patch("lshell.sec.check_path")
     @patch("lshell.utils.exec_cmd")
     def test_cmd_parse_execute_allowed_shell_escape_skips_ld_preload(
         self, mock_exec, mock_path, mock_secure, mock_forbidden

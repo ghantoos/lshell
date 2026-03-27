@@ -169,7 +169,7 @@ class TestAttackSurfacePart2(unittest.TestCase):
             else:
                 os.environ["LD_PRELOAD"] = original
 
-    @patch("lshell.utils.sec.check_forbidden_chars")
+    @patch("lshell.sec.check_forbidden_chars")
     @patch("lshell.utils.exec_cmd")
     def test_cmd_parse_execute_forbidden_chars_short_circuits_execution(
         self, mock_exec, mock_forbidden

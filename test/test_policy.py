@@ -151,8 +151,23 @@ class TestPolicy(unittest.TestCase):
         decision = policy.policy_command_decision("ls /tmp", runtime_policy)
         self.assertTrue(decision["allowed"])
 
+    def test_policy_command_decision_rejects_invalid_operator_sequence(self):
+        """EX03e | canonical policy path rejects malformed operator chains."""
+        runtime_policy = {
+            "forbidden": [";"],
+            "allowed": ["echo"],
+            "strict": 0,
+            "sudo_commands": [],
+            "allowed_file_extensions": [],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision("echo ok ||| echo pwn", runtime_policy)
+        self.assertFalse(decision["allowed"])
+        self.assertIn("unknown syntax", decision["reason"])
+
     def test_resolve_policy_allowed_all_unquoted_expands(self):
-        """EX03e | allowed=all (unquoted) should expand successfully."""
+        """EX03f | allowed=all (unquoted) should expand successfully."""
         with tempfile.TemporaryDirectory() as tempdir:
             config = self._write_config(
                 tempdir,

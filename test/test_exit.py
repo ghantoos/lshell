@@ -50,6 +50,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("lslsls")
         child.sendline("lslsls")
         child.expect(pexpect.EOF, timeout=10)
+        child.close()
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -58,4 +59,3 @@ class TestFunctions(unittest.TestCase):
 
         # Optionally, you can assert that the exit code is correct
         self.assertEqual(child.exitstatus, 1, "The process should exit with code 1.")
-        self.do_exit(child)

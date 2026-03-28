@@ -30,7 +30,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_25_keyboard_interrupt(self):
+    def test_keyboard_interrupt(self):
         """F25 | test cat(1) with KeyboardInterrupt, should not exit"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['cat']\""
@@ -57,7 +57,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn(expected, result)
         self.do_exit(child)
 
-    def test_28_catch_terminal_ctrl_j(self):
+    def test_catch_terminal_ctrl_j(self):
         """F28 | test ctrl-v ctrl-j then command, forbidden/security"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} ")
         child.expect(PROMPT)
@@ -79,7 +79,7 @@ class TestFunctions(unittest.TestCase):
         )
         self.do_exit(child)
 
-    def test_29_catch_terminal_ctrl_k(self):
+    def test_catch_terminal_ctrl_k(self):
         """F29 | test ctrl-v ctrl-k then command, forbidden/security"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} --forbidden \"-['&',';']\""
@@ -98,7 +98,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn(expected, result)
         self.do_exit(child)
 
-    def test_71_backgrounding_with_ctrl_z(self):
+    def test_backgrounding_with_ctrl_z(self):
         """F71 | est backgrounding a command with Ctrl+Z."""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['tail']\"")
         child.expect(PROMPT)
@@ -142,7 +142,7 @@ class TestFunctions(unittest.TestCase):
         child.sendcontrol("c")
         child.expect(PROMPT, timeout=5)
 
-    def test_72_background_command_with_ampersand(self):
+    def test_background_command_with_ampersand(self):
         """F72 | Test backgrounding a command with `&`."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --allowed \"+['sleep']\" --forbidden \"-['&',';']\""
@@ -172,7 +172,7 @@ class TestFunctions(unittest.TestCase):
             output == expected_output
         ), f"Expected '{expected_output}', got '{output}'"
 
-    def test_73_exit_with_stopped_jobs(self):
+    def test_exit_with_stopped_jobs(self):
         """F73 | Test exiting with stopped jobs."""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['tail']\"")
         child.expect(PROMPT)
@@ -196,7 +196,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF, timeout=5)
 
-    def test_74_resume_stopped_jobs(self):
+    def test_resume_stopped_jobs(self):
         """F74 | Test resuming stopped jobs."""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['tail']\"")
         child.expect(PROMPT)
@@ -241,7 +241,7 @@ class TestFunctions(unittest.TestCase):
         child.sendcontrol("c")  # Send Ctrl+C to stop the job
         child.expect(PROMPT)
 
-    def test_75_interrupt_background_commands(self):
+    def test_interrupt_background_commands(self):
         """F75 | Test that `Ctrl+C` does not interrupt background commands."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --allowed \"+['sleep']\" --forbidden \"-['&',';']\""
@@ -265,7 +265,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("jobs")
         child.expect(r"\[\d+\]\+  Stopped        sleep 60", timeout=5)
 
-    def test_76_jobs_after_completion(self):
+    def test_jobs_after_completion(self):
         """F76 | Test that completed jobs are removed from the `jobs` list."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --allowed \"+['sleep']\" --forbidden \"-['&',';']\""
@@ -285,7 +285,7 @@ class TestFunctions(unittest.TestCase):
         output = child.before.decode("utf-8").split("\n", 1)[1].strip()
         assert output == "", f"Expected no jobs, got: '{output}'"
 
-    def test_77_mix_background_and_foreground(self):
+    def test_mix_background_and_foreground(self):
         """F77 | Test mixing background and foreground commands."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
@@ -316,7 +316,7 @@ class TestFunctions(unittest.TestCase):
             output == expected_output
         ), f"Expected '{expected_output}', got '{output}'"
 
-    def test_78_ctrl_d_with_stopped_jobs_no_unknown_syntax(self):
+    def test_ctrl_d_with_stopped_jobs_no_unknown_syntax(self):
         """F78 | Ctrl+D with stopped jobs should warn without unknown EOF syntax."""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['tail']\"")
         child.expect(PROMPT)

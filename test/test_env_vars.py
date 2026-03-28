@@ -47,7 +47,7 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
         return child.before.decode("utf8").split("\n", 1)[1]
 
-    def test_22_expand_env_variables(self):
+    def test_expand_env_variables(self):
         """F22 | expanding of environment variables"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['export']\""
@@ -63,7 +63,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_23_expand_env_variables_cd(self):
+    def test_expand_env_variables_cd(self):
         """F23 | expanding of environment variables when using cd"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['export']\""
@@ -81,7 +81,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_37_env_vars_file_not_found(self):
+    def test_env_vars_file_not_found(self):
         """Test missing environment variable file"""
         missing_file_path = "/path/to/missing/file"
 
@@ -105,7 +105,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn(expected, child.before.decode("utf8"))
         self.do_exit(child)
 
-    def test_38_load_env_vars_from_file(self):
+    def test_load_env_vars_from_file(self):
         """Test loading environment variables from file"""
 
         # Create a temporary file to store environment variables
@@ -134,7 +134,7 @@ class TestFunctions(unittest.TestCase):
         os.remove(temp_env_file_path)
         self.do_exit(child)
 
-    def test_47_backticks(self):
+    def test_backticks(self):
         """F47 | Forbidden backticks should be reported"""
         expected = (
             'lshell: forbidden character: "`"\r\n'
@@ -145,7 +145,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_48_replace_backticks_with_dollar_parentheses(self):
+    def test_replace_backticks_with_dollar_parentheses(self):
         """F48 | Forbidden syntax $(command) should be reported"""
         expected = (
             'lshell: forbidden character: "$("\r\n'
@@ -156,7 +156,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_49_env_variable_with_dollar_braces(self):
+    def test_env_variable_with_dollar_braces(self):
         """F49 | Syntax ${command} should replace with the variable"""
         child = self._spawn_shell(
             '--env_vars "{\'foo\':\'OK\'}"',
@@ -170,7 +170,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_50_single_quotes_do_not_expand_variables(self):
+    def test_single_quotes_do_not_expand_variables(self):
         """F50 | Single-quoted variables should not be expanded."""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['export']\""
@@ -185,7 +185,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual("$A", result)
         self.do_exit(child)
 
-    def test_51_inline_assignment_is_command_scoped(self):
+    def test_inline_assignment_is_command_scoped(self):
         """F51 | VAR=... cmd should not persist in parent shell."""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['printenv']\""
@@ -203,7 +203,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual("", persisted_result)
         self.do_exit(child)
 
-    def test_52_braced_parameter_expansion_matrix_when_braces_are_allowed(self):
+    def test_braced_parameter_expansion_matrix_when_braces_are_allowed(self):
         """F52 | ${...} forms should behave like shell parameter expansion when allowed."""
         cases = [
             ("${LSHELL_SET}", {"LSHELL_SET": "VALUE"}, "VALUE"),
@@ -232,7 +232,7 @@ class TestFunctions(unittest.TestCase):
                 finally:
                     self.do_exit(child)
 
-    def test_53_braced_parameter_expansion_matrix_when_braces_are_forbidden(self):
+    def test_braced_parameter_expansion_matrix_when_braces_are_forbidden(self):
         """F53 | ${...} forms should be blocked when '${' is forbidden."""
         expressions = [
             "${LSHELL_SET}",

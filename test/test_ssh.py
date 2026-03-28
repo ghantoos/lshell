@@ -29,7 +29,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_45_overssh_allowed_command_exit_0(self):
+    def test_overssh_allowed_command_exit_0(self):
         """F44 | Test 'ssh -c ls' command should exit 0"""
         # add SSH_CLIENT to environment
         if not os.environ.get("SSH_CLIENT"):
@@ -54,7 +54,7 @@ class TestFunctions(unittest.TestCase):
             f"The process should exit with code 0, got {self.child.exitstatus}.",
         )
 
-    def test_46_overssh_allowed_command_exit_1(self):
+    def test_overssh_allowed_command_exit_1(self):
         """F44 | Test 'ssh -c ls' command should exit 1"""
         # add SSH_CLIENT to environment
         if not os.environ.get("SSH_CLIENT"):
@@ -81,7 +81,7 @@ class TestFunctions(unittest.TestCase):
             f"The process should exit with code 1, got {self.child.exitstatus}.",
         )
 
-    def test_46_overssh_not_allowed_command_exit_1(self):
+    def test_overssh_not_allowed_command_exit_1(self):
         """F44 | Test 'ssh -c lss' command should succeed"""
         # add SSH_CLIENT to environment
         if not os.environ.get("SSH_CLIENT"):
@@ -105,7 +105,7 @@ class TestFunctions(unittest.TestCase):
             f"The process should exit with code 1, got {self.child.exitstatus}.",
         )
 
-    def test_57_overssh_all_minus_list(self):
+    def test_overssh_all_minus_list(self):
         """F57 | overssh minus command list."""
         command = "echo 1"
         expected = (
@@ -127,7 +127,7 @@ class TestFunctions(unittest.TestCase):
         output = self.child.before.decode("utf-8").strip()
         self.assertEqual(expected, output)
 
-    def test_58_overssh_plus_minus_chain_controls_warning_and_allow(self):
+    def test_overssh_plus_minus_chain_controls_warning_and_allow(self):
         """F58 | overssh +/- chain should deny removed command and allow added one."""
         if not os.environ.get("SSH_CLIENT"):
             os.environ["SSH_CLIENT"] = "random"

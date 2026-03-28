@@ -44,7 +44,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_39_script_execution_with_template(self):
+    def test_script_execution_with_template(self):
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"
@@ -98,7 +98,7 @@ exec {LSHELL} --config {CONFIG} --forbidden \"-[';','&']\" "$@"
             os.remove(test_script_path)
         self.do_exit(child)
 
-    def test_40_script_execution_with_template_strict(self):
+    def test_script_execution_with_template_strict(self):
         """Test executing script after modifying shebang and clean up afterward"""
 
         template_path = f"{TOPDIR}/test/template.lsh"

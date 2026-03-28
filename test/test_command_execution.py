@@ -30,7 +30,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_03_external_echo_command_num(self):
+    def test_external_echo_command_num(self):
         """F03 | external echo number"""
         expected = "32"
         self.child.sendline("echo 32")
@@ -38,7 +38,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split()[2]
         self.assertEqual(expected, result)
 
-    def test_04_external_echo_command_string(self):
+    def test_external_echo_command_string(self):
         """F04 | external echo random string"""
         expected = "bla blabla  32 blibli! plop."
         self.child.sendline(f'echo "{expected}"')
@@ -46,7 +46,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1].strip()
         self.assertEqual(expected, result)
 
-    def test_16a_exitcode_with_separator_external_cmd(self):
+    def test_exitcode_with_separator_external_cmd(self):
         """F16(a) | external command exit codes with separator"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
@@ -68,7 +68,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected_3, result_3)
         self.do_exit(child)
 
-    def test_16b_exitcode_with_separator_external_cmd(self):
+    def test_exitcode_with_separator_external_cmd_b(self):
         """F16(b) | external command exit codes with separator"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
@@ -87,7 +87,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected_2, result_2)
         self.do_exit(child)
 
-    def test_17_exitcode_without_separator_external_cmd(self):
+    def test_exitcode_without_separator_external_cmd(self):
         """F17 | external command exit codes without separator"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
@@ -101,7 +101,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_24_cd_and_command(self):
+    def test_cd_and_command(self):
         """F24 | cd && command should not be interpreted by internal function"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} --forbidden \"-['&']\"")
         child.expect(PROMPT)
@@ -113,7 +113,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_33_ls_non_existing_directory_and_echo(self):
+    def test_ls_non_existing_directory_and_echo(self):
         """Test: ls non_existing_directory && echo nothing"""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
         child.expect(PROMPT)
@@ -126,7 +126,7 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("nothing", output)
         self.do_exit(child)
 
-    def test_34_ls_and_echo_ok(self):
+    def test_ls_and_echo_ok(self):
         """Test: ls && echo OK"""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['&']\"")
         child.expect(PROMPT)
@@ -139,7 +139,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn("OK", output)
         self.do_exit(child)
 
-    def test_35_ls_non_existing_directory_or_echo_ok(self):
+    def test_ls_non_existing_directory_or_echo_ok(self):
         """Test: ls non_existing_directory || echo OK"""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['|']\"")
         child.expect(PROMPT)
@@ -152,7 +152,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn("OK", output)
         self.do_exit(child)
 
-    def test_36_ls_or_echo_nothing(self):
+    def test_ls_or_echo_nothing(self):
         """Test: ls || echo nothing"""
         child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
         child.expect(PROMPT)
@@ -165,7 +165,7 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("nothing", output)
         self.do_exit(child)
 
-    def test_41_multicmd_with_wrong_arg_should_fail(self):
+    def test_multicmd_with_wrong_arg_should_fail(self):
         """F20 | Allowing 'echo asd': Test 'echo qwe' should fail"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
@@ -180,7 +180,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_42_multicmd_with_near_exact_arg_should_fail(self):
+    def test_multicmd_with_near_exact_arg_should_fail(self):
         """F41 | Allowing 'echo asd': Test 'echo asds' should fail"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
@@ -195,7 +195,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_43_multicmd_without_arg_should_fail(self):
+    def test_multicmd_without_arg_should_fail(self):
         """F42 | Allowing 'echo asd': Test 'echo' should fail"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
@@ -210,7 +210,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_44_multicmd_asd_should_pass(self):
+    def test_multicmd_asd_should_pass(self):
         """F43 | Allowing 'echo asd': Test 'echo asd' should pass"""
 
         child = pexpect.spawn(
@@ -226,7 +226,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_45_pipeline_is_shell_compatible(self):
+    def test_pipeline_is_shell_compatible(self):
         """F45 | Pipeline should pass stdout between commands."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
@@ -240,7 +240,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual("3", result)
         self.do_exit(child)
 
-    def test_46_redirection_is_shell_compatible(self):
+    def test_redirection_is_shell_compatible(self):
         """F46 | Redirections should be handled by shell semantics."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --path \"['/tmp']\" "
@@ -256,7 +256,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn("does_not_exist", result)
         self.do_exit(child)
 
-    def test_47_allowed_missing_binary_uses_lshell_error(self):
+    def test_allowed_missing_binary_uses_lshell_error(self):
         """F47 | Allowed command missing on PATH should use lshell error format."""
         random_suffix = random.randint(100000, 999999)
         missing_cmd = f"lshell_missing_cmd_{random_suffix}"
@@ -276,7 +276,7 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("bash:", output)
         self.do_exit(child)
 
-    def test_69_operator_matrix_fuzz(self):
+    def test_operator_matrix_fuzz(self):
         """F69 | Operator and expansion matrix should remain stable."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
@@ -323,7 +323,7 @@ class TestFunctions(unittest.TestCase):
             if child.isalive():
                 child.close()
 
-    def test_70_multiline_and_interrupt_storm(self):
+    def test_multiline_and_interrupt_storm(self):
         """F70 | Repeated multiline and Ctrl-C should recover cleanly."""
         child = pexpect.spawn(f'{LSHELL} --config {CONFIG} --strict 1 --forbidden "[]"')
 
@@ -360,7 +360,7 @@ class TestFunctions(unittest.TestCase):
             if child.isalive():
                 child.close()
 
-    def test_71_history_randomized_session_consistency(self):
+    def test_history_randomized_session_consistency(self):
         """F71 | History should retain randomized interactive command stream."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
@@ -402,7 +402,7 @@ class TestFunctions(unittest.TestCase):
             if child.isalive():
                 child.close()
 
-    def test_72_background_job_lifecycle(self):
+    def test_background_job_lifecycle(self):
         """F72 | Background jobs should appear and then complete cleanly."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "

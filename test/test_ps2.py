@@ -33,7 +33,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_63_multi_line_command(self):
+    def test_multi_line_command(self):
         """F63 | Test multi-line command execution using line continuation"""
 
         # Start the shell process with lshell config
@@ -54,7 +54,7 @@ class TestFunctions(unittest.TestCase):
         # Send an exit command to end the shell session
         self.do_exit(child)
 
-    def test_64_multi_line_command_with_two_echos(self):
+    def test_multi_line_command_with_two_echos(self):
         """F64 | Test multi-line command execution with two echo commands"""
 
         # Start the shell process with lshell config
@@ -75,7 +75,7 @@ class TestFunctions(unittest.TestCase):
         # Send an exit command to end the shell session
         self.do_exit(child)
 
-    def test_65_multi_line_command_security_echo(self):
+    def test_multi_line_command_security_echo(self):
         """F65 | test help, then echo FREEDOM! && help () sh && help"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG}  --forbidden \"-[';','&']\""
@@ -103,7 +103,7 @@ class TestFunctions(unittest.TestCase):
             self.assertIn(command, result)
         self.do_exit(child)
 
-    def test_66_multi_line_command_ctrl_c(self):
+    def test_multi_line_command_ctrl_c(self):
         """F66 | Test multi-line command then ctrl-c to cancel"""
 
         # Start the shell process with lshell config
@@ -125,7 +125,7 @@ class TestFunctions(unittest.TestCase):
         # Send an exit command to end the shell session
         self.do_exit(child)
 
-    def test_67_unclosed_quotes_traceback(self):
+    def test_unclosed_quotes_traceback(self):
         """F67 | Test that unclsed quotes do not cause a traceback"""
 
         # Start the shell process with lshell config

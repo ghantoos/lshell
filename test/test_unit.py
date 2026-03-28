@@ -27,47 +27,47 @@ class TestFunctions(unittest.TestCase):
     args = [f"--config={CONFIG}", "--quiet=1"]
     userconf = CheckConfig(args).returnconf()
 
-    def test_03_checksecure_doublepipe(self):
+    def test_checksecure_doublepipe(self):
         """U03 | double pipes should be allowed, even if pipe is forbidden"""
         args = self.args + ["--forbidden=['|']"]
         userconf = CheckConfig(args).returnconf()
         input_command = "ls || ls"
         return self.assertEqual(sec.check_secure(input_command, userconf)[0], 0)
 
-    def test_04_checksecure_forbiddenpipe(self):
+    def test_checksecure_forbiddenpipe(self):
         """U04 | forbid pipe, should return 1"""
         args = self.args + ["--forbidden=['|']"]
         userconf = CheckConfig(args).returnconf()
         input_command = "ls | ls"
         return self.assertEqual(sec.check_secure(input_command, userconf)[0], 1)
 
-    def test_05_checksecure_forbiddenchar(self):
+    def test_checksecure_forbiddenchar(self):
         """U05 | forbid character, should return 1"""
         args = self.args + ["--forbidden=['l']"]
         userconf = CheckConfig(args).returnconf()
         input_command = "ls"
         return self.assertEqual(sec.check_secure(input_command, userconf)[0], 1)
 
-    def test_06_checksecure_sudo_command(self):
+    def test_checksecure_sudo_command(self):
         """U06 | quoted text should not be forbidden"""
         input_command = "sudo ls"
         return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
-    def test_07_checksecure_notallowed_command(self):
+    def test_checksecure_notallowed_command(self):
         """U07 | forbidden command, should return 1"""
         args = self.args + ["--allowed=['ls']"]
         userconf = CheckConfig(args).returnconf()
         input_command = "ll"
         return self.assertEqual(sec.check_secure(input_command, userconf)[0], 1)
 
-    def test_08_checkpath_notallowed_path(self):
+    def test_checkpath_notallowed_path(self):
         """U08 | forbidden command, should return 1"""
         args = self.args + ["--path=['/home', '/var']"]
         userconf = CheckConfig(args).returnconf()
         input_command = "cd /tmp"
         return self.assertEqual(sec.check_path(input_command, userconf)[0], 1)
 
-    def test_09_checkpath_notallowed_path_completion(self):
+    def test_checkpath_notallowed_path_completion(self):
         """U09 | forbidden command, should return 1"""
         args = self.args + ["--path=['/home', '/var']"]
         userconf = CheckConfig(args).returnconf()
@@ -76,20 +76,20 @@ class TestFunctions(unittest.TestCase):
             sec.check_path(input_command, userconf, completion=1)[0], 1
         )
 
-    def test_10_checkpath_dollarparenthesis(self):
+    def test_checkpath_dollarparenthesis(self):
         """U10 | when $() is allowed, return 0 if path allowed"""
         args = self.args + ["--forbidden=[';', '&', '|','`','>','<', '${']"]
         userconf = CheckConfig(args).returnconf()
         input_command = "echo $(echo aze)"
         return self.assertEqual(sec.check_path(input_command, userconf)[0], 0)
 
-    def test_11_checkconfig_configoverwrite(self):
+    def test_checkconfig_configoverwrite(self):
         """U12 | forbid ';', then check_secure should return 1"""
         args = [f"--config={CONFIG}", "--strict=123"]
         userconf = CheckConfig(args).returnconf()
         return self.assertEqual(userconf["strict"], 123)
 
-    def test_11b_merge_plus_minus_supported_for_all_list_merge_keys(self):
+    def test_merge_plus_minus_supported_for_all_list_merge_keys(self):
         """U12b | +/- merge semantics are applied for all merge-capable list keys."""
         args = self.args + [
             "--allowed=['basecmd'] + ['pluscmd'] - ['basecmd']",
@@ -119,7 +119,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIn(f"{os.path.realpath('/var')}/|", userconf["path"][1])
         self.assertIn(f"{os.path.realpath('/etc')}/|", userconf["path"][1])
 
-    def test_13_multiple_aliases_with_separator(self):
+    def test_multiple_aliases_with_separator(self):
         """U13 | multiple aliases using &&, || and ; separators"""
         # enable &, | and ; characters
         aliases = {"foo": "foo -l", "bar": "open"}
@@ -129,7 +129,7 @@ class TestFunctions(unittest.TestCase):
             " foo -l; fooo  ; open&& foo -l  " "&& foo -l | open|| open   || foo -l",
         )
 
-    def test_14_sudo_all_commands_expansion(self):
+    def test_sudo_all_commands_expansion(self):
         """U14 | sudo_commands set to 'all' is equal to allowed variable"""
         args = self.args + ["--sudo_commands=all"]
         userconf = CheckConfig(args).returnconf()
@@ -141,21 +141,21 @@ class TestFunctions(unittest.TestCase):
         allowed.sort()
         return self.assertEqual(allowed, userconf["sudo_commands"])
 
-    def test_14b_allowed_all_unquoted_expands(self):
+    def test_allowed_all_unquoted_expands(self):
         """U14b | allowed=all (unquoted) expands to executable allow-list."""
         args = self.args + ["--allowed=all"]
         userconf = CheckConfig(args).returnconf()
         self.assertIsInstance(userconf["allowed"], list)
         self.assertIn("ls", userconf["allowed"])
 
-    def test_14c_allowed_all_quoted_expands(self):
+    def test_allowed_all_quoted_expands(self):
         """U14c | allowed='all' (quoted) expands to executable allow-list."""
         args = self.args + ["--allowed='all'"]
         userconf = CheckConfig(args).returnconf()
         self.assertIsInstance(userconf["allowed"], list)
         self.assertIn("ls", userconf["allowed"])
 
-    def test_14d_sudo_all_quoted_expansion(self):
+    def test_sudo_all_quoted_expansion(self):
         """U14d | sudo_commands='all' (quoted) expands against effective allowed list."""
         args = self.args + ["--sudo_commands='all'"]
         userconf = CheckConfig(args).returnconf()
@@ -168,7 +168,7 @@ class TestFunctions(unittest.TestCase):
             msg="sudo_commands all-expansion must not duplicate ls",
         )
 
-    def test_16_allowed_ld_preload_builtin(self):
+    def test_allowed_ld_preload_builtin(self):
         """U16 | builtin commands should NOT be prepended with LD_PRELOAD"""
         args = self.args + ["--allowed=['echo','export']"]
         userconf = CheckConfig(args).returnconf()
@@ -176,7 +176,7 @@ class TestFunctions(unittest.TestCase):
         # prepended with LD_PRELOAD)
         return self.assertNotIn("export", userconf["aliases"])
 
-    def test_17_allowed_exec_cmd(self):
+    def test_allowed_exec_cmd(self):
         """U17 | allowed_shell_escape should NOT be prepended with LD_PRELOAD
         The command should not be added to the aliases variable
         """
@@ -185,21 +185,21 @@ class TestFunctions(unittest.TestCase):
         # sort lists to compare
         return self.assertNotIn("echo", userconf["aliases"])
 
-    def test_18_forbidden_environment(self):
+    def test_forbidden_environment(self):
         """U18 | unsafe environment are forbidden"""
         input_command = "export LD_PRELOAD=/lib64/ld-2.21.so"
         args = input_command
         retcode = builtincmd.cmd_export(args)[0]
         return self.assertEqual(retcode, 1)
 
-    def test_19_allowed_environment(self):
+    def test_allowed_environment(self):
         """U19 | other environment are accepted"""
         input_command = "export MY_PROJECT_VERSION=43"
         args = input_command
         retcode = builtincmd.cmd_export(args)[0]
         return self.assertEqual(retcode, 0)
 
-    def test_22_prompt_short_0(self):
+    def test_prompt_short_0(self):
         """U22 | short_prompt = 0 should show dir compared to home dir"""
         expected = f"{getuser()}:~/foo$ "
         args = self.args + ["--prompt_short=0"]
@@ -209,7 +209,7 @@ class TestFunctions(unittest.TestCase):
         # sort lists to compare
         return self.assertEqual(prompt, expected)
 
-    def test_23_prompt_short_1(self):
+    def test_prompt_short_1(self):
         """U23 | short_prompt = 1 should show only current dir"""
         expected = f"{getuser()}:foo$ "
         args = self.args + ["--prompt_short=1"]
@@ -219,7 +219,7 @@ class TestFunctions(unittest.TestCase):
         # sort lists to compare
         return self.assertEqual(prompt, expected)
 
-    def test_24_prompt_short_2(self):
+    def test_prompt_short_2(self):
         """U24 | short_prompt = 2 should show full dir path"""
         expected = f"{getuser()}:{os.getcwd()}/foo$ "
         args = self.args + ["--prompt_short=2"]
@@ -229,29 +229,29 @@ class TestFunctions(unittest.TestCase):
         # sort lists to compare
         return self.assertEqual(prompt, expected)
 
-    def test_25_disable_ld_preload(self):
+    def test_disable_ld_preload(self):
         """U25 | empty path_noexec should disable LD_PRELOAD"""
         args = self.args + ["--allowed=['echo','export']", "--path_noexec=''"]
         userconf = CheckConfig(args).returnconf()
         # verify that no alias was created containing LD_PRELOAD
         return self.assertNotIn("echo", userconf["aliases"])
 
-    def test_26_checksecure_quoted_command(self):
+    def test_checksecure_quoted_command(self):
         """U26 | quoted command should be parsed"""
         input_command = 'echo 1 && "bash"'
         return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
-    def test_27_checksecure_quoted_command(self):
+    def test_checksecure_quoted_command_case_27(self):
         """U27 | quoted command should be parsed"""
         input_command = '"bash" && echo 1'
         return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
-    def test_28_checksecure_quoted_command(self):
+    def test_checksecure_quoted_command_case_28(self):
         """U28 | quoted command should be parsed"""
         input_command = "echo'/1.sh'"
         return self.assertEqual(sec.check_secure(input_command, self.userconf)[0], 1)
 
-    def test_29_env_path_updates_path_variable(self):
+    def test_env_path_updates_path_variable(self):
         """U29 | Test that --env_path updates the PATH environment variable."""
         # store the original $PATH
         original_path = os.environ["PATH"]
@@ -273,7 +273,7 @@ class TestFunctions(unittest.TestCase):
         os.environ["PATH"] = original_path
 
     @patch("sys.exit")  # Mock sys.exit to prevent exiting the test on failure
-    def test_30_invalid_new_path(self, mock_exit):
+    def test_invalid_new_path(self, mock_exit):
         """U30 | Test that an invalid new PATH triggers an error and sys.exit."""
         original_path = os.environ["PATH"]
         random_path = "/usr/random:/invalid$path"
@@ -291,7 +291,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(os.environ["PATH"], original_path)
 
     @patch("sys.exit")
-    def test_31_new_path_starts_with_colon(self, mock_exit):
+    def test_new_path_starts_with_colon(self, mock_exit):
         """U31 | Test that a new PATH starting with a colon triggers an error."""
         original_path = os.environ["PATH"]
         random_path = ":/usr/random:/this_is_a_test"
@@ -308,7 +308,7 @@ class TestFunctions(unittest.TestCase):
         # The PATH should not have been changed
         self.assertEqual(os.environ["PATH"], original_path)
 
-    def test_32_lps1_user_host_time(self):
+    def test_lps1_user_host_time(self):
         r"""U32 | LPS1 using \u@\h - \t> format"""
         os.environ["LPS1"] = r"\u@\h - \t> "
         expected = f"{getuser()}@{os.uname()[1].split('.')[0]} - {strftime('%H:%M:%S', gmtime())}> "
@@ -316,7 +316,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]
 
-    def test_33_lps1_with_cwd(self):
+    def test_lps1_with_cwd(self):
         r"""U33 | LPS1 should replace cwd with \w format"""
         os.environ["LPS1"] = r"\u:\w$ "
         expected = f"{getuser()}:{os.getcwd().replace(os.path.expanduser('~'), '~')}$ "
@@ -324,7 +324,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]
 
-    def test_34_prompt_default_user_host(self):
+    def test_prompt_default_user_host(self):
         """U34 | Default config-based prompt should replace %u and %h"""
         userconf = CheckConfig(self.args).returnconf()
         userconf["prompt"] = "%u@%h"
@@ -332,7 +332,7 @@ class TestFunctions(unittest.TestCase):
         prompt = getpromptbase(userconf)
         self.assertEqual(prompt, expected)
 
-    def test_35_updateprompt_lps1_defined(self):
+    def test_updateprompt_lps1_defined(self):
         """U35 | LPS1 environment variable should override config-based prompt"""
         os.environ["LPS1"] = r"\u@\H \W$ "
         expected = f"{getuser()}@{os.uname()[1]} {os.path.basename(os.getcwd())}$ "
@@ -341,7 +341,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]
 
-    def test_36_updateprompt_home_path(self):
+    def test_updateprompt_home_path(self):
         """U36 | Prompt path should use '~' for home directory"""
         userconf = CheckConfig(self.args).returnconf()
         currentpath = userconf["home_path"]
@@ -349,7 +349,7 @@ class TestFunctions(unittest.TestCase):
         prompt = updateprompt(currentpath, userconf)
         self.assertEqual(prompt, expected)
 
-    def test_37_updateprompt_short_prompt_level_1(self):
+    def test_updateprompt_short_prompt_level_1(self):
         """U37 | short_prompt = 1 should show only last directory in path"""
         userconf = CheckConfig(self.args).returnconf()
         userconf["prompt_short"] = 1
@@ -358,7 +358,7 @@ class TestFunctions(unittest.TestCase):
         prompt = updateprompt(currentpath, userconf)
         self.assertEqual(prompt, expected)
 
-    def test_38_updateprompt_short_prompt_level_2(self):
+    def test_updateprompt_short_prompt_level_2(self):
         """U38 | short_prompt = 2 should show full directory path"""
         userconf = CheckConfig(self.args).returnconf()
         userconf["prompt_short"] = 2
@@ -367,7 +367,7 @@ class TestFunctions(unittest.TestCase):
         prompt = updateprompt(currentpath, userconf)
         self.assertEqual(prompt, expected)
 
-    def test_39_updateprompt_path_inside_home(self):
+    def test_updateprompt_path_inside_home(self):
         """U39 | Path inside home directory should start with '~'"""
         userconf = CheckConfig(self.args).returnconf()
         currentpath = f"{userconf['home_path']}/projects"
@@ -375,7 +375,7 @@ class TestFunctions(unittest.TestCase):
         prompt = updateprompt(currentpath, userconf)
         self.assertEqual(prompt, expected)
 
-    def test_40_updateprompt_absolute_path_outside_home(self):
+    def test_updateprompt_absolute_path_outside_home(self):
         """U40 | Absolute path outside home should display fully in prompt"""
         userconf = CheckConfig(self.args).returnconf()
         currentpath = "/etc"
@@ -384,21 +384,21 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(prompt, expected)
 
     @patch("lshell.config.runtime.os.umask")
-    def test_41_umask_sets_process_mask(self, mock_umask):
+    def test_umask_sets_process_mask(self, mock_umask):
         """U41 | --umask should be parsed as octal and applied to process mask"""
         args = self.args + ["--umask=0002"]
         userconf = CheckConfig(args).returnconf()
         self.assertEqual(userconf["umask"], "0002")
         mock_umask.assert_called_once_with(0o002)
 
-    def test_42_invalid_umask_value_raises(self):
+    def test_invalid_umask_value_raises(self):
         """U42 | invalid umask value should exit with error"""
         args = self.args + ["--umask=0088"]
         with self.assertRaises(SystemExit) as exc:
             CheckConfig(args).returnconf()
         self.assertEqual(exc.exception.code, 1)
 
-    def test_42b_umask_masks_new_history_file_permissions(self):
+    def test_umask_masks_new_history_file_permissions(self):
         """U42b | configured umask should affect newly created lshell artifacts."""
         original_umask = os.umask(0)
         os.umask(original_umask)
@@ -419,7 +419,7 @@ class TestFunctions(unittest.TestCase):
         finally:
             os.umask(original_umask)
 
-    def test_43_default_ls_alias_enables_auto_color(self):
+    def test_default_ls_alias_enables_auto_color(self):
         """U43 | default config should alias ls to a platform color option."""
         userconf = CheckConfig(self.args).returnconf()
         expected = None
@@ -429,13 +429,13 @@ class TestFunctions(unittest.TestCase):
             expected = "ls -G"
         self.assertEqual(userconf["aliases"].get("ls"), expected)
 
-    def test_44_explicit_ls_alias_is_preserved(self):
+    def test_explicit_ls_alias_is_preserved(self):
         """U44 | explicit ls alias should not be overwritten."""
         args = self.args + ["--aliases={'ls':'ls -lh'}"]
         userconf = CheckConfig(args).returnconf()
         self.assertEqual(userconf["aliases"].get("ls"), "ls -lh")
 
-    def test_44b_auto_ls_alias_expands_during_local_execution(self):
+    def test_auto_ls_alias_expands_during_local_execution(self):
         """U44b | local execution should dispatch through the generated ls alias."""
         saved_env = {}
         for key in ("SSH_CLIENT", "SSH_TTY", "SSH_ORIGINAL_COMMAND"):
@@ -467,25 +467,18 @@ class TestFunctions(unittest.TestCase):
                 else:
                     os.environ[key] = value
 
-    def test_45_policy_commands_enabled_by_default(self):
+    def test_policy_commands_enabled_by_default(self):
         """U45 | policy commands should be available by default."""
         userconf = CheckConfig(self.args).returnconf()
         self.assertIn("lshow", userconf["allowed"])
 
-    def test_46_policy_commands_can_be_hidden(self):
+    def test_policy_commands_can_be_hidden(self):
         """U46 | policy commands can be hidden via --policy_commands=0."""
         args = self.args + ["--policy_commands=0"]
         userconf = CheckConfig(args).returnconf()
         self.assertNotIn("lshow", userconf["allowed"])
 
-    def test_47_invalid_allowed_type_rejected(self):
-        """U47 | allowed must be a list, scalar values should be rejected."""
-        args = self.args + ["--allowed=1"]
-        with self.assertRaises(SystemExit) as exc:
-            CheckConfig(args).returnconf()
-        self.assertEqual(exc.exception.code, 1)
-
-    def test_48_history_file_accepts_string_and_expands_home(self):
+    def test_history_file_accepts_string_and_expands_home(self):
         """U48 | --history_file should parse as string and resolve under home path."""
         history_name = ".lshell_%u_history"
         args = self.args + [f"--history_file='{history_name}'"]
@@ -495,7 +488,7 @@ class TestFunctions(unittest.TestCase):
         )
         self.assertEqual(userconf["history_file"], expected_history)
 
-    def test_49_history_file_absolute_path_kept_absolute(self):
+    def test_history_file_absolute_path_kept_absolute(self):
         """U49 | absolute --history_file path should not be prefixed by home path."""
         history_path = "/tmp/lshell_%u_history"
         args = self.args + [f"--history_file='{history_path}'"]
@@ -505,7 +498,7 @@ class TestFunctions(unittest.TestCase):
         )
 
     @patch("lshell.config.runtime.CheckConfig.noexec_library_usable", return_value=False)
-    def test_50_incompatible_noexec_library_is_disabled(self, _mock_usable):
+    def test_incompatible_noexec_library_is_disabled(self, _mock_usable):
         """U50 | incompatible --path_noexec should be removed from runtime config."""
         with tempfile.NamedTemporaryFile() as fake_lib:
             args = self.args + [f"--path_noexec='{fake_lib.name}'"]

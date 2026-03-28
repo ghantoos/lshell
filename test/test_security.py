@@ -41,7 +41,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_31_security_echo_freedom_and_help(self):
+    def test_security_echo_freedom_and_help(self):
         """F31 | test help, then echo FREEDOM! && help () sh && help"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} --forbidden \"-[';','&']\" "
@@ -66,7 +66,7 @@ class TestFunctions(unittest.TestCase):
             self.assertIn(command, result)
         self.do_exit(child)
 
-    def test_32_security_echo_freedom_and_cd(self):
+    def test_security_echo_freedom_and_cd(self):
         """F32 | test echo FREEDOM! && cd () bash && cd ~/"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} --forbidden \"-[';','&']\" "
@@ -91,7 +91,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected_output, result)
         self.do_exit(child)
 
-    def test_27_checksecure_awk(self):
+    def test_checksecure_awk(self):
         """F27 | checksecure awk script with /bin/sh"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['awk']\""

@@ -18,6 +18,7 @@ lshell \- Limited Shell
 
 .SH DESCRIPTION
 \fBlshell\fR provides a limited shell configured per user via a configuration file.
+Current releases require Python 3.10 or newer.
 You can also use lshell within scripts by adding the appropriate shebang
 (#!/usr/bin/lshell) to your script file.
 
@@ -512,8 +513,7 @@ ignored (uses scp(1) from within session)
 .TP
 .I policy_commands
 enable/disable policy introspection builtins. If set to 1 (default), users can
-run \fBpolicy-show\fR, \fBpolicy-path\fR, \fBpolicy-sudo\fR (and aliases
-\fBlpath\fR, \fBlsudo\fR). If set to 0, these commands are hidden.
+run \fBlshow\fR. If set to 0, this command is hidden.
 
 .SH BEST PRACTICES
 .TP
@@ -568,20 +568,8 @@ print the list of allowed commands
 .I history
 print the commands history
 .TP
-.I policy-show [command]
-show resolved policy values. If a command is provided, also show allow/deny decision.
-.TP
-.I policy-path
-lists all allowed and forbidden path
-.TP
-.I policy-sudo
-lists all sudo allowed commands
-.TP
-.I lpath
-alias for \fBpolicy-path\fR
-.TP
-.I lsudo
-alias for \fBpolicy-sudo\fR
+.I lshow [command]
+show resolved policy values including path and sudo sections. If a command is provided, also show allow/deny decision.
 .TP
 .I jobs
 list background jobs

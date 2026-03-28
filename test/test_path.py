@@ -28,7 +28,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_05_external_echo_forbidden_syntax(self):
+    def test_external_echo_forbidden_syntax(self):
         """F05 | echo forbidden syntax $(bleh)"""
         expected = (
             'lshell: forbidden character: "$("\r\n'
@@ -39,7 +39,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_09_external_forbidden_path(self):
+    def test_external_forbidden_path(self):
         """F09 | external command forbidden path - ls /root"""
         expected = (
             'lshell: forbidden path: "/root/"\r\n'
@@ -50,7 +50,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_10_builtin_cd_forbidden_path(self):
+    def test_builtin_cd_forbidden_path(self):
         """F10 | built-in command forbidden path - cd ~root"""
         expected = (
             'lshell: forbidden path: "/root/"\r\n'
@@ -61,7 +61,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_11_etc_passwd_1(self):
+    def test_etc_passwd_1(self):
         """F11 | /etc/passwd: empty variable 'ls "$a"/etc/passwd'"""
         expected = (
             'lshell: forbidden path: "/etc/passwd"\r\n'
@@ -72,7 +72,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_12_etc_passwd_2(self):
+    def test_etc_passwd_2(self):
         """F12 | /etc/passwd: empty variable 'ls -l .*./.*./etc/passwd'"""
         expected = (
             "ls: cannot access '.*./.*./etc/passwd': No such file or directory\r\n"
@@ -82,7 +82,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_13a_etc_passwd_3(self):
+    def test_etc_passwd_3(self):
         """F13(a) | /etc/passwd: empty variable 'ls -l .?/.?/etc/passwd'"""
         expected = "ls: cannot access '.?/.?/etc/passwd': No such file or directory\r\n"
         self.child.sendline("ls -l .?/.?/etc/passwd")
@@ -90,7 +90,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_13b_etc_passwd_4(self):
+    def test_etc_passwd_4(self):
         """F13(b) | /etc/passwd: empty variable 'ls -l ../../etc/passwd'"""
         expected = (
             'lshell: forbidden path: "/etc/passwd"\r\n'
@@ -101,7 +101,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_21_allow_slash(self):
+    def test_allow_slash(self):
         """F21 | user should able to allow / access minus some directory
         (e.g. /var)
         """
@@ -119,7 +119,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_22_path_plus_minus_reallow_and_warning_messages(self):
+    def test_path_plus_minus_reallow_and_warning_messages(self):
         """F22 | path +/- chain should re-allow child path and keep warning countdown."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "

@@ -2,7 +2,6 @@
 
 import os
 import unittest
-import inspect
 from getpass import getuser
 import pexpect
 
@@ -21,13 +20,12 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_51_grep_valid_log_entry(self):
+    def test_grep_valid_log_entry(self):
         """F51 | Test that grep matches a valid log entry format."""
         pattern = (
             r"\[\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2}\s+(?:-|\+)\d{4}\].+UID=[\w.]+"
         )
-        f_name = inspect.currentframe().f_code.co_name
-        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        log_file = f"{TOPDIR}/test/testfiles/test_51_grep_valid_log_entry.log"
         command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(
@@ -44,13 +42,12 @@ class TestFunctions(unittest.TestCase):
         self.assertIn("user123", output)
         self.do_exit(child)
 
-    def test_52_grep_invalid_date_format(self):
+    def test_grep_invalid_date_format(self):
         """F52 | Test that grep matches a valid log entry format."""
         pattern = (
             r"\[\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2}\s+(?:-|\+)\d{4}\].+UID=[\w.]+"
         )
-        f_name = inspect.currentframe().f_code.co_name
-        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        log_file = f"{TOPDIR}/test/testfiles/test_52_grep_invalid_date_format.log"
 
         command = f"grep -P '{pattern}' {log_file}"
 
@@ -65,13 +62,12 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("user123", output)
         self.do_exit(child)
 
-    def test_53_grep_missing_uid(self):
+    def test_grep_missing_uid(self):
         """F53 | Test that grep matches a valid log entry format."""
         pattern = (
             r"\[\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2}\s+(?:-|\+)\d{4}\].+UID=[\w.]+"
         )
-        f_name = inspect.currentframe().f_code.co_name
-        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        log_file = f"{TOPDIR}/test/testfiles/test_53_grep_missing_uid.log"
 
         command = f"grep -P '{pattern}' {log_file}"
 
@@ -86,13 +82,14 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("user123", output)
         self.do_exit(child)
 
-    def test_54_grep_special_characters_in_uid(self):
+    def test_grep_special_characters_in_uid(self):
         """F54 | Test that grep matches a valid log entry format."""
         pattern = (
             r"\[\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2}\s+(?:-|\+)\d{4}\].+UID=[\w.]+"
         )
-        f_name = inspect.currentframe().f_code.co_name
-        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        log_file = (
+            f"{TOPDIR}/test/testfiles/test_54_grep_special_characters_in_uid.log"
+        )
         command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(

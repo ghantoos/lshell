@@ -12,8 +12,9 @@ except ImportError as exc:  # pragma: no cover - optional dependency
     ) from exc
 
 with atheris.instrument_imports():
-    from lshell import parser as lshell_parser
-    from lshell import policy
+    from lshell.engine import normalizer as engine_normalizer
+    from lshell.engine import parser as engine_parser
+    from lshell.config import diagnostics as policy
     from lshell import sec
     from lshell import utils
 
@@ -39,8 +40,6 @@ class _NullLog:
 
 
 _FUZZ_TMP = tempfile.mkdtemp(prefix="lshell-fuzz-")
-_FUZZ_PARSER = lshell_parser.LshellParser()
-
 
 def _base_conf():
     """Build an isolated, permissive config for parser/policy fuzz entrypoints."""
@@ -80,9 +79,8 @@ def _fuzz_one_line(line):
         "path": conf["path"],
     }
     try:
-        parsed = _FUZZ_PARSER.parse(line)
-        if parsed is not None:
-            _FUZZ_PARSER.validate_command(parsed)
+        parsed = engine_parser.parse(line)
+        engine_normalizer.normalize(parsed)
 
         utils.split_command_sequence(line)
         utils.split_commands(line)

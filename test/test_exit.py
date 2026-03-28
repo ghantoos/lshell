@@ -29,7 +29,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_30_disable_exit(self):
+    def test_disable_exit(self):
         """F31 | test disabled exit command"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " "--disable_exit 1 ")
         child.expect(PROMPT)
@@ -42,7 +42,7 @@ class TestFunctions(unittest.TestCase):
 
         self.assertIn(expected, result)
 
-    def test_50_warnings_then_kickout(self):
+    def test_warnings_then_kickout(self):
         """F50 | kicked out after warning counter"""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 --warning_counter 0"
@@ -50,6 +50,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("lslsls")
         child.sendline("lslsls")
         child.expect(pexpect.EOF, timeout=10)
+        child.close()
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -58,4 +59,3 @@ class TestFunctions(unittest.TestCase):
 
         # Optionally, you can assert that the exit code is correct
         self.assertEqual(child.exitstatus, 1, "The process should exit with code 1.")
-        self.do_exit(child)

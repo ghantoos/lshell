@@ -2,8 +2,8 @@ Source: lshell
 Section: shells
 Priority: optional
 Maintainer: Ignace Mouzannar <mouzannar@gmail.com>
-Build-Depends: debhelper-compat (= 13), python3 (>= 3.4), pybuild-plugin-pyproject
-X-Python3-Version: >= 3.4
+Build-Depends: debhelper-compat (= 13), python3 (>= 3.10), pybuild-plugin-pyproject
+X-Python3-Version: >= 3.10
 Standards-Version: 3.9.7
 Homepage: https://github.com/ghantoos/lshell
 

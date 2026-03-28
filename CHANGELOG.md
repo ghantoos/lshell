@@ -3,6 +3,18 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
+### v0.12.0 (UNRELEASED)
+- Packaging/CI: Raised minimum supported Python version to 3.10 (`requires-python >=3.10`), removed EOL Python versions from CI, and aligned docs/package metadata with the new baseline; CI/classifiers now track active CPython release branches 3.10-3.14 (Python 3.6 reached EOL on 23/12/2021).
+- Security: Removed regex-driven shell parsing from the authorization flow.
+- Engine: Migrated security parsing to a deterministic scanner.
+- Refactor: Removed legacy `lshell.parser` compatibility wrapper; runtime and diagnostics now rely on canonical `lshell.engine.*` parsing paths only.
+- Refactor: Reorganized configuration code into `lshell/config/` with focused modules (`runtime.py`, `diagnostics.py`, `resolve.py`, `schema.py`) and updated imports accordingly.
+- Config: Unified runtime (`CheckConfig`) and diagnostics (`policy-show`) merge logic into a shared resolver to keep section precedence, include overlays, +/- list operations, `all` expansion, and glob-path handling aligned.
+- CLI: Restored split diagnostics naming: `policy-show` as the external subcommand and `lshow` as the in-shell builtin.
+- CLI: Removed legacy/extra diagnostics commands `lpath`, `lsudo`, `policy-path`, and `policy-sudo`.
+- UX: Extended `policy-show` output to include path allow/deny details and sudo policy details directly.
+- Tests: Added runtime-vs-diagnostics parity coverage for precedence, include overlays, `allowed=all` minus operations, and schema error behavior.
+
 ### v0.11.1 21/03/2026
 - Feature: Added `lshell setup-system` to provision logging paths/permissions and user/group wiring for deployments.
 - Feature: Added `lshell harden-init` with hardened templates (`sftp-only`, `rsync-backup`, `deploy-minimal`, `readonly-support`) plus `--dry-run`, scoped `[grp:*]`/`[user:*]`, and validation checks.
@@ -19,7 +31,7 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 
 ### v0.11.0 10/03/2026
 - Reworked command parsing with a new `pyparsing`-based parser for more reliable command handling.
-- Added policy diagnostics and built-ins: `policy-show`, `policy-path`, and `policy-sudo`.
+- Added policy diagnostics commands: `policy-show` (CLI) and `lshow` (in-shell).
 - Added customizable user-facing messages via the `messages` configuration section.
 - Added session `umask` configuration support from `lshell.conf` and CLI overrides.
 - Improved `sudo` behavior and command execution handling.
@@ -143,8 +155,8 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 
 ### v0.9.14 27/10/2010
 - Corrected `get_aliases` function, as it was looping when aliases were "recursive" (e.g. `ls:ls --color=auto`)
-- Added `lsudo` built-in command to list allowed sudo commands.
-- Corrected completion function when 2 strings collided (e.g. `ls` and `lsudo`)
+- Added diagnostics sudo-policy visibility for allowed sudo commands.
+- Corrected completion function when 2 strings collided (for example `ls` with diagnostics commands)
 - Corrected the README's installation part (adding `--prefix`).
 - Added possibility to log via syslog.
 - Corrected warning counter (was counting minus 1).
@@ -179,7 +191,7 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 - Added the possibility to configure introduction prompt.
 - Replaced "joker" by "warnings" (more elegant)
 - Possibility of limiting the history file size.
-- Added `lpath` built-in command to list allowed and denied path. Thanks to Adrien Urban.
+- Added diagnostics path-policy visibility for allowed and denied paths. Thanks to Adrien Urban.
 - Corrected bug when using `~` was not parsed as "home directory" when used in a command other than `cd`. Thank you Adrien Urban for finding this.
 - Corrected minor typo when warning for a forbidden path.
 - If `$(foo)` is present in the line, check if `foo` is allowed before executing the line. Thank you Adrien Urban for pointing this out!

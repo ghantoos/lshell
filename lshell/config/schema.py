@@ -1,4 +1,8 @@
-"""Shared config parsing and schema validation for lshell."""
+"""Parse and validate typed lshell configuration values.
+
+This module provides safe literal parsing, key-specific type enforcement,
+and user-facing validation messages for both runtime and diagnostics paths.
+"""
 
 import ast
 

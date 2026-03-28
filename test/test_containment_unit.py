@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from lshell import containment
 from lshell import utils
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

@@ -1,5 +1,7 @@
 """Unit tests for lshell setup-system bootstrap command."""
 
+import contextlib
+import io
 import unittest
 from unittest.mock import patch
 
@@ -44,3 +46,20 @@ class TestSystemSetup(unittest.TestCase):
         shell_entry.assert_called_once_with("/usr/local/bin/lshell")
         set_shell.assert_called_once_with("testuser", "/usr/local/bin/lshell")
         add_group.assert_called_once_with("testuser", "lshell")
+
+    def test_setup_system_rejects_invalid_mode(self):
+        """Invalid octal mode should fail fast with exit code 1."""
+        stderr = io.StringIO()
+        with patch("lshell.systemsetup.os.geteuid", return_value=0):
+            with contextlib.redirect_stderr(stderr):
+                code = systemsetup.main(["--mode", "8888"])
+
+        self.assertEqual(code, 1)
+        self.assertIn("Invalid mode value", stderr.getvalue())
+
+    def test_resolve_lshell_path_auto_errors_when_binary_missing(self):
+        """Auto shell-path resolution should fail when lshell is not in PATH."""
+        with patch("lshell.systemsetup.shutil.which", return_value=None):
+            with self.assertRaises(RuntimeError) as exc:
+                systemsetup._resolve_lshell_path("auto")
+        self.assertIn("binary not found", str(exc.exception))

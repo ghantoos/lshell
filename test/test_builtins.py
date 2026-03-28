@@ -30,7 +30,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_01_welcome_message(self):
+    def test_welcome_message(self):
         """F01 | lshell welcome message"""
         expected = (
             "You are in a limited shell.\r\nType '?' or 'help' to get"
@@ -39,7 +39,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8")
         self.assertEqual(expected, result)
 
-    def test_02_builtin_ls_command(self):
+    def test_builtin_ls_command(self):
         """F02 | built-in ls command"""
         p = subprocess.Popen(
             "ls ~", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE
@@ -51,7 +51,7 @@ class TestFunctions(unittest.TestCase):
         output = self.child.before.decode("utf8").split("ls\r", 1)[1]
         self.assertEqual(len(expected.strip().split()), len(output.strip().split()))
 
-    def test_06_builtin_cd_change_dir(self):
+    def test_builtin_cd_change_dir(self):
         """F06 | built-in cd - change directory"""
         expected = ""
         home = os.path.expanduser("~")
@@ -68,7 +68,7 @@ class TestFunctions(unittest.TestCase):
             result = self.child.before.decode("utf8").split("\n", 1)[1]
             self.assertEqual(expected, result)
 
-    def test_07_builtin_cd_tilda(self):
+    def test_builtin_cd_tilda(self):
         """F07 | built-in cd - tilda bug"""
         expected = (
             'lshell: forbidden path: "/etc/passwd"\r\n'
@@ -79,7 +79,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_08_builtin_cd_quotes(self):
+    def test_builtin_cd_quotes(self):
         """F08 | built-in - quotes in cd "/" """
         expected = (
             'lshell: forbidden path: "/"\r\n'
@@ -90,7 +90,7 @@ class TestFunctions(unittest.TestCase):
         result = self.child.before.decode("utf8").split("\n", 1)[1]
         self.assertEqual(expected, result)
 
-    def test_18_cd_exitcode_with_separator_internal_cmd(self):
+    def test_cd_exitcode_with_separator_internal_cmd(self):
         """F18 | built-in command exit codes with separator"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
@@ -102,7 +102,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_19_cd_exitcode_without_separator_external_cmd(self):
+    def test_cd_exitcode_without_separator_external_cmd(self):
         """F19 | built-in exit codes without separator"""
         child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
         child.expect(PROMPT)
@@ -116,7 +116,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_20_cd_with_cmd_unknwon_dir(self):
+    def test_cd_with_cmd_unknwon_dir(self):
         """F20 | test built-in cd with command when dir does not exist
         Should be returning error, not executing cmd
         """
@@ -133,7 +133,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, result)
         self.do_exit(child)
 
-    def test_68_source_nonexistent_file(self):
+    def test_source_nonexistent_file(self):
         """F68 | Test sourcing a nonexistent environment file shows an error"""
 
         # Define a nonexistent file path
@@ -157,7 +157,7 @@ class TestFunctions(unittest.TestCase):
         # Clean up and end session
         self.do_exit(child)
 
-    def test_69_source_valid_file(self):
+    def test_source_valid_file(self):
         """F69 | Test sourcing a valid environment file sets variables"""
 
         # Start lshell and source the environment file
@@ -180,7 +180,7 @@ class TestFunctions(unittest.TestCase):
         # Clean up and end session
         self.do_exit(child)
 
-    def test_70_source_overwrite_variable(self):
+    def test_source_overwrite_variable(self):
         """F70 | Test sourcing a file overwrites existing environment variables"""
 
         # Start lshell, set initial variable, and source file to overwrite it

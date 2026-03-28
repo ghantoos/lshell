@@ -29,6 +29,13 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
+    def _ssh_env(self):
+        """Return an SSH-like environment that triggers overssh execution path."""
+        env = os.environ.copy()
+        env["SSH_CLIENT"] = "random"
+        env.pop("SSH_TTY", None)
+        return env
+
     def test_overssh_allowed_command_exit_0(self):
         """F44 | Test 'ssh -c ls' command should exit 0"""
         # add SSH_CLIENT to environment
@@ -150,3 +157,52 @@ class TestFunctions(unittest.TestCase):
         allowed.expect(pexpect.EOF, timeout=10)
         allowed_output = allowed.before.decode("utf-8")
         self.assertIn("1", allowed_output)
+
+    def test_overssh_scp_download_denied_when_downloads_disabled(self):
+        """SCP -f should be denied when scp_download is disabled."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--scp 1 --scp_download 0 --overssh \"['scp']\" "
+            "-c 'scp -f /tmp/file'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        child.close()
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_overssh_scp_upload_denied_when_uploads_disabled(self):
+        """SCP -t should be denied when scp_upload is disabled."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--scp 1 --scp_upload 0 --overssh \"['scp']\" "
+            "-c 'scp -t /tmp/file'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        child.close()
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_overssh_sftp_server_denied_when_sftp_disabled(self):
+        """sftp-server over SSH should exit with denial when sftp is disabled."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --sftp 0 -c 'sftp-server'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        child.close()
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_winscp_mode_allows_semicolon_in_interactive_session(self):
+        """winscp mode should relax semicolon restriction for user commands."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --winscp 1 --forbidden \"[';']\" "
+            "--allowed \"['echo']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("echo ONE; echo TWO")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8")
+        self.assertIn("ONE", output)
+        self.assertIn("TWO", output)
+        self.do_exit(child)

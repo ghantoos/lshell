@@ -7,7 +7,7 @@ from unittest.mock import ANY, patch
 
 from lshell import sec
 from lshell import utils
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"

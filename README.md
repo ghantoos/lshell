@@ -10,6 +10,8 @@ PyPI project page: https://pypi.org/project/limited-shell/
 
 ## Installation
 
+Supported Python versions: `3.10`, `3.11`, `3.12`, `3.13`, `3.14` (minimum `3.10`).
+
 Install from PyPI:
 
 ```bash
@@ -95,9 +97,10 @@ lshell policy-show \
 
 Inside an interactive session:
 
-- `policy-show [<command...>]`
-- `policy-path` (`lpath` alias)
-- `policy-sudo` (`lsudo` alias)
+- `lshow [<command...>]`
+
+`lshow` includes effective command policy, allowed/denied paths, and sudo
+policy in one output.
 
 Hide these built-ins if needed:
 
@@ -296,6 +299,7 @@ just test-fuzz-security-parser 20000
 Optional local run (if you want to fuzz outside Docker):
 
 ```bash
+python3 --version  # should be >= 3.10
 pip install -r requirements-fuzz.txt
 python3 fuzz/fuzz_parser_policy.py -runs=20000
 ```

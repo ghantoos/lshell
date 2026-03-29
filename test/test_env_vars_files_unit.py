@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch, call
 
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
@@ -16,7 +16,7 @@ class TestEnvVarsFilesUnit(unittest.TestCase):
 
     args = [f"--config={CONFIG}", "--quiet=1"]
 
-    @patch("lshell.checkconfig.builtincmd.cmd_source", return_value=0)
+    @patch("lshell.config.runtime.builtincmd.cmd_source", return_value=0)
     def test_checkconfig_calls_cmd_source_for_each_env_file(self, mock_cmd_source):
         """Load each configured env_vars_files entry through cmd_source."""
         files = ["/tmp/a.env", "/tmp/b.env"]

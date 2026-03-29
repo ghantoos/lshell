@@ -30,7 +30,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_15_cmd_completion_tab_tab(self):
+    def test_cmd_completion_tab_tab(self):
         """F15 | command completion: tab to list commands"""
         self.child.sendline("\t\t")
         self.child.expect(PROMPT)
@@ -45,16 +45,12 @@ class TestFunctions(unittest.TestCase):
             "help",
             "history",
             "jobs",
-            "lpath",
-            "lsudo",
-            "policy-path",
-            "policy-show",
-            "policy-sudo",
+            "lshow",
             "source",
         ]:
             self.assertIn(command, result)
 
-    def test_14_path_completion_tilda(self):
+    def test_path_completion_tilda(self):
         """F14 | path completion with ~/"""
         # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
@@ -100,7 +96,7 @@ class TestFunctions(unittest.TestCase):
         os.remove(file1)
         os.remove(file2)
 
-    def test_15_file_completion_tilda(self):
+    def test_file_completion_tilda(self):
         """F15 | file completion ls with ~/"""
         # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
@@ -146,7 +142,7 @@ class TestFunctions(unittest.TestCase):
         os.remove(file1)
         os.remove(file2)
 
-    def test_16_file_completion_with_arg(self):
+    def test_file_completion_with_arg(self):
         """F15 | file completion ls with ~/"""
         # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
@@ -192,7 +188,7 @@ class TestFunctions(unittest.TestCase):
         os.remove(file1)
         os.remove(file2)
 
-    def test_26_cmd_completion_dot_slash(self):
+    def test_cmd_completion_dot_slash(self):
         """F26 | command completion: tab to list ./foo1 ./foo2"""
         child = pexpect.spawn(
             f"{LSHELL} " f"--config {CONFIG} " "--allowed \"+ ['./foo1', './foo2']\""

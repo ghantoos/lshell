@@ -5,7 +5,7 @@ import unittest
 from getpass import getuser
 from unittest.mock import patch
 
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell.utils import getpromptbase, updateprompt
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"

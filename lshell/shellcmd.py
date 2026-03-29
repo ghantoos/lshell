@@ -12,14 +12,14 @@ import signal
 import readline
 
 # import lshell specifics
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell import utils
 from lshell import builtincmd
 from lshell import messages
 from lshell import sec
 from lshell import completion
 from lshell import variables
-from lshell import policy as policy_mode
+from lshell.config import diagnostics as policy_mode
 from lshell import audit
 
 
@@ -538,17 +538,22 @@ class ShellCmd(cmd.Cmd, object):
         self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line]
         if not line:
             return self.emptyline()
-        if cmd is None:
+        if cmd is None or cmd == "":
+            stripped = line.lstrip()
+            # Keep comment/shebang lines ignored (script compatibility),
+            # but validate tokenization failures such as leading operators.
+            if stripped and not stripped.startswith("#"):
+                try:
+                    getattr(self, "do___lshell_dispatch")
+                except AttributeError:
+                    pass
             return self.default(line)
         self.lastcmd = line
-        if cmd == "":
+        try:
+            func = getattr(self, "do_" + cmd)
+        except AttributeError:
             return self.default(line)
-        else:
-            try:
-                func = getattr(self, "do_" + cmd)
-            except AttributeError:
-                return self.default(line)
-            return func(arg)
+        return func(arg)
 
     def emptyline(self):
         """This method overrides the original emptyline method, so it doesn't
@@ -579,29 +584,26 @@ class ShellCmd(cmd.Cmd, object):
         """Handle quit exactly like exit."""
         return self.do_exit(arg)
 
-    def do_policy_show(self, arg=None):
-        """Show resolved policy values and optional decision for a command."""
+    def do_lshow(self, arg=None):
+        """Show current session policy values and optional command decision."""
         command_line = (arg or "").strip() or None
-        username = self.conf.get("username")
-        groups = policy_mode._resolve_user_groups(username, [])
-        try:
-            result = policy_mode.resolve_policy(
-                self.conf["configfile"],
-                username,
-                groups,
-            )
-        except ValueError as exception:
-            self.stderr.write(f"lshell: {exception}\n")
-            return 1
+        # `lshow` runs inside an active shell session. Use the in-memory runtime
+        # policy so command-line overrides (for example --allowed/--sudo_commands)
+        # are reflected exactly as enforced in the current session.
+        result = {"policy": self.conf}
 
         decision = None
         if command_line:
-            decision = policy_mode.policy_command_decision(command_line, result["policy"])
+            decision = policy_mode.policy_command_decision(command_line, self.conf)
 
         policy_mode.print_user_view(result, command_line, decision)
         if decision is None:
             return 0
         return 0 if decision["allowed"] else 2
+
+    def do_policy_show(self, arg=None):
+        """Compatibility shim for legacy internal command name."""
+        return self.do_lshow(arg)
 
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""

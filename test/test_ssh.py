@@ -1,6 +1,7 @@
 """Functional tests for lshell SSH handling"""
 
 import os
+import tempfile
 import unittest
 from getpass import getuser
 import pexpect
@@ -29,7 +30,14 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_45_overssh_allowed_command_exit_0(self):
+    def _ssh_env(self):
+        """Return an SSH-like environment that triggers overssh execution path."""
+        env = os.environ.copy()
+        env["SSH_CLIENT"] = "random"
+        env.pop("SSH_TTY", None)
+        return env
+
+    def test_overssh_allowed_command_exit_0(self):
         """F44 | Test 'ssh -c ls' command should exit 0"""
         # add SSH_CLIENT to environment
         if not os.environ.get("SSH_CLIENT"):
@@ -39,6 +47,7 @@ class TestFunctions(unittest.TestCase):
             f"{LSHELL} " f"--config {CONFIG} " f"--overssh \"['ls']\" " f"-c 'ls'"
         )
         self.child.expect(pexpect.EOF, timeout=10)
+        self.child.close()
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -53,7 +62,7 @@ class TestFunctions(unittest.TestCase):
             f"The process should exit with code 0, got {self.child.exitstatus}.",
         )
 
-    def test_46_overssh_allowed_command_exit_1(self):
+    def test_overssh_allowed_command_exit_1(self):
         """F44 | Test 'ssh -c ls' command should exit 1"""
         # add SSH_CLIENT to environment
         if not os.environ.get("SSH_CLIENT"):
@@ -66,6 +75,7 @@ class TestFunctions(unittest.TestCase):
             f"-c 'ls /random'"
         )
         self.child.expect(pexpect.EOF, timeout=10)
+        self.child.close()
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -79,7 +89,7 @@ class TestFunctions(unittest.TestCase):
             f"The process should exit with code 1, got {self.child.exitstatus}.",
         )
 
-    def test_46_overssh_not_allowed_command_exit_1(self):
+    def test_overssh_not_allowed_command_exit_1(self):
         """F44 | Test 'ssh -c lss' command should succeed"""
         # add SSH_CLIENT to environment
         if not os.environ.get("SSH_CLIENT"):
@@ -89,6 +99,7 @@ class TestFunctions(unittest.TestCase):
             f"{LSHELL} " f"--config {CONFIG} " f"--overssh \"['ls']\" " f"-c 'lss'"
         )
         self.child.expect(pexpect.EOF, timeout=10)
+        self.child.close()
 
         # Assert that the process exited
         self.assertIsNotNone(
@@ -102,7 +113,7 @@ class TestFunctions(unittest.TestCase):
             f"The process should exit with code 1, got {self.child.exitstatus}.",
         )
 
-    def test_57_overssh_all_minus_list(self):
+    def test_overssh_all_minus_list(self):
         """F57 | overssh minus command list."""
         command = "echo 1"
         expected = (
@@ -124,7 +135,7 @@ class TestFunctions(unittest.TestCase):
         output = self.child.before.decode("utf-8").strip()
         self.assertEqual(expected, output)
 
-    def test_58_overssh_plus_minus_chain_controls_warning_and_allow(self):
+    def test_overssh_plus_minus_chain_controls_warning_and_allow(self):
         """F58 | overssh +/- chain should deny removed command and allow added one."""
         if not os.environ.get("SSH_CLIENT"):
             os.environ["SSH_CLIENT"] = "random"
@@ -147,3 +158,104 @@ class TestFunctions(unittest.TestCase):
         allowed.expect(pexpect.EOF, timeout=10)
         allowed_output = allowed.before.decode("utf-8")
         self.assertIn("1", allowed_output)
+
+    def test_overssh_scp_download_denied_when_downloads_disabled(self):
+        """SCP -f should be denied when scp_download is disabled."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--scp 1 --scp_download 0 --overssh \"['scp']\" "
+            "-c 'scp -f /tmp/file'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        child.close()
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_overssh_scp_upload_denied_when_uploads_disabled(self):
+        """SCP -t should be denied when scp_upload is disabled."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} "
+            "--scp 1 --scp_upload 0 --overssh \"['scp']\" "
+            "-c 'scp -t /tmp/file'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        child.close()
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_overssh_sftp_server_denied_when_sftp_disabled(self):
+        """sftp-server over SSH should exit with denial when sftp is disabled."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --sftp 0 -c 'sftp-server'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        child.close()
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_winscp_mode_allows_semicolon_in_interactive_session(self):
+        """winscp mode should relax semicolon restriction for user commands."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --winscp 1 --forbidden \"[';']\" "
+            "--allowed \"['echo']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("echo ONE; echo TWO")
+        child.expect(PROMPT)
+        output = child.before.decode("utf-8")
+        self.assertIn("ONE", output)
+        self.assertIn("TWO", output)
+        self.do_exit(child)
+
+    def test_overssh_trusted_sftp_rejects_assignment_prefix(self):
+        """Trusted sftp-server flow should deny env-assignment command prefixes."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --sftp 1 "
+            "--overssh \"['sftp-server']\" "
+            "-c 'TMPDIR=/tmp sftp-server'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        output = child.before.decode("utf-8")
+        child.close()
+        self.assertIn("lshell: forbidden trusted SSH protocol command", output)
+        self.assertEqual(child.exitstatus, 126)
+
+    def test_overssh_scpforce_rewrites_upload_target_before_path_check(self):
+        """scpforce should rewrite upload destination before SSH path authorization."""
+        with tempfile.TemporaryDirectory(prefix="lshell-scpforce-") as forced_dir:
+            forced_real = os.path.realpath(forced_dir)
+            original_target = "/tmp/lshell_scpforce_original_target"
+
+            child = pexpect.spawn(
+                f"{LSHELL} --config {CONFIG} --scp 1 --scp_upload 1 "
+                "--overssh \"['scp']\" "
+                f"--scpforce \"'{forced_dir}'\" "
+                f"-c 'scp -t {original_target}'",
+                env=self._ssh_env(),
+            )
+            child.expect(pexpect.EOF, timeout=10)
+            output = child.before.decode("utf-8")
+            child.close()
+
+            self.assertIn("lshell: forbidden path over SSH:", output)
+            self.assertIn(forced_real, output)
+            self.assertNotIn(original_target, output)
+            self.assertEqual(child.exitstatus, 1)
+
+    def test_overssh_scpforce_unquoted_path_should_not_fail_config_parsing(self):
+        """Unquoted scpforce CLI path should be accepted and reach SSH policy checks."""
+        with tempfile.TemporaryDirectory(prefix="lshell-scpforce-") as forced_dir:
+            child = pexpect.spawn(
+                f"{LSHELL} --config {CONFIG} --scp 1 --scp_upload 1 "
+                "--overssh \"['scp']\" "
+                f"--scpforce {forced_dir} "
+                "-c 'scp -t /tmp/lshell_scpforce_parse_probe'",
+                env=self._ssh_env(),
+            )
+            child.expect(pexpect.EOF, timeout=10)
+            output = child.before.decode("utf-8")
+            child.close()
+
+            self.assertNotIn("Incomplete  field in configuration file", output)

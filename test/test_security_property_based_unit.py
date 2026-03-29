@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from lshell import policy
+from lshell.config import diagnostics as policy
 from lshell import sec
 from lshell import utils
 

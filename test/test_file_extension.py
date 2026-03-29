@@ -2,7 +2,6 @@
 
 import os
 import unittest
-import inspect
 import tempfile
 from getpass import getuser
 import pexpect
@@ -23,11 +22,10 @@ class TestFunctions(unittest.TestCase):
         child.sendline("exit")
         child.expect(pexpect.EOF)
 
-    def test_60_allowed_extension_success(self):
+    def test_allowed_extension_success(self):
         """F60 | allow extension and cat file with similar extension"""
 
-        f_name = inspect.currentframe().f_code.co_name
-        log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"
+        log_file = f"{TOPDIR}/test/testfiles/test_60_allowed_extension_success.log"
         command = f"cat {log_file}"
         expected = "Hello world!"
 
@@ -44,7 +42,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
         self.do_exit(child)
 
-    def test_61_allowed_extension_fail(self):
+    def test_allowed_extension_fail(self):
         """F61 | allow extension and cat file with different extension"""
 
         command = f"cat {CONFIG}"
@@ -63,7 +61,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
         self.do_exit(child)
 
-    def test_62_allowed_extension_empty(self):
+    def test_allowed_extension_empty(self):
         """F62 | allow extension empty and cat any file extension"""
 
         command = f"cat {CONFIG}"
@@ -82,7 +80,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(expected, output)
         self.do_exit(child)
 
-    def test_63_extensionless_filename_is_forbidden(self):
+    def test_extensionless_filename_is_forbidden(self):
         """F63 | extensionless file arguments are rejected when extensions are enforced."""
         target = os.path.join(tempfile.gettempdir(), "lshell_extensionless_target")
         if os.path.exists(target):
@@ -105,7 +103,7 @@ class TestFunctions(unittest.TestCase):
         self.assertFalse(os.path.exists(target))
         self.do_exit(child)
 
-    def test_64_allowed_file_extensions_plus_minus_chain(self):
+    def test_allowed_file_extensions_plus_minus_chain(self):
         """F64 | +/- merge on allowed_file_extensions controls warning outcome."""
         f_name = "test_60_allowed_extension_success"
         log_file = f"{TOPDIR}/test/testfiles/{f_name}.log"

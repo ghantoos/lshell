@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from lshell.checkconfig import CheckConfig
+from lshell.config.runtime import CheckConfig
 from lshell.shellcmd import ShellCmd
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"

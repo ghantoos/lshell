@@ -149,6 +149,16 @@ class TestHardenInit(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("invalid group name", stderr.getvalue())
 
+    def test_main_rejects_invalid_user_name(self):
+        """Invalid user target names are rejected with clear errors."""
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            code = hardeninit.main(
+                ["--profile", "sftp-only", "--user", "bad/name", "--stdout"]
+            )
+        self.assertEqual(code, 1)
+        self.assertIn("invalid user name", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

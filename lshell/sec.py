@@ -8,6 +8,7 @@ import re
 import os
 import shlex
 import glob
+from typing import NamedTuple
 
 # import lshell specifics
 from lshell import messages
@@ -18,8 +19,213 @@ EXTENSION_RESTRICTION_EXEMPT_COMMANDS = {"cd", "clear", "fg", "bg", "ls"}
 MAX_WILDCARD_MATCHES = 4096
 
 
+class _ShellExpansion(NamedTuple):
+    """Parsed shell expansion from an input line."""
+
+    kind: str
+    body: str
+
+
 def _is_assignment_word(word):
     return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", word))
+
+
+def _quoted_literals_without_assignment(line):
+    """Extract quoted literals, excluding immediate assignment values (X="...")."""
+    literals = []
+    index = 0
+    length = len(line)
+
+    while index < length:
+        quote = line[index]
+        if quote not in {"'", '"'}:
+            index += 1
+            continue
+
+        previous = line[index - 1] if index > 0 else ""
+        index += 1
+        chunk = []
+        escaped = False
+
+        while index < length:
+            char = line[index]
+            if quote == '"' and escaped:
+                chunk.append(char)
+                escaped = False
+                index += 1
+                continue
+            if quote == '"' and char == "\\":
+                escaped = True
+                index += 1
+                continue
+            if char == quote:
+                break
+            chunk.append(char)
+            index += 1
+
+        if index < length and line[index] == quote:
+            chunk_text = "".join(chunk)
+            if previous != "=":
+                literals.append(chunk_text)
+            if quote == "'":
+                literals.extend(_quoted_literals_without_assignment(chunk_text))
+        index += 1
+
+    return literals
+
+
+def _read_backtick_expansion(line, start):
+    """Read a backtick expansion beginning at start and return (end, body)."""
+    i = start + 1
+    escaped = False
+    while i < len(line):
+        char = line[i]
+        if escaped:
+            escaped = False
+            i += 1
+            continue
+        if char == "\\":
+            escaped = True
+            i += 1
+            continue
+        if char == "`":
+            return i + 1, line[start + 1 : i]
+        i += 1
+    return None, None
+
+
+def _read_dollar_expansion(line, start, closing):
+    """Read a balanced $()- or ${}-style expansion from start."""
+    i = start + 2
+    in_single = False
+    in_double = False
+    in_backtick = False
+    escaped = False
+    closers = [closing]
+
+    while i < len(line):
+        char = line[i]
+        next_char = line[i + 1] if i + 1 < len(line) else ""
+
+        if escaped:
+            escaped = False
+            i += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            i += 1
+            continue
+
+        if char == "'" and not in_double and not in_backtick:
+            in_single = not in_single
+            i += 1
+            continue
+
+        if char == '"' and not in_single and not in_backtick:
+            in_double = not in_double
+            i += 1
+            continue
+
+        if char == "`" and not in_single:
+            in_backtick = not in_backtick
+            i += 1
+            continue
+
+        if in_single or in_double or in_backtick:
+            i += 1
+            continue
+
+        if char == "$" and next_char == "(":
+            closers.append(")")
+            i += 2
+            continue
+
+        if char == "$" and next_char == "{":
+            closers.append("}")
+            i += 2
+            continue
+
+        if closers and char == closers[-1]:
+            closers.pop()
+            if not closers:
+                return i + 1, line[start + 2 : i]
+            i += 1
+            continue
+
+        i += 1
+
+    return None, None
+
+
+def _scan_shell_expansions(line):
+    """Parse shell expansions in-order while honoring quotes/escapes."""
+    expansions = []
+    i = 0
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while i < len(line):
+        char = line[i]
+        next_char = line[i + 1] if i + 1 < len(line) else ""
+
+        if escaped:
+            escaped = False
+            i += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            i += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            i += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            i += 1
+            continue
+
+        if in_single:
+            i += 1
+            continue
+
+        if char == "$" and next_char == "(":
+            end, body = _read_dollar_expansion(line, i, ")")
+            if end is not None and body:
+                expansions.append(_ShellExpansion("command_substitution", body))
+                i = end
+                continue
+
+        if char == "$" and next_char == "{":
+            end, body = _read_dollar_expansion(line, i, "}")
+            if end is not None and body:
+                expansions.append(_ShellExpansion("parameter_expansion", body))
+                i = end
+                continue
+
+        if char == "`":
+            end, body = _read_backtick_expansion(line, i)
+            if end is not None and body:
+                expansions.append(_ShellExpansion("backtick", body))
+                i = end
+                continue
+
+        i += 1
+
+    return expansions
+
+
+def _parameter_expansion_path_probe(expression):
+    """Return the value-side text from ${...} forms, or the expression itself."""
+    for index, char in enumerate(expression):
+        if char in {"=", "+", "?", "-"}:
+            return expression[index + 1 :]
+    return expression
 
 
 def should_enforce_file_extensions(command):
@@ -360,15 +566,7 @@ def check_secure(line, conf, strict=None, ssh=None):
     # init return code
     returncode = 0
 
-    # This logic is kept crudely simple on purpose.
-    # At most we might match the same stanza twice
-    # (for e.g. "'a'", 'a') but the converse would
-    # require detecting single quotation stanzas
-    # nested within double quotes and vice versa
-    relist = re.findall(r"[^=]\"(.+)\"", line)
-    relist2 = re.findall(r"[^=]\'(.+)\'", line)
-    relist = relist + relist2
-    for item in relist:
+    for item in _quoted_literals_without_assignment(line):
         if os.path.exists(item):
             ret_check_path, conf = check_path(item, conf, strict=strict)
             returncode += ret_check_path
@@ -378,43 +576,40 @@ def check_secure(line, conf, strict=None, ssh=None):
         ret, conf = warn_count("control char", oline, conf, strict=strict, ssh=ssh)
         return ret, conf
 
-    for item in conf["forbidden"]:
-        # allow '&&' and '||' even if singles are forbidden
-        if item in ["&", "|"]:
-            if re.findall(rf"[^\{item}]\{item}[^\{item}]", line):
-                ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
-                return ret, conf
-        else:
-            if item in line:
-                ret, conf = warn_count("character", item, conf, strict=strict, ssh=ssh)
-                return ret, conf
+    ret_forbidden, conf = check_forbidden_chars(line, conf, strict=strict, ssh=ssh)
+    if ret_forbidden:
+        return ret_forbidden, conf
+
+    expansions = _scan_shell_expansions(line)
 
     # check if the line contains $(foo) executions, and check them
-    executions = re.findall(r"\$\([^)]+[)]", line)
-    for item in executions:
+    for expansion in expansions:
+        if expansion.kind != "command_substitution":
+            continue
+        inner = expansion.body.strip()
         # recurse on check_path
-        ret_check_path, conf = check_path(item[2:-1].strip(), conf, strict=strict)
+        ret_check_path, conf = check_path(inner, conf, strict=strict)
         returncode += ret_check_path
 
         # recurse on check_secure
-        ret_check_secure, conf = check_secure(item[2:-1].strip(), conf, strict=strict)
+        ret_check_secure, conf = check_secure(inner, conf, strict=strict)
         returncode += ret_check_secure
 
     # check for executions using back quotes '`'
-    executions = re.findall(r"\`[^`]+[`]", line)
-    for item in executions:
-        ret_check_secure, conf = check_secure(item[1:-1].strip(), conf, strict=strict)
+    for expansion in expansions:
+        if expansion.kind != "backtick":
+            continue
+        ret_check_secure, conf = check_secure(
+            expansion.body.strip(), conf, strict=strict
+        )
         returncode += ret_check_secure
 
     # check if the line contains ${foo=bar}, and check them
-    curly = re.findall(r"\$\{[^}]+[}]", line)
-    for item in curly:
-        # split to get variable only, and remove last character "}"
-        if re.findall(r"=|\+|\?|\-", item):
-            variable = re.split(r"=|\+|\?|\-", item, maxsplit=1)
-        else:
-            variable = item
-        ret_check_path, conf = check_path(variable[1][:-1], conf, strict=strict)
+    for expansion in expansions:
+        if expansion.kind != "parameter_expansion":
+            continue
+        variable = _parameter_expansion_path_probe(expansion.body).strip()
+        ret_check_path, conf = check_path(variable, conf, strict=strict)
         returncode += ret_check_path
 
     # if unknown commands where found, return 1 and don't execute the line

@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from lshell import policy
+from lshell.config import diagnostics as policy
 from lshell import utils
 
 
@@ -151,8 +151,23 @@ class TestPolicy(unittest.TestCase):
         decision = policy.policy_command_decision("ls /tmp", runtime_policy)
         self.assertTrue(decision["allowed"])
 
+    def test_policy_command_decision_rejects_invalid_operator_sequence(self):
+        """EX03e | canonical policy path rejects malformed operator chains."""
+        runtime_policy = {
+            "forbidden": [";"],
+            "allowed": ["echo"],
+            "strict": 0,
+            "sudo_commands": [],
+            "allowed_file_extensions": [],
+            "path": ["", ""],
+        }
+
+        decision = policy.policy_command_decision("echo ok ||| echo pwn", runtime_policy)
+        self.assertFalse(decision["allowed"])
+        self.assertIn("unknown syntax", decision["reason"])
+
     def test_resolve_policy_allowed_all_unquoted_expands(self):
-        """EX03e | allowed=all (unquoted) should expand successfully."""
+        """EX03f | allowed=all (unquoted) should expand successfully."""
         with tempfile.TemporaryDirectory() as tempdir:
             config = self._write_config(
                 tempdir,
@@ -265,9 +280,9 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual([r["key"] for r in grouped["user:bleh"]], ["umask"])
 
-    @patch("lshell.policy.grp.getgrall")
-    @patch("lshell.policy.grp.getgrgid")
-    @patch("lshell.policy.pwd.getpwnam")
+    @patch("lshell.config.diagnostics.grp.getgrall")
+    @patch("lshell.config.diagnostics.grp.getgrgid")
+    @patch("lshell.config.diagnostics.pwd.getpwnam")
     def test_resolve_user_groups_auto_lookup(
         self, mock_getpwnam, mock_getgrgid, mock_getgrall
     ):
@@ -402,8 +417,8 @@ class TestPolicy(unittest.TestCase):
                 policy.resolve_policy(config, "bleh", [])
             self.assertIn("allowed", str(exc.exception))
 
-    def test_builtin_policy_show_dispatches_from_utils(self):
-        """EX10 | builtin dispatcher calls shell_context.do_policy_show."""
+    def test_builtin_lshow_dispatches_from_utils(self):
+        """EX10 | builtin dispatcher calls shell_context.do_lshow."""
 
         class DummyContext:
             """Minimal shell context stub for builtin dispatcher tests."""
@@ -413,14 +428,14 @@ class TestPolicy(unittest.TestCase):
                 self.conf = {}
                 self.called = None
 
-            def do_policy_show(self, arg):
+            def do_lshow(self, arg):
                 """Record argument and mimic a successful builtin call."""
                 self.called = arg
                 return 0
 
         ctx = DummyContext()
         retcode, _ = utils.handle_builtin_command(
-            "policy-show echo hi", "policy-show", "echo hi", ctx
+            "lshow echo hi", "lshow", "echo hi", ctx
         )
         self.assertEqual(retcode, 0)
         self.assertEqual(ctx.called, "echo hi")
@@ -438,6 +453,7 @@ class TestPolicy(unittest.TestCase):
                 "timer": 0,
                 "forbidden": [";"],
                 "allowed_file_extensions": [],
+                "path": ["/tmp/|", ""],
                 "max_sessions_per_user": 2,
                 "max_background_jobs": 3,
                 "command_timeout": 15,
@@ -453,6 +469,9 @@ class TestPolicy(unittest.TestCase):
         self.assertIn("Max background jobs    : 3", rendered)
         self.assertIn("Command timeout (sec)  : 15s", rendered)
         self.assertIn("Max processes          : 10", rendered)
+        self.assertIn("Allowed paths", rendered)
+        self.assertNotIn("Path Policy", rendered)
+        self.assertIn("Sudo Policy", rendered)
 
     def test_print_user_view_shows_unlimited_for_zero_containment_limits(self):
         """EX12 | zero-valued containment limits should render as Unlimited."""
@@ -467,6 +486,7 @@ class TestPolicy(unittest.TestCase):
                 "timer": 0,
                 "forbidden": [";"],
                 "allowed_file_extensions": [],
+                "path": ["/tmp/|", ""],
                 "max_sessions_per_user": 0,
                 "max_background_jobs": 0,
                 "command_timeout": 0,
@@ -482,6 +502,39 @@ class TestPolicy(unittest.TestCase):
         self.assertIn("Max background jobs    : Unlimited", rendered)
         self.assertIn("Command timeout (sec)  : Unlimited", rendered)
         self.assertIn("Max processes          : Unlimited", rendered)
+
+    def test_print_user_view_embeds_allowed_paths_and_sudo_content(self):
+        """EX13 | lshow output includes allowed paths and sudo policy sections."""
+        result = {
+            "policy": {
+                "username": "bleh",
+                "strict": 1,
+                "warning_counter": 2,
+                "allowed": ["ls"],
+                "aliases": {},
+                "sudo_commands": ["id", "ls"],
+                "timer": 0,
+                "forbidden": [";"],
+                "allowed_file_extensions": [],
+                "path": ["/tmp/|", "/etc/|"],
+                "max_sessions_per_user": 0,
+                "max_background_jobs": 0,
+                "command_timeout": 0,
+                "max_processes": 0,
+            }
+        }
+
+        with redirect_stdout(io.StringIO()) as output:
+            policy.print_user_view(result)
+        rendered = output.getvalue()
+
+        self.assertNotIn("Path Policy", rendered)
+        self.assertNotIn("Current directory", rendered)
+        self.assertIn("Allowed paths", rendered)
+        self.assertIn("Denied paths", rendered)
+        self.assertIn("Sudo Policy", rendered)
+        self.assertNotIn("Allowed sudo           :", rendered)
+        self.assertIn("Allowed via sudo       : id, ls", rendered)
 
 
 if __name__ == "__main__":

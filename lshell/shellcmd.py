@@ -538,17 +538,22 @@ class ShellCmd(cmd.Cmd, object):
         self.g_cmd, self.g_arg, self.g_line = [cmd, arg, line]
         if not line:
             return self.emptyline()
-        if cmd is None:
+        if cmd is None or cmd == "":
+            stripped = line.lstrip()
+            # Keep comment/shebang lines ignored (script compatibility),
+            # but validate tokenization failures such as leading operators.
+            if stripped and not stripped.startswith("#"):
+                try:
+                    getattr(self, "do___lshell_dispatch")
+                except AttributeError:
+                    pass
             return self.default(line)
         self.lastcmd = line
-        if cmd == "":
+        try:
+            func = getattr(self, "do_" + cmd)
+        except AttributeError:
             return self.default(line)
-        else:
-            try:
-                func = getattr(self, "do_" + cmd)
-            except AttributeError:
-                return self.default(line)
-            return func(arg)
+        return func(arg)
 
     def emptyline(self):
         """This method overrides the original emptyline method, so it doesn't

@@ -4,6 +4,7 @@ import os
 import re
 import tempfile
 import textwrap
+import time
 import unittest
 from getpass import getuser
 
@@ -211,6 +212,192 @@ class TestSessionInteractionFunctional(unittest.TestCase):
                 output,
             )
             self.assertIn("lshell: warning: 1 violation remaining", output)
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+
+    def test_alias_expansion_smuggling_is_blocked_and_session_recovers(self):
+        """Alias expansion should not bypass forbidden-operator enforcement."""
+        child = self._spawn_shell(
+            "--strict 1 --warning_counter 5 --quiet 0 "
+            "--aliases \"{'safe':'echo SAFE; id'}\""
+        )
+        try:
+            attack_output = self._run_command(child, "safe")
+            self.assertIn('lshell: forbidden character: ";"', attack_output)
+            self.assertNotIn("uid=", attack_output)
+
+            post_attack = self._run_command(child, "echo AFTER_ALIAS_BLOCK")
+            self.assertIn("AFTER_ALIAS_BLOCK", post_attack)
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+
+    def test_forbidden_environment_assignments_ld_family_and_tmpdir(self):
+        """Dangerous env assignment prefixes should be blocked and shell should stay usable."""
+        child = self._spawn_shell(
+            "--strict 1 --warning_counter 5 --quiet 0 "
+            "--forbidden \"[]\" --allowed \"+['printenv','echo']\""
+        )
+        try:
+            for var_name in ("LD_PRELOAD", "LD_LIBRARY_PATH", "TMPDIR"):
+                with self.subTest(var_name=var_name):
+                    output = self._run_command(
+                        child,
+                        f"{var_name}=/tmp printenv {var_name}",
+                    )
+                    self.assertIn(
+                        f"lshell: forbidden environment variable: {var_name}",
+                        output,
+                    )
+                    lines = [line.strip() for line in output.splitlines() if line.strip()]
+                    self.assertNotIn("/tmp", lines)
+
+            post_attack = self._run_command(child, "echo ENV_GUARD_OK")
+            self.assertIn("ENV_GUARD_OK", post_attack)
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+
+    def test_assignment_only_command_persists_in_live_session(self):
+        """Assignment-only input should update interactive shell env and chained command view."""
+        child = self._spawn_shell('--strict 1 --forbidden "[]" --allowed "+[\'echo\']"')
+        try:
+            assignment_output = self._run_command(child, "LSHELL_INTERACTIVE_ASSIGN=LIVE")
+            self.assertEqual(self._last_non_empty_line(assignment_output), "")
+
+            value_output = self._run_command(child, "echo $LSHELL_INTERACTIVE_ASSIGN")
+            self.assertEqual(self._last_non_empty_line(value_output), "LIVE")
+
+            chained_output = self._run_command(
+                child,
+                "LSHELL_CHAIN_ASSIGN=CHAINED && echo $LSHELL_CHAIN_ASSIGN",
+            )
+            self.assertEqual(self._last_non_empty_line(chained_output), "CHAINED")
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+
+    def test_config_reload_applies_new_policy_mid_session(self):
+        """Config mtime change should reload policy and affect next user command."""
+        with tempfile.TemporaryDirectory(prefix="lshell-config-reload-") as tempdir:
+            config_path = os.path.join(tempdir, "lshell.conf")
+
+            def write_config(allowed):
+                with open(config_path, "w", encoding="utf-8") as handle:
+                    handle.write(
+                        textwrap.dedent(
+                            f"""
+                            [global]
+                            logpath : /tmp
+                            loglevel : 0
+
+                            [default]
+                            allowed : {allowed}
+                            forbidden : []
+                            warning_counter : 5
+                            strict : 1
+                            """
+                        ).strip()
+                        + "\n"
+                    )
+
+            write_config("['echo']")
+            child = pexpect.spawn(
+                f"{LSHELL} --config {config_path}",
+                encoding="utf-8",
+                timeout=10,
+                env=self._clean_env(),
+            )
+            try:
+                child.expect(PROMPT)
+
+                first_attempt = self._run_command(child, "id")
+                self.assertIn('lshell: forbidden command: "id"', first_attempt)
+
+                # Config reload check uses mtime comparison; ensure a visible timestamp bump.
+                time.sleep(1.1)
+                write_config("['echo','id']")
+                os.utime(config_path, None)
+
+                second_attempt = self._run_command(child, "id")
+                self.assertIn("uid=", second_attempt)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
+    def test_leading_trailing_operator_sequences_fail_closed(self):
+        """Leading/trailing operators should not execute payloads and should show syntax denial."""
+        child = self._spawn_shell('--strict 0 --forbidden "[]" --allowed "+[\'echo\']"')
+        try:
+            leading = self._run_command(child, "|| echo PAYLOAD")
+            self.assertIn("lshell: unknown syntax:", leading)
+            leading_lines = [line.strip() for line in leading.splitlines() if line.strip()]
+            self.assertNotIn("PAYLOAD", leading_lines)
+
+            trailing = self._run_command(child, "echo SAFE &&")
+            self.assertIn("lshell: unknown syntax:", trailing)
+
+            post_probe = self._run_command(child, "echo AFTER_OPERATOR_PROBE")
+            self.assertIn("AFTER_OPERATOR_PROBE", post_probe)
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+
+    def test_allowed_cmd_path_resolves_and_allows_executable(self):
+        """allowed_cmd_path should expose discovered binaries as runnable allowed commands."""
+        with tempfile.TemporaryDirectory(prefix="lshell-allowed-cmd-path-") as bindir:
+            command_name = "lshell_allowed_cmd_probe"
+            script_path = os.path.join(bindir, command_name)
+            with open(script_path, "w", encoding="utf-8") as handle:
+                handle.write("#!/bin/sh\necho ALLOWED_CMD_PATH_OK\n")
+            os.chmod(script_path, 0o700)
+
+            child = self._spawn_shell(
+                f'--forbidden "[]" --allowed "[]" --allowed_cmd_path "[\'{bindir}\']"'
+            )
+            try:
+                output = self._run_command(child, command_name)
+                self.assertIn("ALLOWED_CMD_PATH_OK", output)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
+    def test_env_path_resolves_allowed_command_binary(self):
+        """env_path should extend PATH for allowed command lookup in live session."""
+        with tempfile.TemporaryDirectory(prefix="lshell-env-path-") as bindir:
+            command_name = "lshell_env_path_probe"
+            script_path = os.path.join(bindir, command_name)
+            with open(script_path, "w", encoding="utf-8") as handle:
+                handle.write("#!/bin/sh\necho ENV_PATH_OK\n")
+            os.chmod(script_path, 0o700)
+
+            child = self._spawn_shell(
+                f'--forbidden "[]" --allowed "[\'{command_name}\']" --env_path {bindir}'
+            )
+            try:
+                output = self._run_command(child, command_name)
+                self.assertIn("ENV_PATH_OK", output)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
+    def test_malformed_sudo_dash_u_is_denied_and_session_recovers(self):
+        """Malformed `sudo -u` forms should be denied without killing the session."""
+        child = self._spawn_shell(
+            "--allowed \"['sudo','echo']\" "
+            "--sudo_commands \"['ls']\" "
+            "--forbidden \"[]\" "
+            "--strict 1 --warning_counter 5 --quiet 0"
+        )
+        try:
+            for malformed in ("sudo -u", "sudo -u root"):
+                with self.subTest(malformed=malformed):
+                    output = self._run_command(child, malformed)
+                    self.assertIn(f'lshell: forbidden sudo command: "{malformed}"', output)
+
+            post_probe = self._run_command(child, "echo SUDO_MALFORMED_OK")
+            self.assertIn("SUDO_MALFORMED_OK", post_probe)
         finally:
             self._safe_exit(child)
             child.close(force=True)

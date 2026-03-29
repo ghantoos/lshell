@@ -337,3 +337,54 @@ class TestFunctions(unittest.TestCase):
         # Second Ctrl+D should exit (kill remaining stopped jobs).
         child.sendeof()
         child.expect(pexpect.EOF, timeout=5)
+
+    def test_fg_negative_paths_show_explicit_errors_and_keep_session_usable(self):
+        """`fg` should fail closed for missing, non-numeric, and unknown job IDs."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --forbidden \"[]\" --allowed \"+['sleep','echo']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("fg")
+        child.expect(PROMPT)
+        no_job_output = child.before.decode("utf-8")
+        self.assertIn("lshell: fg: current: no such job", no_job_output)
+
+        child.sendline("fg abc")
+        child.expect(PROMPT)
+        non_numeric_output = child.before.decode("utf-8")
+        self.assertIn("lshell: invalid job ID", non_numeric_output)
+
+        child.sendline("fg 99")
+        child.expect(PROMPT)
+        missing_id_output = child.before.decode("utf-8")
+        self.assertIn("lshell: fg: 99: no such job", missing_id_output)
+
+        child.sendline("echo FG_NEGATIVE_OK")
+        child.expect(PROMPT)
+        self.assertIn("FG_NEGATIVE_OK", child.before.decode("utf-8"))
+        self.do_exit(child)
+
+    def test_background_timeout_removes_job_from_jobs_listing(self):
+        """Background `command_timeout` expiry should clean stale entries from `jobs`."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 --forbidden \"[]\" "
+            "--allowed \"+['sleep','echo']\" --command_timeout 1"
+        )
+        child.expect(PROMPT)
+
+        child.sendline("sleep 60 &")
+        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(PROMPT)
+
+        # Allow the background timeout handler to kill the process.
+        time.sleep(2)
+        child.sendline("jobs")
+        child.expect(PROMPT)
+        jobs_output = child.before.decode("utf-8")
+        self.assertNotIn("Stopped        sleep 60", jobs_output)
+
+        child.sendline("echo TIMEOUT_CLEANUP_OK")
+        child.expect(PROMPT)
+        self.assertIn("TIMEOUT_CLEANUP_OK", child.before.decode("utf-8"))
+        self.do_exit(child)

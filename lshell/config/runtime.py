@@ -579,7 +579,7 @@ class CheckConfig:
 
         if "scpforce" in self.conf_raw:
             self.conf_raw["scpforce"] = self._parse_config_value(
-                self.conf_raw["scpforce"]
+                self.conf_raw["scpforce"], "scpforce"
             )
             try:
                 if os.path.exists(self.conf_raw["scpforce"]):

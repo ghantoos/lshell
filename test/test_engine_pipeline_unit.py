@@ -176,6 +176,23 @@ class TestEnginePipeline(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_authorizer_enforces_overssh_allowlist_inside_nested_expansions(self):
+        """SSH-mode nested expansions must use overssh allow-list decisions."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD:-$(id)}",
+            _policy(
+                allowed=["echo", "id"],
+                overssh=["echo"],
+                forbidden=[],
+                strict=1,
+            ),
+            mode="policy",
+            ssh=True,
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.FORBIDDEN_COMMAND)
+
     def test_authorizer_handles_parameter_expansion_with_logical_operators(self):
         """${...} operands containing ||/&& should parse as a single expansion body."""
         decision = authorizer.authorize_line(
@@ -185,6 +202,219 @@ class TestEnginePipeline(unittest.TestCase):
             check_current_dir=False,
         )
         self.assertTrue(decision.allowed)
+
+    def test_authorizer_rejects_parameter_expansion_with_nested_backtick_substitution(
+        self,
+    ):
+        """Nested backticks in ${...} should enforce inner allow-list checks."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD:-`id`}",
+            _policy(allowed=["echo"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.FORBIDDEN_COMMAND)
+
+    def test_authorizer_allows_parameter_expansion_with_nested_backtick_when_allowlisted(
+        self,
+    ):
+        """Allow nested backticks in ${...} only when inner command is allowlisted."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD:-`printf ok`}",
+            _policy(allowed=["echo", "printf"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_fails_closed_on_malformed_nested_parameter_substitution(
+        self,
+    ):
+        """Malformed nested expansion markers in ${...} should be denied."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD:-$(printf ok}",
+            _policy(allowed=["echo", "printf"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_process_substitution_with_disallowed_inner_command(
+        self,
+    ):
+        """Process substitutions must recurse into nested allow-list checks."""
+        decision = authorizer.authorize_line(
+            "echo <(id)",
+            _policy(allowed=["echo"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.FORBIDDEN_COMMAND)
+
+    def test_authorizer_allows_process_substitution_when_inner_command_allowlisted(
+        self,
+    ):
+        """Allow process substitution only when the nested command is allowlisted."""
+        decision = authorizer.authorize_line(
+            "echo <(printf ok)",
+            _policy(allowed=["echo", "printf"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_fails_closed_on_malformed_process_substitution(self):
+        """Unbalanced process substitutions should be denied."""
+        decision = authorizer.authorize_line(
+            "echo <(printf ok",
+            _policy(allowed=["echo", "printf"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_disallowed_command_in_arithmetic_expansion(self):
+        """$((...)) must recurse into nested substitutions for allow-list checks."""
+        decision = authorizer.authorize_line(
+            "echo $(( $(id) + 1 ))",
+            _policy(allowed=["echo"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.FORBIDDEN_COMMAND)
+
+    def test_authorizer_allows_arithmetic_expansion_when_nested_command_allowlisted(
+        self,
+    ):
+        """Allow arithmetic nested substitution only when inner command is allowed."""
+        decision = authorizer.authorize_line(
+            "echo $(( $(printf 1) + 1 ))",
+            _policy(allowed=["echo", "printf"], forbidden=[], strict=1),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertTrue(decision.allowed)
+
+    def test_authorizer_rejects_unsupported_here_string_syntax(self):
+        """Fail closed on unsupported here-string syntax."""
+        decision = authorizer.authorize_line(
+            "echo <<< ok",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_unsupported_here_doc_syntax(self):
+        """Fail closed on unsupported here-doc syntax."""
+        decision = authorizer.authorize_line(
+            "echo <<EOF",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_unsupported_ansi_c_quoting(self):
+        """Fail closed on unsupported $'...' quoting forms."""
+        decision = authorizer.authorize_line(
+            "echo $'ok'",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_unsupported_locale_quoting(self):
+        """Fail closed on unsupported $\"...\" locale-translation quoting."""
+        decision = authorizer.authorize_line(
+            'echo $"ok"',
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_unsupported_parameter_indirection(self):
+        """Fail closed on ${!var} forms that are not safely inspectable."""
+        decision = authorizer.authorize_line(
+            "echo ${!LSHELL_PTR}",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_unsupported_parameter_slicing(self):
+        """Fail closed on unsupported ${var:offset} slicing forms."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD:1}",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_rejects_unsupported_parameter_pattern_substitution(self):
+        """Fail closed on unsupported ${var/pat/repl} parameter substitutions."""
+        decision = authorizer.authorize_line(
+            "echo ${LSHELL_WORD/foo/bar}",
+            _policy(allowed=["echo"], forbidden=[], strict=0),
+            mode="policy",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.UNKNOWN_SYNTAX)
+
+    def test_authorizer_enforces_path_acl_on_each_brace_expansion_branch(self):
+        """Brace-expanded path operands must validate every expanded branch."""
+        with tempfile.TemporaryDirectory(prefix="lshell-engine-brace-path-") as tmpdir:
+            allowed_dir = os.path.join(tmpdir, "allowed")
+            blocked_dir = os.path.join(tmpdir, "blocked")
+            os.makedirs(allowed_dir)
+            os.makedirs(blocked_dir)
+
+            decision = authorizer.authorize_line(
+                f"ls {tmpdir}/{{allowed,blocked}}",
+                _policy(
+                    allowed=["ls"],
+                    path=[f"{tmpdir}|", f"{blocked_dir}|"],
+                    strict=1,
+                ),
+                mode="policy",
+                check_current_dir=False,
+            )
+            self.assertFalse(decision.allowed)
+            self.assertEqual(decision.reason.code, reasons.FORBIDDEN_PATH)
+
+    def test_authorizer_rejects_extglob_path_operand_fail_closed(self):
+        """Unsupported extglob path operands should be denied by path checks."""
+        with tempfile.TemporaryDirectory(prefix="lshell-engine-extglob-path-") as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "allowed"))
+
+            decision = authorizer.authorize_line(
+                f"ls {tmpdir}/@(allowed)",
+                _policy(
+                    allowed=["ls"],
+                    path=[f"{tmpdir}|", ""],
+                    strict=1,
+                ),
+                mode="policy",
+                check_current_dir=False,
+            )
+            self.assertFalse(decision.allowed)
+            self.assertEqual(decision.reason.code, reasons.FORBIDDEN_PATH)
 
     def test_authorizer_ignores_single_quoted_command_substitution_literal(self):
         """Single-quoted $() text should remain literal and not recurse."""

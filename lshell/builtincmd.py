@@ -6,6 +6,7 @@ import os
 import shlex
 import readline
 import signal
+import re
 
 # import lshell specifics
 from lshell import variables
@@ -34,6 +35,15 @@ builtins_list = [
     "jobs",
     "source",
 ]
+
+_BASH_FUNCTION_ENV_RE = re.compile(r"^BASH_FUNC_.*$")
+
+
+def _is_forbidden_env_name(name):
+    """Return True when env var name is blocked for security reasons."""
+    if name in variables.FORBIDDEN_ENVIRON:
+        return True
+    return bool(_BASH_FUNCTION_ENV_RE.match(name))
 
 
 def _cancel_job_timeout(job):
@@ -126,7 +136,7 @@ def cmd_export(args):
     if len(tokens) >= 2 and "=" in tokens[1]:
         var, value = tokens[1].split("=", 1)
         # disallow dangerous variable
-        if var in variables.FORBIDDEN_ENVIRON:
+        if _is_forbidden_env_name(var):
             return 1, var
         os.environ.update({var: value})
     return 0, None
@@ -136,6 +146,7 @@ def cmd_source(envfile):
     """Source a file in the current shell context"""
     envfile = envfile.strip().strip("'").strip('"')
     envfile = os.path.expanduser(os.path.expandvars(envfile))
+    retcode = 0
     try:
         with open(envfile, encoding="utf-8") as env_vars:
             for env_var in env_vars.readlines():
@@ -143,11 +154,16 @@ def cmd_source(envfile):
                 if not line or line.startswith("#"):
                     continue
                 if line.startswith("export "):
-                    cmd_export(line)
+                    export_ret, var = cmd_export(line)
+                    if export_ret == 1 and var:
+                        sys.stderr.write(
+                            f"lshell: forbidden environment variable: {var}\n"
+                        )
+                        retcode = 1
     except (OSError, IOError):
         sys.stderr.write(f"lshell: unable to read environment file: {envfile}\n")
         return 1
-    return 0
+    return retcode
 
 
 def cmd_cd(directory, conf):

@@ -192,6 +192,12 @@ class TestFunctions(unittest.TestCase):
         retcode = builtincmd.cmd_export(args)[0]
         return self.assertEqual(retcode, 1)
 
+    def test_forbidden_bash_function_environment(self):
+        """U18b | Bash function import variables are forbidden."""
+        input_command = "export BASH_FUNC_echo%%='() { id; }'"
+        retcode = builtincmd.cmd_export(input_command)[0]
+        return self.assertEqual(retcode, 1)
+
     def test_allowed_environment(self):
         """U19 | other environment are accepted"""
         input_command = "export MY_PROJECT_VERSION=43"

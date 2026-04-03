@@ -53,6 +53,25 @@ class TestSourceCommand(unittest.TestCase):
             os.remove(file_path)
 
     @patch.dict(os.environ, {}, clear=True)
+    def test_cmd_source_blocks_bash_function_import_exports(self):
+        """Reject BASH_FUNC_* exports sourced from files."""
+        with tempfile.NamedTemporaryFile("w", delete=False) as env_file:
+            env_file.write("export BASH_FUNC_echo%%='() { id; }'\n")
+            file_path = env_file.name
+
+        stderr = io.StringIO()
+        try:
+            with redirect_stderr(stderr):
+                self.assertEqual(builtincmd.cmd_source(file_path), 1)
+            self.assertIn(
+                "lshell: forbidden environment variable: BASH_FUNC_echo%%",
+                stderr.getvalue(),
+            )
+            self.assertIsNone(os.environ.get("BASH_FUNC_echo%%"))
+        finally:
+            os.remove(file_path)
+
+    @patch.dict(os.environ, {}, clear=True)
     def test_cmd_source_expands_tilde_paths(self):
         """Resolve home-relative source paths the same way the shell does."""
         with tempfile.TemporaryDirectory(dir=".") as home_dir:

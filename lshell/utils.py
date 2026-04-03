@@ -1,4 +1,5 @@
-""" Utils for lshell """
+"""Utils for lshell"""
+
 # pylint: disable=too-many-lines
 
 import re
@@ -19,6 +20,7 @@ from lshell import variables
 from lshell import builtincmd
 from lshell import audit
 from lshell import containment
+from lshell.engine import executor as engine_executor
 
 
 def usage(exitcode=1):
@@ -97,6 +99,7 @@ def split_command_sequence(line):
     escaped = False
     cmd_subst_depth = 0
     var_brace_depth = 0
+    proc_subst_depth = 0
     i = 0
 
     def flush_current():
@@ -153,8 +156,27 @@ def split_command_sequence(line):
             i += 2
             continue
 
+        if (
+            not in_single
+            and not in_double
+            and not in_backtick
+            and char in {"<", ">"}
+            and next_char == "("
+        ):
+            proc_subst_depth += 1
+            current.append(char)
+            current.append(next_char)
+            i += 2
+            continue
+
         if cmd_subst_depth > 0 and not in_single and not in_backtick and char == ")":
             cmd_subst_depth -= 1
+            current.append(char)
+            i += 1
+            continue
+
+        if proc_subst_depth > 0 and not in_single and not in_backtick and char == ")":
+            proc_subst_depth -= 1
             current.append(char)
             i += 1
             continue
@@ -171,6 +193,7 @@ def split_command_sequence(line):
             and not in_backtick
             and cmd_subst_depth == 0
             and var_brace_depth == 0
+            and proc_subst_depth == 0
         )
 
         if is_top_level:
@@ -198,7 +221,14 @@ def split_command_sequence(line):
         current.append(char)
         i += 1
 
-    if in_single or in_double or in_backtick or cmd_subst_depth or var_brace_depth:
+    if (
+        in_single
+        or in_double
+        or in_backtick
+        or cmd_subst_depth
+        or var_brace_depth
+        or proc_subst_depth
+    ):
         return None
 
     flush_current()
@@ -310,6 +340,33 @@ _SHELL_BUILTINS = {
     "wait",
     "[",
 }
+
+
+_TRUSTED_SHELL_PATHS = (
+    "/opt/homebrew/bin/bash",
+    "/usr/local/bin/bash",
+    "/bin/bash",
+    "/usr/bin/bash",
+    "/opt/homebrew/bin/dash",
+    "/usr/local/bin/dash",
+    "/bin/dash",
+    "/usr/bin/dash",
+    "/bin/sh",
+    "/usr/bin/sh",
+)
+
+
+def _resolve_trusted_shell():
+    """Return an absolute trusted shell interpreter path, or None."""
+    for candidate in _TRUSTED_SHELL_PATHS:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _is_bash_function_env_name(name):
+    """Return True for env vars used by Bash function import."""
+    return name.startswith("BASH_FUNC_")
 
 
 def _expand_braced_parameter(expr, support_advanced=True):
@@ -502,9 +559,7 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     elif executable == "export":
         retcode, var = builtincmd.cmd_export(full_command)
         if retcode == 1:
-            shell_context.log.critical(
-                f"lshell: forbidden environment variable: {var}"
-            )
+            shell_context.log.critical(f"lshell: forbidden environment variable: {var}")
     elif executable == "source":
         retcode = builtincmd.cmd_source(argument)
     elif executable == "fg":
@@ -523,8 +578,6 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
     trusted_protocol is only for protocol commands (scp/sftp-server)
     that were already validated in run_overssh.
     """
-    from lshell.engine import executor as engine_executor  # pylint: disable=import-outside-toplevel
-
     return engine_executor.execute_for_shell(
         command_line,
         shell_context=shell_context,
@@ -555,6 +608,10 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     # Prevent non-interactive shell startup file injection.
     exec_env.pop("BASH_ENV", None)
     exec_env.pop("ENV", None)
+    # Prevent function import from environment (e.g. BASH_FUNC_* poisoning).
+    for key in list(exec_env):
+        if _is_bash_function_env_name(key):
+            exec_env.pop(key, None)
 
     class CtrlZException(Exception):
         """Custom exception to handle Ctrl+Z (SIGTSTP)."""
@@ -617,9 +674,7 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
                 "lshell: runtime containment timed out command: "
                 f'timeout={command_timeout}s, command="{cmd}"'
             )
-        sys.stderr.write(
-            f"lshell: command timed out after {command_timeout}s: {cmd}\n"
-        )
+        sys.stderr.write(f"lshell: command timed out after {command_timeout}s: {cmd}\n")
 
     previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
     previous_sigcont_handler = signal.getsignal(signal.SIGCONT)
@@ -628,7 +683,6 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
         # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
         signal.signal(signal.SIGTSTP, handle_sigtstp)
         signal.signal(signal.SIGCONT, handle_sigcont)
-        cmd_args = ["bash", "-c", cmd]
         try:
             split_cmd = shlex.split(cmd, posix=True)
         except ValueError:
@@ -637,6 +691,14 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             cmd_args = split_cmd
             if not background:
                 detached_session = False
+        else:
+            shell_path = _resolve_trusted_shell()
+            if not shell_path:
+                sys.stderr.write(
+                    "Command execution failed: trusted system shell interpreter not found.\n"
+                )
+                return 127
+            cmd_args = [shell_path, "-c", cmd]
         preexec_fn = None
         needs_resource_limits = runtime_limits.max_processes > 0
         if os.name == "posix" and (detached_session or needs_resource_limits):
@@ -709,8 +771,7 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             )
         if log:
             log.critical(
-                "lshell: runtime containment denied command execution: "
-                f"{reason}"
+                "lshell: runtime containment denied command execution: " f"{reason}"
             )
         sys.stderr.write(
             "lshell: command denied: unable to apply runtime containment limits\n"

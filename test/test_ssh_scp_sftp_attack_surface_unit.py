@@ -40,6 +40,14 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         os.environ.pop("SSH_TTY", None)
         return saved
 
+    def _with_interactive_ssh_env(self):
+        saved = {}
+        for key in ("SSH_CLIENT", "SSH_TTY", "SSH_ORIGINAL_COMMAND"):
+            saved[key] = os.environ.get(key)
+        os.environ["SSH_CLIENT"] = "127.0.0.1 22 22"
+        os.environ["SSH_TTY"] = "/dev/pts/0"
+        return saved
+
     def test_shell_escape_c_runs_allowed_command_when_not_over_ssh(self):
         """Allow local -c shell escape for commands already authorized by policy."""
         saved_env = self._without_ssh_env()
@@ -77,6 +85,28 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
                     )
             self.assertEqual(cm.exception.code, 1)
             mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_shell_escape_c_uses_local_policy_when_ssh_tty_is_present(self):
+        """Treat SSH_CLIENT+SSH_TTY sessions as interactive local shell escapes."""
+        saved_env = self._with_interactive_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--allowed=['echo']", "--overssh=['ls']", "--strict=0"]
+            ).returnconf()
+            conf["ssh"] = "echo hi"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 0)
+            mock_exec.assert_called_once_with("echo hi", shell_context=unittest.mock.ANY)
         finally:
             self._restore_ssh_env(saved_env)
 
@@ -154,9 +184,17 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         saved_env = self._with_forced_ssh_env()
         try:
             conf = CheckConfig(
-                self.args + ["--allowed=['ls']", "--overssh=['ls']", "--strict=0"]
+                self.args
+                + [
+                    "--allowed=['ls']",
+                    "--overssh=['ls']",
+                    "--forbidden=['&']",
+                    "--strict=0",
+                ]
             ).returnconf()
-            conf["ssh"] = "ls; echo pwned"
+            # Keep all command tokens allowlisted so denial must come from
+            # forbidden-character policy (single '&'), not command allowlist drift.
+            conf["ssh"] = "ls & ls"
             with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(
@@ -168,6 +206,36 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
                     )
             self.assertEqual(cm.exception.code, 1)
             mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_command_substitution_and_redirect_injection_forms(self):
+        """Deny SSH payloads using substitution/redirection metacharacters."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--allowed=['ls']", "--overssh=['ls']", "--strict=0"]
+            ).returnconf()
+            payloads = [
+                "ls `id`",
+                "ls $(id)",
+                "ls ${HOME}",
+                "ls > /tmp/lshell_ssh_redirect_probe_unit",
+            ]
+            for payload in payloads:
+                with self.subTest(payload=payload):
+                    conf["ssh"] = payload
+                    with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                        with self.assertRaises(SystemExit) as cm:
+                            ShellCmd(
+                                conf,
+                                args=[],
+                                stdin=io.StringIO(),
+                                stdout=io.StringIO(),
+                                stderr=io.StringIO(),
+                            )
+                    self.assertEqual(cm.exception.code, 1)
+                    mock_exec.assert_not_called()
         finally:
             self._restore_ssh_env(saved_env)
 
@@ -307,13 +375,12 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         """Rewrite scp -t target path to configured scpforce directory."""
         saved_env = self._with_forced_ssh_env()
         try:
-            with tempfile.TemporaryDirectory(
-                prefix="lshell_scpforce_", dir=os.environ["HOME"]
-            ) as forced_dir:
+            with tempfile.TemporaryDirectory(prefix="lshell_scpforce_") as forced_dir:
                 conf = CheckConfig(
                     self.args
                     + ["--scp=1", "--scp_upload=1", f"--scpforce='{forced_dir}'", "--strict=0"]
                 ).returnconf()
+                conf["path"] = ["", ""]
                 conf["ssh"] = f"scp -t {conf['home_path']}"
                 with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
                     with self.assertRaises(SystemExit) as cm:

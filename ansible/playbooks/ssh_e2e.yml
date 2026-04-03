@@ -354,6 +354,18 @@
           {% endfor %}
       when: failed_scenarios | length > 0
 
+    - name: Verify denied SSH redirect payload did not create remote artifact
+      ansible.builtin.stat:
+        path: /tmp/lshell_ssh_redirect_probe
+      delegate_to: "{{ ssh_host }}"
+      register: ssh_redirect_probe
+
+    - name: Assert denied SSH redirect payload left no remote artifact
+      ansible.builtin.assert:
+        that:
+          - not ssh_redirect_probe.stat.exists
+        fail_msg: "Denied SSH redirect payload created /tmp/lshell_ssh_redirect_probe"
+
     - name: Create local file for scp upload attempt
       ansible.builtin.copy:
         dest: /tmp/lshell_scp_upload.txt
@@ -479,6 +491,17 @@
           scp download unexpectedly succeeded with scp_download=0.
           output={{ scp_download_blocked_attempt.stdout }}
 
+    - name: Verify blocked scp download did not create local file
+      ansible.builtin.stat:
+        path: /tmp/lshell_scp_download_should_fail.txt
+      register: blocked_download_file
+
+    - name: Assert blocked scp download local file is absent
+      ansible.builtin.assert:
+        that:
+          - not blocked_download_file.stat.exists
+        fail_msg: "scp download output exists despite scp_download=0"
+
     - name: Attempt scp transfer when scp is fully disabled
       ansible.builtin.shell: >-
         sshpass -p {{ ssh_password_scp_off }} scp -O {{ ssh_common_opts }}
@@ -497,6 +520,18 @@
         fail_msg: >-
           scp unexpectedly succeeded with scp=0 and no overssh fallback.
           output={{ scp_fully_disabled_attempt.stdout }}
+
+    - name: Verify scp-disabled upload target file was not created
+      ansible.builtin.stat:
+        path: /home/{{ ssh_user_scp_off }}/scp_should_fail.txt
+      delegate_to: "{{ ssh_host }}"
+      register: scp_disabled_target
+
+    - name: Assert scp-disabled upload target file is absent
+      ansible.builtin.assert:
+        that:
+          - not scp_disabled_target.stat.exists
+        fail_msg: "scp upload target exists despite scp=0 profile"
 
     - name: Attempt scp download when scp is disabled but still present in overssh
       ansible.builtin.shell: >-
@@ -534,6 +569,17 @@
         fail_msg: >-
           scp download of forbidden extension unexpectedly succeeded.
           output={{ scp_download_forbidden_extension_attempt.stdout }}
+
+    - name: Verify forbidden-extension scp download did not create local file
+      ansible.builtin.stat:
+        path: /tmp/lshell_scp_download_secret_bin_should_fail.txt
+      register: scp_download_forbidden_extension_file
+
+    - name: Assert forbidden-extension scp download local file is absent
+      ansible.builtin.assert:
+        that:
+          - not scp_download_forbidden_extension_file.stat.exists
+        fail_msg: "forbidden-extension scp download created local file unexpectedly"
 
     - name: Attempt scp upload of forbidden extension over ssh
       ansible.builtin.shell: >-
@@ -715,6 +761,34 @@
           - (sftp_enabled_session.stdout | string).find("readme.txt") != -1
         fail_msg: >-
           sftp session failed unexpectedly. output={{ sftp_enabled_session.stdout }}
+
+    - name: Download allowed file via sftp and verify content
+      ansible.builtin.shell: >-
+        printf 'get /home/{{ ssh_user }}/readme.txt /tmp/lshell_sftp_download.txt\nbye\n'
+        | sshpass -p {{ ssh_password }} sftp {{ ssh_common_opts }}
+        {{ ssh_user }}@{{ ssh_host }} 2>&1
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: sftp_get_allowed_file
+
+    - name: Assert sftp allowed-path download succeeded
+      ansible.builtin.assert:
+        that:
+          - sftp_get_allowed_file.rc == 0
+        fail_msg: >-
+          sftp get failed unexpectedly. output={{ sftp_get_allowed_file.stdout }}
+
+    - name: Read sftp downloaded file
+      ansible.builtin.slurp:
+        src: /tmp/lshell_sftp_download.txt
+      register: sftp_downloaded_file
+
+    - name: Assert sftp downloaded file content
+      ansible.builtin.assert:
+        that:
+          - "'hello from txt' in (sftp_downloaded_file.content | b64decode)"
+        fail_msg: "sftp downloaded file content mismatch"
 
     - name: Run sftp session when sftp is disabled for user profile
       ansible.builtin.shell: >-

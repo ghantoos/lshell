@@ -65,6 +65,36 @@ ssh_scenarios:
     expected_rc: 1
     expect_text: "forbidden char/command over SSH"
 
+  - name: blocks backtick command substitution payload
+    command: "ls `id`"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks dollar-paren command substitution payload
+    command: "ls $(id)"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks braced substitution payload
+    command: "ls ${HOME}"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks redirect payload
+    command: "ls > /tmp/lshell_ssh_redirect_probe"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks prefixed sftp-server wrapper command
+    command: "/bin/sh -c sftp-server"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
+  - name: blocks chained payload after sftp-server command
+    command: "sftp-server || id"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"
+
   - name: allows cat on .txt
     command: "cat readme.txt"
     expected_rc: 0
@@ -104,3 +134,8 @@ ssh_scenarios:
     command: "./shutdown.sh"
     expected_rc: 0
     expect_text: "shutdown-script-ok"
+
+  - name: blocks scp payload chaining over ssh
+    command: "scp -f /home/ltest/readme.txt || id"
+    expected_rc: 1
+    expect_text: "forbidden char/command over SSH"

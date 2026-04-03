@@ -222,6 +222,47 @@ class TestFunctions(unittest.TestCase):
         self.assertIn("lshell: forbidden trusted SSH protocol command", output)
         self.assertEqual(child.exitstatus, 126)
 
+    def test_overssh_trusted_sftp_rejects_prefixed_wrapper_command(self):
+        """Trusted sftp flow should reject wrapper commands containing sftp-server text."""
+        child = pexpect.spawn(
+            LSHELL,
+            ["--config", CONFIG, "--sftp", "1", "-c", "/bin/sh -c sftp-server"],
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        output = child.before.decode("utf-8")
+        child.close()
+        self.assertIn("forbidden char/command over SSH", output)
+        self.assertEqual(child.exitstatus, 1)
+
+    def test_overssh_rejects_command_substitution_and_redirect_injections(self):
+        """SSH forced commands should deny substitution and redirection payloads."""
+        redirect_probe = "/tmp/lshell_ssh_redirect_probe_functional"
+        if os.path.exists(redirect_probe):
+            os.remove(redirect_probe)
+
+        payloads = [
+            "ls `id`",
+            "ls $(id)",
+            "ls ${HOME}",
+            f"ls > {redirect_probe}",
+        ]
+
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                child = pexpect.spawn(
+                    LSHELL,
+                    ["--config", CONFIG, "--overssh", "['ls']", "-c", payload],
+                    env=self._ssh_env(),
+                )
+                child.expect(pexpect.EOF, timeout=10)
+                output = child.before.decode("utf-8")
+                child.close()
+                self.assertIn("forbidden char/command over SSH", output)
+                self.assertEqual(child.exitstatus, 1)
+
+        self.assertFalse(os.path.exists(redirect_probe))
+
     def test_overssh_scpforce_rewrites_upload_target_before_path_check(self):
         """scpforce should rewrite upload destination before SSH path authorization."""
         with tempfile.TemporaryDirectory(prefix="lshell-scpforce-") as forced_dir:
@@ -247,11 +288,13 @@ class TestFunctions(unittest.TestCase):
     def test_overssh_scpforce_unquoted_path_should_not_fail_config_parsing(self):
         """Unquoted scpforce CLI path should be accepted and reach SSH policy checks."""
         with tempfile.TemporaryDirectory(prefix="lshell-scpforce-") as forced_dir:
+            forced_real = os.path.realpath(forced_dir)
+            original_target = "/tmp/lshell_scpforce_parse_probe"
             child = pexpect.spawn(
                 f"{LSHELL} --config {CONFIG} --scp 1 --scp_upload 1 "
                 "--overssh \"['scp']\" "
                 f"--scpforce {forced_dir} "
-                "-c 'scp -t /tmp/lshell_scpforce_parse_probe'",
+                f"-c 'scp -t {original_target}'",
                 env=self._ssh_env(),
             )
             child.expect(pexpect.EOF, timeout=10)
@@ -259,3 +302,7 @@ class TestFunctions(unittest.TestCase):
             child.close()
 
             self.assertNotIn("Incomplete  field in configuration file", output)
+            self.assertIn("lshell: forbidden path over SSH:", output)
+            self.assertIn(forced_real, output)
+            self.assertNotIn(original_target, output)
+            self.assertEqual(child.exitstatus, 1)

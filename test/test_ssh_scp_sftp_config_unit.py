@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from lshell.config.runtime import CheckConfig
 from lshell import builtincmd
@@ -52,6 +53,18 @@ class TestSSHScpSftpConfig(unittest.TestCase):
         userconf = CheckConfig(self.args).returnconf()
         self.assertEqual(userconf["scp_upload"], 1)
         self.assertEqual(userconf["scp_download"], 1)
+
+    def test_ssh_original_command_sets_ssh_field_without_cli_c_flag(self):
+        """SSH_ORIGINAL_COMMAND should populate conf['ssh'] for forced-command logins."""
+        with patch.dict(os.environ, {"SSH_ORIGINAL_COMMAND": "ls -la"}, clear=False):
+            userconf = CheckConfig(self.args).returnconf()
+        self.assertEqual(userconf["ssh"], "ls -la")
+
+    def test_ssh_original_command_takes_precedence_over_cli_c_flag(self):
+        """Environment-provided SSH_ORIGINAL_COMMAND should override -c input."""
+        with patch.dict(os.environ, {"SSH_ORIGINAL_COMMAND": "pwd"}, clear=False):
+            userconf = CheckConfig(self.args + ["-c", "ls"]).returnconf()
+        self.assertEqual(userconf["ssh"], "pwd")
 
 
 if __name__ == "__main__":

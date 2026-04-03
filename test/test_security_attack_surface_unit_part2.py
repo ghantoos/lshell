@@ -147,6 +147,48 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertEqual(ret, 130)
         mock_killpg.assert_called_once_with(7777, utils.signal.SIGINT)
 
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_scrubs_bash_function_env_variables(
+        self,
+        mock_popen,
+        _mock_signal,
+        _mock_getsignal,
+    ):
+        """Child shell environment must not inherit BASH_FUNC_* variables."""
+
+        class FakeProc:
+            """Minimal successful foreground process stub."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 3131
+                self.args = ["bash", "-c", "echo ok"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Simulate a successful foreground command run."""
+                return None
+
+            def poll(self):
+                """Report completed process state."""
+                return self.returncode
+
+        mock_popen.return_value = FakeProc()
+
+        with patch.dict(
+            os.environ,
+            {"BASH_FUNC_echo%%": "() { id; }", "LSHELL_SAFE_ENV": "ok"},
+            clear=True,
+        ):
+            ret = utils.exec_cmd("echo ok")
+
+        self.assertEqual(ret, 0)
+        child_env = mock_popen.call_args.kwargs["env"]
+        self.assertNotIn("BASH_FUNC_echo%%", child_env)
+        self.assertEqual(child_env.get("LSHELL_SAFE_ENV"), "ok")
+
     def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(
         self,
     ):
@@ -369,6 +411,27 @@ class TestAttackSurfacePart2(unittest.TestCase):
         ).returnconf()
         self.assertEqual(sec.check_secure("echo $(echo $(echo ok))", conf)[0], 0)
 
+    def test_check_secure_enforces_overssh_allowlist_inside_nested_expansions(self):
+        """SSH mode should apply overssh policy to nested expansion commands too."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','id']",
+                "--overssh=['echo']",
+                "--forbidden=[]",
+                "--strict=1",
+            ]
+        ).returnconf()
+        self.assertEqual(
+            sec.check_secure(
+                "echo ${LSHELL_WORD:-$(id)}",
+                conf,
+                strict=1,
+                ssh=1,
+            )[0],
+            1,
+        )
+
     def test_check_secure_handles_parameter_expansion_with_logical_operators(self):
         """${VAR:-a||b&&c} should parse as one expansion body without false splits."""
         conf = CheckConfig(
@@ -380,6 +443,198 @@ class TestAttackSurfacePart2(unittest.TestCase):
             ]
         ).returnconf()
         self.assertEqual(sec.check_secure("echo ${LSHELL_WORD:-a||b&&c}", conf)[0], 0)
+
+    def test_check_secure_rejects_backtick_substitution_inside_parameter_expansion(
+        self,
+    ):
+        """Backtick command substitution inside ${...} must enforce allow-list checks."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${LSHELL_WORD:-`printf ok`}", conf)[0], 1)
+
+    def test_check_secure_allows_backtick_substitution_inside_parameter_expansion_when_allowlisted(
+        self,
+    ):
+        """Nested backticks in ${...} should pass only when inner command is allowlisted."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${LSHELL_WORD:-`printf ok`}", conf)[0], 0)
+
+    def test_check_secure_fails_closed_on_malformed_nested_parameter_substitution(
+        self,
+    ):
+        """Malformed nested expansion markers in ${...} must be denied."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${LSHELL_WORD:-$(printf ok}", conf)[0], 1)
+
+    def test_check_secure_rejects_process_substitution_when_inner_command_disallowed(
+        self,
+    ):
+        """Process substitutions should recurse through allow-list checks."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo <(id)", conf)[0], 1)
+
+    def test_check_secure_allows_process_substitution_when_inner_command_allowlisted(
+        self,
+    ):
+        """Allow process substitution only when nested command is allowlisted."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo <(printf ok)", conf)[0], 0)
+
+    def test_check_secure_fails_closed_on_malformed_process_substitution(self):
+        """Unbalanced process substitutions must be denied."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo <(printf ok", conf)[0], 1)
+
+    def test_check_secure_rejects_disallowed_command_in_arithmetic_expansion(self):
+        """$((...)) should recurse into nested substitutions for allow-list checks."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(( $(id) + 1 ))", conf)[0], 1)
+
+    def test_check_secure_allows_arithmetic_expansion_with_allowlisted_nested_command(
+        self,
+    ):
+        """Allow arithmetic nested substitutions only when inner command is allowed."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo','printf']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $(( $(printf 1) + 1 ))", conf)[0], 0)
+
+    def test_check_secure_rejects_unsupported_here_string_syntax(self):
+        """Fail closed on unsupported here-string forms."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo <<< ok", conf)[0], 1)
+
+    def test_check_secure_rejects_unsupported_here_doc_syntax(self):
+        """Fail closed on unsupported here-doc forms."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo <<EOF", conf)[0], 1)
+
+    def test_check_secure_rejects_unsupported_ansi_c_quoting(self):
+        """Fail closed on unsupported $'...' quoting forms."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo $'ok'", conf)[0], 1)
+
+    def test_check_secure_rejects_unsupported_locale_quoting(self):
+        """Fail closed on unsupported $\"...\" locale-translation quoting."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure('echo $"ok"', conf)[0], 1)
+
+    def test_check_secure_rejects_unsupported_parameter_indirection(self):
+        """Fail closed on ${!var} expansions that cannot be safely validated."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${!LSHELL_PTR}", conf)[0], 1)
+
+    def test_check_secure_rejects_unsupported_parameter_slicing(self):
+        """Fail closed on unsupported ${var:offset} slicing forms."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${LSHELL_WORD:1}", conf)[0], 1)
+
+    def test_check_secure_rejects_unsupported_parameter_pattern_substitution(self):
+        """Fail closed on unsupported ${var/pat/repl} parameter substitutions."""
+        conf = CheckConfig(
+            self.args
+            + [
+                "--allowed=['echo']",
+                "--forbidden=[]",
+                "--strict=0",
+            ]
+        ).returnconf()
+        self.assertEqual(sec.check_secure("echo ${LSHELL_WORD/foo/bar}", conf)[0], 1)
 
     def test_check_secure_blocks_single_operators_at_command_boundaries(self):
         """Single '&' and '|' must be blocked even at start/end boundaries."""
@@ -519,6 +774,65 @@ class TestAttackSurfacePart2(unittest.TestCase):
                     "and reject blocked targets"
                 ),
             )
+
+    def test_check_path_rejects_brace_expansion_when_any_branch_is_denied(self):
+        """Brace expansion must deny if any expanded target is outside allowed policy."""
+        with tempfile.TemporaryDirectory(prefix="lshell-brace-deny-", dir="/tmp") as tmpdir:
+            allowed_dir = os.path.join(tmpdir, "allowed")
+            blocked_dir = os.path.join(tmpdir, "blocked")
+            os.makedirs(allowed_dir, exist_ok=True)
+            os.makedirs(blocked_dir, exist_ok=True)
+
+            conf = CheckConfig(
+                self.args
+                + [f"--path=['{tmpdir}'] - ['{blocked_dir}']", "--strict=0"]
+            ).returnconf()
+
+            ret, _conf = sec.check_path(
+                f"ls {tmpdir}/{{allowed,blocked}}",
+                conf,
+                strict=0,
+            )
+            self.assertEqual(ret, 1)
+
+    def test_check_path_rejects_extglob_operand_fail_closed(self):
+        """Unsupported extglob path operands should fail closed in path checks."""
+        with tempfile.TemporaryDirectory(prefix="lshell-extglob-deny-", dir="/tmp") as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "allowed"), exist_ok=True)
+
+            conf = CheckConfig(
+                self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+            ).returnconf()
+
+            ret, _conf = sec.check_path(
+                f"ls {tmpdir}/@(allowed|blocked)",
+                conf,
+                strict=0,
+            )
+            self.assertEqual(ret, 1)
+
+    def test_check_path_treats_grep_regex_argument_as_pattern_not_path(self):
+        """Regex patterns in grep args must not be interpreted as path operands."""
+        pattern = (
+            r"\\[\\d{2}/[A-Za-z]{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2}\\s+(?:-|\\+)\\d{4}\\].+UID=[\\w.]+"
+        )
+
+        with tempfile.TemporaryDirectory(prefix="lshell-grep-path-", dir="/tmp") as tmpdir:
+            logfile = os.path.join(tmpdir, "audit.log")
+            with open(logfile, "w", encoding="utf-8") as handle:
+                handle.write("[01/Jan/2024:10:10:10 +0000] test UID=user.name\n")
+
+            conf = CheckConfig(
+                self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+            ).returnconf()
+
+            ret, _conf = sec.check_path(
+                f"grep -P '{pattern}' {logfile}",
+                conf,
+                completion=1,
+                strict=0,
+            )
+            self.assertEqual(ret, 0)
 
     def test_check_path_rejects_nul_byte_path_without_crashing(self):
         """Malformed NUL-byte path operands should fail closed without exceptions."""

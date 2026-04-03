@@ -109,7 +109,7 @@ def authorize(
     if check_current_dir is None:
         check_current_dir = mode == "runtime"
 
-    if depth > 8:
+    if depth > sec.MAX_EXPANSION_RECURSION:
         return _deny(
             reasons.UNKNOWN_SYNTAX,
             canonical_ast,
@@ -155,39 +155,16 @@ def authorize(
             line=oline,
         )
 
-    expansions = sec._scan_shell_expansions(line)
-
-    for expansion in expansions:
-        if expansion.kind != "command_substitution":
-            continue
-        inner = expansion.body.strip()
-        violation = _first_path_violation(inner, policy, check_current_dir=False)
-        if violation:
-            return _deny(
-                reasons.FORBIDDEN_PATH,
-                canonical_ast,
-                path=violation,
-                line=oline,
-            )
-
-        nested_decision = _authorize_nested(inner, policy, mode, ssh, depth)
-        if not nested_decision.allowed:
-            return nested_decision
-
-    for expansion in expansions:
-        if expansion.kind != "backtick":
-            continue
-        nested_decision = _authorize_nested(
-            expansion.body.strip(), policy, mode, ssh, depth
+    expansion_inspection = sec.inspect_shell_expansions(line)
+    if expansion_inspection.malformed:
+        return _deny(
+            reasons.UNKNOWN_SYNTAX,
+            canonical_ast,
+            command=oline,
+            line=oline,
         )
-        if not nested_decision.allowed:
-            return nested_decision
 
-    for expansion in expansions:
-        if expansion.kind != "parameter_expansion":
-            continue
-        variable_text = sec._parameter_expansion_path_probe(expansion.body).strip()
-
+    for variable_text in expansion_inspection.parameter_path_probes:
         violation = _first_path_violation(
             variable_text, policy, check_current_dir=False
         )
@@ -198,6 +175,25 @@ def authorize(
                 path=violation,
                 line=oline,
             )
+
+    for expansion in expansion_inspection.executable_expansions:
+        inner = expansion.body.strip()
+        if not inner:
+            continue
+
+        if expansion.kind in {"command_substitution", "process_substitution"}:
+            violation = _first_path_violation(inner, policy, check_current_dir=False)
+            if violation:
+                return _deny(
+                    reasons.FORBIDDEN_PATH,
+                    canonical_ast,
+                    path=violation,
+                    line=oline,
+                )
+
+        nested_decision = _authorize_nested(inner, policy, mode, ssh, depth)
+        if not nested_decision.allowed:
+            return nested_decision
 
     allowed_commands = _allowed_commands(policy, ssh=ssh)
 

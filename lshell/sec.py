@@ -8,22 +8,24 @@ import re
 import os
 import shlex
 import glob
-from typing import NamedTuple
 
 # import lshell specifics
 from lshell import messages
 from lshell import utils
 from lshell import audit
+from lshell import expansion_inspector
 
 EXTENSION_RESTRICTION_EXEMPT_COMMANDS = {"cd", "clear", "fg", "bg", "ls"}
 MAX_WILDCARD_MATCHES = 4096
+MAX_BRACE_EXPANSIONS = 256
+MAX_EXPANSION_RECURSION = expansion_inspector.MAX_EXPANSION_RECURSION
 
+# Backward-compatible exports used by tests and internal callers.
+_ShellExpansion = expansion_inspector._ShellExpansion
+_scan_shell_expansions = expansion_inspector._scan_shell_expansions
+inspect_shell_expansions = expansion_inspector.inspect_shell_expansions
 
-class _ShellExpansion(NamedTuple):
-    """Parsed shell expansion from an input line."""
-
-    kind: str
-    body: str
+_EXTGLOB_OPENERS = ("@(", "!(", "+(", "*(", "?(")
 
 
 def _is_assignment_word(word):
@@ -72,160 +74,6 @@ def _quoted_literals_without_assignment(line):
         index += 1
 
     return literals
-
-
-def _read_backtick_expansion(line, start):
-    """Read a backtick expansion beginning at start and return (end, body)."""
-    i = start + 1
-    escaped = False
-    while i < len(line):
-        char = line[i]
-        if escaped:
-            escaped = False
-            i += 1
-            continue
-        if char == "\\":
-            escaped = True
-            i += 1
-            continue
-        if char == "`":
-            return i + 1, line[start + 1 : i]
-        i += 1
-    return None, None
-
-
-def _read_dollar_expansion(line, start, closing):
-    """Read a balanced $()- or ${}-style expansion from start."""
-    i = start + 2
-    in_single = False
-    in_double = False
-    in_backtick = False
-    escaped = False
-    closers = [closing]
-
-    while i < len(line):
-        char = line[i]
-        next_char = line[i + 1] if i + 1 < len(line) else ""
-
-        if escaped:
-            escaped = False
-            i += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            i += 1
-            continue
-
-        if char == "'" and not in_double and not in_backtick:
-            in_single = not in_single
-            i += 1
-            continue
-
-        if char == '"' and not in_single and not in_backtick:
-            in_double = not in_double
-            i += 1
-            continue
-
-        if char == "`" and not in_single:
-            in_backtick = not in_backtick
-            i += 1
-            continue
-
-        if in_single or in_double or in_backtick:
-            i += 1
-            continue
-
-        if char == "$" and next_char == "(":
-            closers.append(")")
-            i += 2
-            continue
-
-        if char == "$" and next_char == "{":
-            closers.append("}")
-            i += 2
-            continue
-
-        if closers and char == closers[-1]:
-            closers.pop()
-            if not closers:
-                return i + 1, line[start + 2 : i]
-            i += 1
-            continue
-
-        i += 1
-
-    return None, None
-
-
-def _scan_shell_expansions(line):
-    """Parse shell expansions in-order while honoring quotes/escapes."""
-    expansions = []
-    i = 0
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while i < len(line):
-        char = line[i]
-        next_char = line[i + 1] if i + 1 < len(line) else ""
-
-        if escaped:
-            escaped = False
-            i += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            i += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            i += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            i += 1
-            continue
-
-        if in_single:
-            i += 1
-            continue
-
-        if char == "$" and next_char == "(":
-            end, body = _read_dollar_expansion(line, i, ")")
-            if end is not None and body:
-                expansions.append(_ShellExpansion("command_substitution", body))
-                i = end
-                continue
-
-        if char == "$" and next_char == "{":
-            end, body = _read_dollar_expansion(line, i, "}")
-            if end is not None and body:
-                expansions.append(_ShellExpansion("parameter_expansion", body))
-                i = end
-                continue
-
-        if char == "`":
-            end, body = _read_backtick_expansion(line, i)
-            if end is not None and body:
-                expansions.append(_ShellExpansion("backtick", body))
-                i = end
-                continue
-
-        i += 1
-
-    return expansions
-
-
-def _parameter_expansion_path_probe(expression):
-    """Return the value-side text from ${...} forms, or the expression itself."""
-    for index, char in enumerate(expression):
-        if char in {"=", "+", "?", "-"}:
-            return expression[index + 1 :]
-    return expression
 
 
 def should_enforce_file_extensions(command):
@@ -338,6 +186,154 @@ def _safe_expand_path(path):
         return None
 
 
+def _contains_unescaped_extglob(pattern):
+    """Return True when extglob operators are present in an unescaped form."""
+    escaped = False
+    for index, char in enumerate(pattern[:-1]):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if pattern[index : index + 2] in _EXTGLOB_OPENERS:
+            return True
+    return False
+
+
+def _find_matching_brace(text, start):
+    """Return index of matching '}' for text[start] == '{', else None."""
+    escaped = False
+    depth = 0
+    for index in range(start, len(text)):
+        char = text[index]
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == "{":
+            depth += 1
+            continue
+        if char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+            if depth < 0:
+                return None
+    return None
+
+
+def _split_brace_options(body):
+    """Split one brace body ('a,b,{c,d}') into top-level options."""
+    options = []
+    current = []
+    escaped = False
+    depth = 0
+
+    for char in body:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            current.append(char)
+            escaped = True
+            continue
+        if char == "{":
+            current.append(char)
+            depth += 1
+            continue
+        if char == "}":
+            if depth == 0:
+                return None
+            current.append(char)
+            depth -= 1
+            continue
+        if char == "," and depth == 0:
+            options.append("".join(current))
+            current = []
+            continue
+        current.append(char)
+
+    if escaped or depth != 0:
+        return None
+
+    options.append("".join(current))
+    if len(options) <= 1:
+        return []
+    return options
+
+
+def _find_expandable_brace_group(pattern):
+    """Return first expandable brace group as (start, end, options, malformed)."""
+    escaped = False
+    index = 0
+    while index < len(pattern):
+        char = pattern[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\":
+            escaped = True
+            index += 1
+            continue
+        if char != "{":
+            index += 1
+            continue
+
+        end = _find_matching_brace(pattern, index)
+        if end is None:
+            return None, None, None, True
+
+        options = _split_brace_options(pattern[index + 1 : end])
+        if options is None:
+            return None, None, None, True
+        if options:
+            return index, end, options, False
+
+        index = end + 1
+
+    return None, None, None, False
+
+
+def _expand_brace_patterns(pattern, limit=MAX_BRACE_EXPANSIONS):
+    """Perform shell-style brace expansion for one pattern, with fan-out limits."""
+    expanded = []
+    malformed = False
+
+    def _walk(current):
+        nonlocal malformed
+        if malformed:
+            return
+        if len(expanded) >= limit:
+            malformed = True
+            return
+
+        start, end, options, group_malformed = _find_expandable_brace_group(current)
+        if group_malformed:
+            malformed = True
+            return
+
+        if start is None:
+            expanded.append(current)
+            return
+
+        prefix = current[:start]
+        suffix = current[end + 1 :]
+        for option in options:
+            _walk(prefix + option + suffix)
+            if malformed:
+                return
+
+    _walk(pattern)
+    if malformed:
+        return None
+    return expanded
+
+
 def expand_shell_wildcards(item):
     """Expand shell wildcards and return all candidate filesystem paths."""
 
@@ -346,25 +342,40 @@ def expand_shell_wildcards(item):
     if expanded_item is None:
         return []
 
+    expanded_patterns = _expand_brace_patterns(expanded_item)
+    if expanded_patterns is None:
+        return []
+
     # Expand wildcard patterns against the filesystem and validate all matches.
     # Fail closed if expansion fans out too much to avoid memory abuse.
     try:
         expanded_items = []
-        for match in glob.iglob(expanded_item, recursive=True):
-            resolved = _safe_realpath(match)
-            if resolved:
-                expanded_items.append(resolved)
-            if len(expanded_items) > MAX_WILDCARD_MATCHES:
+        seen_candidates = set()
+        for pattern in expanded_patterns:
+            if _contains_unescaped_extglob(pattern):
                 return []
+
+            matched = False
+            for match in glob.iglob(pattern, recursive=True):
+                matched = True
+                resolved = _safe_realpath(match)
+                if resolved and resolved not in seen_candidates:
+                    seen_candidates.add(resolved)
+                    expanded_items.append(resolved)
+                if len(expanded_items) > MAX_WILDCARD_MATCHES:
+                    return []
+
+            if not matched:
+                resolved = _safe_realpath(pattern)
+                if resolved and resolved not in seen_candidates:
+                    seen_candidates.add(resolved)
+                    expanded_items.append(resolved)
+                if len(expanded_items) > MAX_WILDCARD_MATCHES:
+                    return []
     except (OSError, RuntimeError, ValueError, re.error):
         return []
 
-    if expanded_items:
-        return expanded_items
-
-    # If no glob match exists, still validate the canonical target path.
-    resolved_item = _safe_realpath(expanded_item)
-    return [resolved_item] if resolved_item else []
+    return expanded_items
 
 
 def _split_path_acl_entries(path_acl):
@@ -445,6 +456,46 @@ def _looks_like_path_token(token):
     return False
 
 
+def _grep_implicit_pattern_index(args):
+    """Return the grep implicit PATTERN arg index, or None when explicit patterns are used."""
+    has_explicit_pattern = False
+    index = 0
+
+    while index < len(args):
+        token = args[index]
+
+        if token == "--":
+            if not has_explicit_pattern and index + 1 < len(args):
+                return index + 1
+            return None
+
+        if token in {"-e", "--regexp", "-f", "--file"}:
+            has_explicit_pattern = True
+            index += 2
+            continue
+
+        if token.startswith("--regexp=") or token.startswith("--file="):
+            has_explicit_pattern = True
+            index += 1
+            continue
+
+        # Handle compact short forms like -ePATTERN / -fFILE.
+        if len(token) > 2 and token.startswith("-") and token[1] in {"e", "f"}:
+            has_explicit_pattern = True
+            index += 1
+            continue
+
+        if token.startswith("-") and token != "-":
+            index += 1
+            continue
+
+        if not has_explicit_pattern:
+            return index
+        return None
+
+    return None
+
+
 def _path_tokens_from_line(line):
     """Extract path-like tokens from command segments, excluding bare command names."""
     segments = utils.split_commands(line)
@@ -475,7 +526,17 @@ def _path_tokens_from_line(line):
             continue
 
         if args:
-            path_tokens.extend(token for token in args if _looks_like_path_token(token))
+            skip_indices = set()
+            if command in {"grep", "egrep", "fgrep", "rgrep"}:
+                implicit_pattern_index = _grep_implicit_pattern_index(args)
+                if implicit_pattern_index is not None:
+                    skip_indices.add(implicit_pattern_index)
+
+            path_tokens.extend(
+                token
+                for idx, token in enumerate(args)
+                if idx not in skip_indices and _looks_like_path_token(token)
+            )
             continue
 
         # Single token mode (used by completion/policy path checks):
@@ -546,7 +607,7 @@ def check_forbidden_chars(line, conf, strict=None, ssh=None):
     return 0, conf
 
 
-def check_secure(line, conf, strict=None, ssh=None):
+def check_secure(line, conf, strict=None, ssh=None, _depth=0):
     """This method is used to check the content on the typed command.
     Its purpose is to forbid the user to user to override the lshell
     command restrictions.
@@ -566,9 +627,12 @@ def check_secure(line, conf, strict=None, ssh=None):
     # init return code
     returncode = 0
 
+    if _depth > MAX_EXPANSION_RECURSION:
+        return warn_unknown_syntax(oline, conf, strict=strict, ssh=ssh)
+
     for item in _quoted_literals_without_assignment(line):
         if os.path.exists(item):
-            ret_check_path, conf = check_path(item, conf, strict=strict)
+            ret_check_path, conf = check_path(item, conf, strict=strict, ssh=ssh)
             returncode += ret_check_path
 
     # parse command line for control characters, and warn user
@@ -580,37 +644,30 @@ def check_secure(line, conf, strict=None, ssh=None):
     if ret_forbidden:
         return ret_forbidden, conf
 
-    expansions = _scan_shell_expansions(line)
+    expansion_inspection = inspect_shell_expansions(line)
+    if expansion_inspection.malformed:
+        return warn_unknown_syntax(oline, conf, strict=strict, ssh=ssh)
 
-    # check if the line contains $(foo) executions, and check them
-    for expansion in expansions:
-        if expansion.kind != "command_substitution":
-            continue
-        inner = expansion.body.strip()
-        # recurse on check_path
-        ret_check_path, conf = check_path(inner, conf, strict=strict)
+    for variable in expansion_inspection.parameter_path_probes:
+        ret_check_path, conf = check_path(variable, conf, strict=strict, ssh=ssh)
         returncode += ret_check_path
 
-        # recurse on check_secure
-        ret_check_secure, conf = check_secure(inner, conf, strict=strict)
-        returncode += ret_check_secure
-
-    # check for executions using back quotes '`'
-    for expansion in expansions:
-        if expansion.kind != "backtick":
+    for expansion in expansion_inspection.executable_expansions:
+        inner = expansion.body.strip()
+        if not inner:
             continue
+        if expansion.kind in {"command_substitution", "process_substitution"}:
+            ret_check_path, conf = check_path(inner, conf, strict=strict, ssh=ssh)
+            returncode += ret_check_path
+
         ret_check_secure, conf = check_secure(
-            expansion.body.strip(), conf, strict=strict
+            inner,
+            conf,
+            strict=strict,
+            ssh=ssh,
+            _depth=_depth + 1,
         )
         returncode += ret_check_secure
-
-    # check if the line contains ${foo=bar}, and check them
-    for expansion in expansions:
-        if expansion.kind != "parameter_expansion":
-            continue
-        variable = _parameter_expansion_path_probe(expansion.body).strip()
-        ret_check_path, conf = check_path(variable, conf, strict=strict)
-        returncode += ret_check_path
 
     # if unknown commands where found, return 1 and don't execute the line
     if returncode > 0:

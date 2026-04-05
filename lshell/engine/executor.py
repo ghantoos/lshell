@@ -331,6 +331,19 @@ def execute(decisions, runtime):
             i = j + (2 if background else 1)
             continue
 
+        unsupported_reason = None
+        for part in pipeline_parts:
+            part_reason = utils.unsupported_runtime_syntax_reason(part)
+            if part_reason is not None:
+                unsupported_reason = part_reason
+                break
+        if unsupported_reason:
+            retcode = _unknown_syntax_retcode(
+                shell_context,
+                f"unsupported shell syntax: {unsupported_reason}",
+            )
+            return ExecutionResult(retcode=retcode, audit_reason="unknown syntax")
+
         if not trusted_protocol:
             decision = authorizer.authorize_line(
                 full_command,

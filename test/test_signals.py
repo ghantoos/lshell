@@ -388,3 +388,37 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
         self.assertIn("TIMEOUT_CLEANUP_OK", child.before.decode("utf-8"))
         self.do_exit(child)
+
+    def test_fg_non_detached_sudo_ctrl_z_keeps_shell_responsive(self):
+        """`fg` on sudo jobs must not stop the shell process group itself."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --forbidden \"[]\" "
+            "--allowed \"+['sudo','echo']\" --sudo_commands \"['sleep']\""
+        )
+        child.expect(PROMPT)
+
+        child.sendline("sudo sleep 60")
+        time.sleep(1)
+        child.sendcontrol("z")
+        child.expect(r"\[\d+\]\+  Stopped        sudo sleep 60", timeout=5)
+        child.expect(PROMPT, timeout=5)
+
+        child.sendline("fg")
+        child.expect("sudo sleep 60", timeout=5)
+        time.sleep(1)
+        child.sendcontrol("z")
+        child.expect(r"\[\d+\]\+  Stopped        sudo sleep 60", timeout=5)
+        child.expect(PROMPT, timeout=5)
+
+        child.sendline("echo FG_SUDO_SIGNAL_BOUNDARY_OK")
+        child.expect(PROMPT, timeout=5)
+        self.assertIn(
+            "FG_SUDO_SIGNAL_BOUNDARY_OK",
+            child.before.decode("utf-8"),
+        )
+
+        child.sendline("fg")
+        child.expect("sudo sleep 60", timeout=5)
+        child.sendcontrol("c")
+        child.expect(PROMPT, timeout=5)
+        self.do_exit(child)

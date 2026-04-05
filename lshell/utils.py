@@ -12,7 +12,7 @@ import shlex
 import shutil
 import threading
 from getpass import getuser
-from time import strftime, gmtime
+from time import strftime, gmtime, monotonic
 import signal
 
 # import lshell specifics
@@ -20,6 +20,7 @@ from lshell import variables
 from lshell import builtincmd
 from lshell import audit
 from lshell import containment
+from lshell import expansion_inspector
 from lshell.engine import executor as engine_executor
 
 
@@ -278,90 +279,6 @@ def replace_exit_code(line, retcode):
 
 
 _ENV_VAR_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_SHELL_BUILTINS = {
-    ".",
-    ":",
-    "alias",
-    "bg",
-    "bind",
-    "break",
-    "builtin",
-    "caller",
-    "cd",
-    "command",
-    "compgen",
-    "complete",
-    "compopt",
-    "continue",
-    "declare",
-    "dirs",
-    "disown",
-    "echo",
-    "enable",
-    "eval",
-    "exec",
-    "exit",
-    "export",
-    "false",
-    "fc",
-    "fg",
-    "getopts",
-    "hash",
-    "help",
-    "history",
-    "jobs",
-    "kill",
-    "let",
-    "local",
-    "logout",
-    "mapfile",
-    "popd",
-    "printf",
-    "pushd",
-    "pwd",
-    "read",
-    "readonly",
-    "return",
-    "set",
-    "shift",
-    "shopt",
-    "source",
-    "suspend",
-    "test",
-    "times",
-    "trap",
-    "true",
-    "type",
-    "typeset",
-    "ulimit",
-    "umask",
-    "unalias",
-    "unset",
-    "wait",
-    "[",
-}
-
-
-_TRUSTED_SHELL_PATHS = (
-    "/opt/homebrew/bin/bash",
-    "/usr/local/bin/bash",
-    "/bin/bash",
-    "/usr/bin/bash",
-    "/opt/homebrew/bin/dash",
-    "/usr/local/bin/dash",
-    "/bin/dash",
-    "/usr/bin/dash",
-    "/bin/sh",
-    "/usr/bin/sh",
-)
-
-
-def _resolve_trusted_shell():
-    """Return an absolute trusted shell interpreter path, or None."""
-    for candidate in _TRUSTED_SHELL_PATHS:
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
-    return None
 
 
 def _is_bash_function_env_name(name):
@@ -526,9 +443,6 @@ def _command_exists(executable):
     if not executable:
         return False
 
-    if executable in _SHELL_BUILTINS:
-        return True
-
     if "/" in executable:
         return os.path.isfile(executable) and os.access(executable, os.X_OK)
 
@@ -585,9 +499,97 @@ def cmd_parse_execute(command_line, shell_context=None, trusted_protocol=False):
     )
 
 
+def _contains_unquoted_redirection(command):
+    """Return True when unquoted shell redirection markers are present."""
+    in_single = False
+    in_double = False
+    in_backtick = False
+    escaped = False
+
+    for char in command:
+        if escaped:
+            escaped = False
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            continue
+
+        if char == "'" and not in_double and not in_backtick:
+            in_single = not in_single
+            continue
+
+        if char == '"' and not in_single and not in_backtick:
+            in_double = not in_double
+            continue
+
+        if char == "`" and not in_single:
+            in_backtick = not in_backtick
+            continue
+
+        if in_single or in_double or in_backtick:
+            continue
+
+        if char in {"<", ">"}:
+            return True
+
+    return False
+
+
+def unsupported_runtime_syntax_reason(command):
+    """Return user-facing reason when command relies on unsupported shell syntax."""
+    expansion_info = expansion_inspector.inspect_shell_expansions(command)
+    if expansion_info.malformed:
+        return "unsupported shell expansion syntax"
+
+    for expansion in expansion_info.executable_expansions:
+        if expansion.kind == "command_substitution":
+            return "command substitution ($(...))"
+        if expansion.kind == "backtick":
+            return "backtick command substitution (`...`)"
+        if expansion.kind == "process_substitution":
+            return "process substitution (<(...) or >(...))"
+
+    if _contains_unquoted_redirection(command):
+        return "redirection operators (<, >, <<, >>, <<<, 2>&1, ...)"
+
+    return None
+
+
+def _split_pipeline_for_execution(command):
+    """Split one execution line into shellless pipeline stages."""
+    sequence = split_command_sequence(command)
+    if sequence is None:
+        return None
+    if not sequence:
+        return []
+
+    operators = {"&&", "||", ";", "&", "|"}
+    stages = []
+    expect_command = True
+
+    for token in sequence:
+        if expect_command:
+            if token in operators:
+                return None
+            stages.append(token)
+            expect_command = False
+            continue
+
+        if token != "|":
+            return None
+        expect_command = True
+
+    if expect_command:
+        return None
+
+    return stages
+
+
 def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
-    """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
+    """Execute command(s) with shell=False, including manual pipeline wiring."""
     proc = None
+    pipeline_processes = []
     detached_session = True
     exec_env = dict(os.environ)
     runtime_limits = containment.get_runtime_limits(conf or {})
@@ -613,18 +615,105 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
         if _is_bash_function_env_name(key):
             exec_env.pop(key, None)
 
+    stage_texts = _split_pipeline_for_execution(cmd)
+    if stage_texts is None or not stage_texts:
+        sys.stderr.write(f"lshell: unknown syntax: {cmd}\n")
+        return 1
+
+    stage_specs = []
+    for stage_text in stage_texts:
+        expanded_stage = expand_vars_quoted(stage_text, support_advanced_braced=True)
+        unsupported_reason = unsupported_runtime_syntax_reason(expanded_stage)
+        if unsupported_reason:
+            sys.stderr.write(
+                "lshell: unsupported shell syntax in command execution: "
+                f"{unsupported_reason}\n"
+            )
+            return 126
+
+        executable, _argument, split, assignments = _parse_command(expanded_stage)
+        if executable is None:
+            sys.stderr.write(f"lshell: unknown syntax: {stage_text}\n")
+            return 1
+
+        if not executable:
+            sys.stderr.write(f"lshell: unknown syntax: {stage_text}\n")
+            return 1
+
+        stage_env = dict(exec_env)
+        for var_name, var_value in assignments:
+            stage_env[var_name] = var_value
+
+        stage_specs.append(
+            {
+                "argv": split[len(assignments) :],
+                "env": stage_env,
+            }
+        )
+
+    if stage_specs and stage_specs[0]["argv"] and stage_specs[0]["argv"][0] in (
+        "sudo",
+        "su",
+    ):
+        if not background:
+            detached_session = False
+
     class CtrlZException(Exception):
         """Custom exception to handle Ctrl+Z (SIGTSTP)."""
 
         pass
 
+    def _pipeline_members(target):
+        if target is None:
+            return []
+        members = getattr(target, "lshell_pipeline", None)
+        if not members:
+            return [target]
+        return list(members)
+
+    def _running_pipeline_members(target):
+        return [member for member in _pipeline_members(target) if member.poll() is None]
+
+    def _signal_pipeline(target, signum):
+        for member in _running_pipeline_members(target):
+            try:
+                os.kill(member.pid, signum)
+            except OSError:
+                continue
+
+    def _pipeline_pgid(target):
+        pgid = getattr(target, "lshell_pgid", None)
+        if pgid is not None:
+            return pgid
+        return os.getpgid(target.pid)
+
+    def _make_preexec_fn(stage_index, pipeline_pgid, needs_resource_limits):
+        if os.name != "posix":
+            return None
+
+        if len(stage_specs) == 1 and (detached_session or needs_resource_limits):
+            return containment.build_preexec_fn(detached_session, runtime_limits)
+
+        if not detached_session and not needs_resource_limits:
+            return None
+
+        def _preexec():
+            if detached_session:
+                if stage_index == 0:
+                    os.setpgid(0, 0)
+                else:
+                    os.setpgid(0, pipeline_pgid)
+            containment.apply_rlimits(runtime_limits)
+
+        return _preexec
+
     def handle_sigtstp(signum, frame):
         """Handle SIGTSTP (Ctrl+Z) by sending the process to the background."""
-        if proc and proc.poll() is None:  # Ensure process is running
-            if detached_session:
-                os.killpg(os.getpgid(proc.pid), signal.SIGSTOP)
+        if proc and _running_pipeline_members(proc):  # Ensure process is running
+            if detached_session and os.name == "posix":
+                os.killpg(_pipeline_pgid(proc), signal.SIGSTOP)
             else:
-                os.kill(proc.pid, signal.SIGSTOP)
+                _signal_pipeline(proc, signal.SIGSTOP)
             # Keep one job entry per process to avoid duplicates on repeated suspend/resume.
             if proc in builtincmd.BACKGROUND_JOBS:
                 job_id = builtincmd.BACKGROUND_JOBS.index(proc) + 1
@@ -637,20 +726,20 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
 
     def handle_sigcont(signum, frame):
         """Handle SIGCONT to resume a stopped job in the foreground."""
-        if proc and proc.poll() is None:
-            if detached_session:
-                os.killpg(os.getpgid(proc.pid), signal.SIGCONT)
+        if proc and _running_pipeline_members(proc):
+            if detached_session and os.name == "posix":
+                os.killpg(_pipeline_pgid(proc), signal.SIGCONT)
             else:
-                os.kill(proc.pid, signal.SIGCONT)
+                _signal_pipeline(proc, signal.SIGCONT)
 
     def _kill_process_group(target):
-        if not target or target.poll() is not None:
+        if not target or not _running_pipeline_members(target):
             return
         try:
-            if detached_session:
-                os.killpg(os.getpgid(target.pid), signal.SIGKILL)
+            if detached_session and os.name == "posix":
+                os.killpg(_pipeline_pgid(target), signal.SIGKILL)
             else:
-                os.kill(target.pid, signal.SIGKILL)
+                _signal_pipeline(target, signal.SIGKILL)
         except OSError:
             return
 
@@ -676,6 +765,49 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             )
         sys.stderr.write(f"lshell: command timed out after {command_timeout}s: {cmd}\n")
 
+    def _wait_process(target, timeout=None):
+        """Wait for a subprocess using wait(), with communicate() compatibility fallback."""
+        wait_method = getattr(target, "wait", None)
+        if callable(wait_method):
+            if timeout is None:
+                return wait_method()
+            return wait_method(timeout=timeout)
+
+        communicate_method = getattr(target, "communicate", None)
+        if callable(communicate_method):
+            if timeout is None:
+                communicate_method()
+            else:
+                try:
+                    communicate_method(timeout=timeout)
+                except TypeError:
+                    communicate_method()
+            return target.returncode
+
+        raise AttributeError("process object has no wait() or communicate() method")
+
+    def _terminate_pipeline_members(members):
+        """Force-stop and reap any already-started pipeline members."""
+        for member in members:
+            if member.poll() is not None:
+                continue
+            try:
+                if os.name == "posix" and detached_session:
+                    os.killpg(os.getpgid(member.pid), signal.SIGKILL)
+                else:
+                    os.kill(member.pid, signal.SIGKILL)
+            except OSError:
+                try:
+                    os.kill(member.pid, signal.SIGKILL)
+                except OSError:
+                    continue
+
+        for member in members:
+            try:
+                _wait_process(member, timeout=1)
+            except (subprocess.TimeoutExpired, OSError, AttributeError):
+                continue
+
     previous_sigtstp_handler = signal.getsignal(signal.SIGTSTP)
     previous_sigcont_handler = signal.getsignal(signal.SIGCONT)
 
@@ -683,43 +815,99 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
         # Register SIGTSTP (Ctrl+Z) and SIGCONT (resume) signal handlers
         signal.signal(signal.SIGTSTP, handle_sigtstp)
         signal.signal(signal.SIGCONT, handle_sigcont)
-        try:
-            split_cmd = shlex.split(cmd, posix=True)
-        except ValueError:
-            split_cmd = []
-        if split_cmd and split_cmd[0] in ("sudo", "su"):
-            cmd_args = split_cmd
-            if not background:
-                detached_session = False
-        else:
-            shell_path = _resolve_trusted_shell()
-            if not shell_path:
-                sys.stderr.write(
-                    "Command execution failed: trusted system shell interpreter not found.\n"
+
+        if runtime_limits.max_processes > 0 and len(stage_specs) > runtime_limits.max_processes:
+            reason = containment.reason_with_details(
+                "runtime_limit.max_processes_exceeded",
+                requested=len(stage_specs),
+                limit=runtime_limits.max_processes,
+            )
+            if conf:
+                audit.log_command_event(
+                    conf,
+                    cmd,
+                    allowed=False,
+                    reason=reason,
+                    level="warning",
                 )
-                return 127
-            cmd_args = [shell_path, "-c", cmd]
-        preexec_fn = None
+            if log:
+                log.critical(
+                    "lshell: runtime containment denied command execution: "
+                    f"requested_processes={len(stage_specs)}, "
+                    f"limit={runtime_limits.max_processes}, command=\"{cmd}\""
+                )
+            sys.stderr.write(
+                "lshell: command denied: "
+                f"max_processes={runtime_limits.max_processes} "
+                "is lower than required pipeline stages\n"
+            )
+            return 126
+
         needs_resource_limits = runtime_limits.max_processes > 0
-        if os.name == "posix" and (detached_session or needs_resource_limits):
-            preexec_fn = containment.build_preexec_fn(detached_session, runtime_limits)
+        pipeline_pgid = None
+        previous_stdout = None
+        devnull_in = open(os.devnull, "r", encoding="utf-8") if background else None
+
+        try:
+            try:
+                for index, stage in enumerate(stage_specs):
+                    popen_kwargs = {"env": stage["env"]}
+                    if index == 0:
+                        if background and devnull_in is not None:
+                            popen_kwargs["stdin"] = devnull_in
+                    else:
+                        popen_kwargs["stdin"] = previous_stdout
+
+                    if index < len(stage_specs) - 1:
+                        popen_kwargs["stdout"] = subprocess.PIPE
+                    elif background:
+                        popen_kwargs["stdout"] = sys.stdout
+                        popen_kwargs["stderr"] = sys.stderr
+
+                    preexec_fn = _make_preexec_fn(index, pipeline_pgid, needs_resource_limits)
+                    if preexec_fn is not None:
+                        popen_kwargs["preexec_fn"] = preexec_fn
+
+                    stage_proc = subprocess.Popen(stage["argv"], **popen_kwargs)
+                    pipeline_processes.append(stage_proc)
+
+                    if previous_stdout is not None:
+                        previous_stdout.close()
+                    previous_stdout = (
+                        stage_proc.stdout if index < len(stage_specs) - 1 else None
+                    )
+
+                    if (
+                        index == 0
+                        and detached_session
+                        and os.name == "posix"
+                        and len(stage_specs) > 1
+                    ):
+                        pipeline_pgid = stage_proc.pid
+            except Exception:
+                _terminate_pipeline_members(pipeline_processes)
+                raise
+        finally:
+            if previous_stdout is not None:
+                previous_stdout.close()
+            if devnull_in is not None:
+                devnull_in.close()
+
+        proc = pipeline_processes[-1]
+        proc.lshell_cmd = cmd
+        proc.lshell_pipeline = tuple(pipeline_processes)
+        proc.lshell_timeout_timer = None
+        if detached_session and os.name == "posix":
+            try:
+                proc.lshell_pgid = pipeline_pgid or os.getpgid(proc.pid)
+            except OSError:
+                proc.lshell_pgid = pipeline_pgid
+
         if background:
-            with open(os.devnull, "r") as devnull_in:
-                popen_kwargs = {
-                    "stdin": devnull_in,
-                    "stdout": sys.stdout,
-                    "stderr": sys.stderr,
-                    "env": exec_env,
-                }
-                if preexec_fn is not None:
-                    popen_kwargs["preexec_fn"] = preexec_fn
-                proc = subprocess.Popen(cmd_args, **popen_kwargs)
-            proc.lshell_cmd = cmd
-            proc.lshell_timeout_timer = None
             if command_timeout > 0:
 
                 def _background_timeout():
-                    if proc and proc.poll() is None:
+                    if proc and _running_pipeline_members(proc):
                         proc.lshell_timeout_triggered = True
                         _kill_process_group(proc)
                         _emit_timeout_event()
@@ -734,26 +922,40 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             print(f"[{job_id}] {cmd} (pid: {proc.pid})")
             retcode = 0
         else:
-            popen_kwargs = {"env": exec_env}
-            if preexec_fn is not None:
-                popen_kwargs["preexec_fn"] = preexec_fn
-            proc = subprocess.Popen(cmd_args, **popen_kwargs)
-            proc.lshell_cmd = cmd
+            deadline = monotonic() + command_timeout if command_timeout > 0 else None
             if command_timeout > 0:
-                proc.communicate(timeout=command_timeout)
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(proc.args, command_timeout)
+                _wait_process(proc, timeout=remaining)
             else:
-                proc.communicate()
+                _wait_process(proc)
+
+            for member in pipeline_processes[:-1]:
+                if command_timeout > 0:
+                    remaining = deadline - monotonic()
+                    if remaining <= 0:
+                        raise subprocess.TimeoutExpired(member.args, command_timeout)
+                    _wait_process(member, timeout=remaining)
+                else:
+                    _wait_process(member)
             retcode = proc.returncode if proc.returncode is not None else 0
 
-    except FileNotFoundError:
-        sys.stderr.write(
-            "Command execution failed: required shell interpreter not found.\n"
+    except FileNotFoundError as exception:
+        missing = (
+            str(exception.filename)
+            if getattr(exception, "filename", None)
+            else (proc.args[0] if proc and getattr(proc, "args", None) else cmd)
         )
+        sys.stderr.write(f'lshell: command not found: "{missing}"\n')
         retcode = 127
     except subprocess.TimeoutExpired:
         _kill_process_group(proc)
-        if proc:
-            proc.communicate()
+        for member in _pipeline_members(proc):
+            try:
+                _wait_process(member, timeout=1)
+            except (subprocess.TimeoutExpired, OSError, AttributeError):
+                continue
         _emit_timeout_event()
         retcode = 124
     except subprocess.SubprocessError as exception:
@@ -780,17 +982,17 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     except CtrlZException:  # Handle Ctrl+Z
         retcode = 0
     except KeyboardInterrupt:  # Handle Ctrl+C
-        if proc and proc.poll() is None:
-            if detached_session:
-                os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+        if proc and _running_pipeline_members(proc):
+            if detached_session and os.name == "posix":
+                os.killpg(_pipeline_pgid(proc), signal.SIGINT)
             else:
-                os.kill(proc.pid, signal.SIGINT)
+                _signal_pipeline(proc, signal.SIGINT)
         retcode = 130
     finally:
         if (
             proc is not None
             and getattr(proc, "lshell_timeout_timer", None) is not None
-            and proc.poll() is not None
+            and not _running_pipeline_members(proc)
         ):
             proc.lshell_timeout_timer.cancel()
         signal.signal(signal.SIGTSTP, previous_sigtstp_handler)

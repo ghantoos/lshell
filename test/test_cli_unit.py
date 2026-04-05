@@ -201,12 +201,12 @@ class TestCliArgs(unittest.TestCase):
                     with patch(
                         "lshell.cli.containment.SessionAccountant",
                         return_value=accountant,
-                        ):
-                            with patch("lshell.cli.sys.argv", ["lshell", "--quiet=1"]):
-                                with patch("lshell.cli.sys.exit", side_effect=SystemExit):
-                                    with self.assertRaises(SystemExit):
-                                        cli.main()
-                            exported_session_id = os.environ["LSHELL_SESSION_ID"]
+                    ):
+                        with patch("lshell.cli.sys.argv", ["lshell", "--quiet=1"]):
+                            with patch("lshell.cli.sys.exit", side_effect=SystemExit):
+                                with self.assertRaises(SystemExit):
+                                    cli.main()
+                        exported_session_id = os.environ["LSHELL_SESSION_ID"]
 
         self.assertEqual(captured["session_id"], "fixed-session")
         self.assertEqual(exported_session_id, "fixed-session")

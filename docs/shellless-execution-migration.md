@@ -20,6 +20,7 @@ and replaces it with direct `subprocess.Popen(shell=False)` invocation.
 
 - No interpreter invocation through `PATH` for command execution (`shell -c` removed).
 - No implicit shell metacharacter execution path remains in `exec_cmd`.
+- `sudo_noexec` compatibility probing no longer runs through `bash -c`; it executes a trusted absolute `true` binary directly.
 - Existing environment scrubbing (`BASH_ENV`, `ENV`, `BASH_FUNC_*`) remains in place.
 
 ## Known Compatibility Tradeoffs

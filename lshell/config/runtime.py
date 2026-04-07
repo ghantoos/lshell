@@ -35,16 +35,28 @@ from lshell.config import resolve
 class CheckConfig:
     """Load, resolve, validate, and apply runtime config for one session."""
 
+    _NOEXEC_PROBE_CANDIDATES = ("/usr/bin/true", "/bin/true")
+
+    def _resolve_noexec_probe_binary(self):
+        """Return an absolute probe binary path for noexec validation."""
+        for candidate in self._NOEXEC_PROBE_CANDIDATES:
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+        return None
+
     def noexec_library_usable(self, path_noexec):
         """Return True when a noexec library can be safely preloaded."""
         probe_env = dict(os.environ)
         probe_env["LD_PRELOAD"] = path_noexec
         probe_env.pop("BASH_ENV", None)
         probe_env.pop("ENV", None)
+        probe_binary = self._resolve_noexec_probe_binary()
+        if not probe_binary:
+            return False
 
         try:
             probe = subprocess.run(
-                ["bash", "-c", "/usr/bin/true"],
+                [probe_binary],
                 env=probe_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

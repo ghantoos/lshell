@@ -510,3 +510,42 @@ class TestFunctions(unittest.TestCase):
             args = self.args + [f"--path_noexec='{fake_lib.name}'"]
             userconf = CheckConfig(args).returnconf()
         self.assertNotIn("path_noexec", userconf)
+
+    @patch("lshell.config.runtime.subprocess.run")
+    @patch("lshell.config.runtime.os.access")
+    @patch("lshell.config.runtime.os.path.isfile")
+    def test_noexec_probe_uses_absolute_true_binary_without_shell(
+        self,
+        mock_isfile,
+        mock_access,
+        mock_run,
+    ):
+        """U51 | noexec probe should execute trusted `true` directly, not via shell."""
+        mock_isfile.side_effect = lambda path: path == "/usr/bin/true"
+        mock_access.return_value = True
+        mock_run.return_value.returncode = 0
+
+        checker = object.__new__(CheckConfig)
+        result = checker.noexec_library_usable("/tmp/fake_noexec.so")
+
+        self.assertTrue(result)
+        self.assertEqual(mock_run.call_args.args[0], ["/usr/bin/true"])
+        child_env = mock_run.call_args.kwargs["env"]
+        self.assertEqual(child_env.get("LD_PRELOAD"), "/tmp/fake_noexec.so")
+        self.assertNotIn("BASH_ENV", child_env)
+        self.assertNotIn("ENV", child_env)
+
+    @patch("lshell.config.runtime.subprocess.run")
+    @patch("lshell.config.runtime.os.access", return_value=False)
+    @patch("lshell.config.runtime.os.path.isfile", return_value=False)
+    def test_noexec_probe_fails_closed_when_no_trusted_true_binary(
+        self,
+        _mock_isfile,
+        _mock_access,
+        mock_run,
+    ):
+        """U52 | noexec probe should fail closed when no trusted probe binary exists."""
+        checker = object.__new__(CheckConfig)
+        result = checker.noexec_library_usable("/tmp/fake_noexec.so")
+        self.assertFalse(result)
+        mock_run.assert_not_called()

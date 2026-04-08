@@ -270,7 +270,7 @@ class ShellCmd(cmd.Cmd, object):
                     self.ssh_warn("command over SSH", self.conf["ssh"])
             else:
                 # case of local shell escapes (e.g. pager/editor invoking
-                # the login shell with -c). Validate against normal policy.
+                # a shell with -c). Validate against normal policy.
                 self.conf["ssh"] = utils.get_aliases(
                     self.conf["ssh"], _aliases_for_ssh_command()
                 )

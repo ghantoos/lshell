@@ -61,7 +61,6 @@ def to_policy_message(reason):
         return f"command not found '{details.get('command', '')}'"
     if code == FORBIDDEN_TRUSTED_PROTOCOL:
         return "forbidden trusted SSH protocol command"
-
     return "policy evaluation failed"
 
 
@@ -94,7 +93,6 @@ def to_audit_reason(reason):
         return "forbidden trusted SSH protocol command: " + details.get("command", "")
     if code == COMMAND_NOT_FOUND:
         return f"command not found: {details.get('command', '')}"
-
     return "policy evaluation failed"
 
 
@@ -141,5 +139,4 @@ def warning_payload(reason):
             "messagetype": f"file extension {details.get('disallowed_extensions', [])}",
             "command": details.get("full_command", ""),
         }
-
     return None

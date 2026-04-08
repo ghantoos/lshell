@@ -197,6 +197,17 @@ own risk, as lshell becomes easily breached using some commands like find(1)
 using the -exec flag.
 .SS [default] and/or [username] and/or [grp:groupname]
 .TP
+.I runtime_executor
+runtime command executor mode.
+.RS
+\fBshellless\fR -> hardened default; does not rely on external shell parsing.
+.RE
+.RS
+\fBbash_compat\fR -> compatibility mode for legacy behavior. Use only with a
+trusted absolute bash path; this mode enables shell features such as command
+and process substitution and increases escape risk.
+.RE
+.TP
 .I aliases
 command aliases list (similar to bash's alias directive)
 .TP

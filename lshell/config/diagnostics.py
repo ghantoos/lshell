@@ -31,6 +31,7 @@ DISPLAY_KEY_ORDER = [
     "allowed_file_extensions",
     "forbidden",
     "sudo_commands",
+    "runtime_executor",
     "strict",
     "warning_counter",
     "path",
@@ -100,6 +101,7 @@ def _build_runtime_policy(conf_raw, username):
         "warning_counter",
         "overssh",
         "strict",
+        "runtime_executor",
         "aliases",
         "messages",
         "allowed_cmd_path",
@@ -125,12 +127,16 @@ def _build_runtime_policy(conf_raw, username):
                 policy[item] = []
             elif item in ["scp_upload", "scp_download"]:
                 policy[item] = 1
+            elif item in ["runtime_executor"]:
+                policy[item] = schema.RUNTIME_EXECUTOR_SHELLLESS
             elif item in ["aliases", "messages"]:
                 policy[item] = {}
             elif item in ["policy_commands"]:
                 policy[item] = 1
             else:
                 policy[item] = 0
+
+    schema.validate_runtime_executor(policy["runtime_executor"])
 
     policy["username"] = username
 

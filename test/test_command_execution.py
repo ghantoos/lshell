@@ -284,6 +284,47 @@ class TestFunctions(unittest.TestCase):
         self.assertNotIn("bash:", output)
         self.do_exit(child)
 
+    def test_bash_compat_allows_historic_substitution_behavior(self):
+        """F68 | bash_compat should allow command/process substitution semantics."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 0 --forbidden \"[]\" "
+            "--allowed \"+['printf','cat','tee']\" "
+            "--runtime_executor bash_compat"
+        )
+        child.expect(PROMPT)
+        try:
+            cases = [
+                ("echo $(printf CMD_OK)", "CMD_OK"),
+                ("echo `printf TICK_OK`", "TICK_OK"),
+                ("cat <(printf PROC_OK)", "PROC_OK"),
+                ("printf PROCW_OK | tee >(cat)", "PROCW_OK"),
+            ]
+            for command, expected in cases:
+                child.sendline(command)
+                child.expect(PROMPT)
+                output = child.before.decode("utf8")
+                self.assertNotIn("lshell: unknown syntax:", output)
+                self.assertIn(expected, output)
+
+            self.do_exit(child)
+        finally:
+            if child.isalive():
+                child.close()
+
+    def test_bash_compat_keeps_nested_substitution_allowlist_checks(self):
+        """F68b | Enabled substitutions must still enforce nested allow-list rules."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 --forbidden \"[]\" "
+            "--allowed \"['echo']\" "
+            "--runtime_executor bash_compat"
+        )
+        child.expect(PROMPT)
+        child.sendline("echo $(id)")
+        child.expect(PROMPT)
+        output = child.before.decode("utf8")
+        self.assertIn('lshell: forbidden command: "id"', output)
+        self.do_exit(child)
+
     def test_operator_matrix_fuzz(self):
         """F69 | Operator and expansion matrix should remain stable."""
         child = pexpect.spawn(
@@ -327,7 +368,10 @@ class TestFunctions(unittest.TestCase):
                 ),
                 (
                     "echo $(printf nested_ok)",
-                    ["lshell: unknown syntax:", "unsupported shell syntax: command substitution"],
+                    [
+                        "lshell: unsupported shell syntax:",
+                        "unsupported shell syntax: command substitution",
+                    ],
                 ),
             ]
 

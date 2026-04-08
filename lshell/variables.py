@@ -104,6 +104,7 @@ configparams = [
     "path_noexec=",
     "umask=",
     "allowed_shell_escape=",
+    "runtime_executor=",
     "winscp=",
     "disable_exit=",
     "policy_commands=",

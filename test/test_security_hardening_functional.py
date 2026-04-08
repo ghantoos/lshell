@@ -159,6 +159,29 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
             if os.path.exists(bash_env):
                 os.remove(bash_env)
 
+    def test_bash_compat_scrubs_bash_env_injection(self):
+        """bash_compat mode should still scrub BASH_ENV/ENV function-import attack vectors."""
+        with tempfile.NamedTemporaryFile(
+            "w", delete=False, prefix="lshell-bashenv-compat-"
+        ) as handle:
+            handle.write("echo BASH_COMPAT_ENV_INJECTION\n")
+            bash_env = handle.name
+
+        try:
+            result = self._run_lsh_script(
+                script_body=f"BASH_ENV={bash_env}\nENV={bash_env}\necho SAFE_COMPAT\n",
+                extra_shell_args=(
+                    "--forbidden \"[]\" "
+                    "--runtime_executor bash_compat "
+                ),
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("SAFE_COMPAT", result.stdout)
+            self.assertNotIn("BASH_COMPAT_ENV_INJECTION", result.stdout)
+        finally:
+            if os.path.exists(bash_env):
+                os.remove(bash_env)
+
     def test_path_acl_glob_checks_all_matches_and_blocks_forbidden_target(self):
         """Glob path checks must fail closed when any expanded item is forbidden."""
         with tempfile.TemporaryDirectory(prefix="lshell-path-hardening-") as tmpdir:

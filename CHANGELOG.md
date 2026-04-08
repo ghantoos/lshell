@@ -10,6 +10,7 @@ Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)
 - Refactor: Removed legacy `lshell.parser` compatibility wrapper; runtime and diagnostics now rely on canonical `lshell.engine.*` parsing paths only.
 - Refactor: Reorganized configuration code into `lshell/config/` with focused modules (`runtime.py`, `diagnostics.py`, `resolve.py`, `schema.py`) and updated imports accordingly.
 - Config: Unified runtime (`CheckConfig`) and diagnostics (`policy-show`) merge logic into a shared resolver to keep section precedence, include overlays, +/- list operations, `all` expansion, and glob-path handling aligned.
+- Runtime/Security: Added explicit `runtime_executor` mode selection (`shellless` default, `bash_compat` opt-in), trusted absolute bash resolution (no PATH lookup), and retained env hardening (`BASH_ENV`/`ENV`/`BASH_FUNC_*` scrubbing).
 - CLI: Restored split diagnostics naming: `policy-show` as the external subcommand and `lshow` as the in-shell builtin.
 - CLI: Removed legacy/extra diagnostics commands `lpath`, `lsudo`, `policy-path`, and `policy-sudo`.
 - UX: Extended `policy-show` output to include path allow/deny details and sudo policy details directly.

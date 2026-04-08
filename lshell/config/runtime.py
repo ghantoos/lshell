@@ -501,6 +501,7 @@ class CheckConfig:
             "max_background_jobs",
             "command_timeout",
             "max_processes",
+            "runtime_executor",
         ]:
             try:
                 if len(self.conf_raw[item]) == 0:
@@ -523,6 +524,8 @@ class CheckConfig:
                     self.conf[item] = -1
                 elif item in ["policy_commands"]:
                     self.conf[item] = 1
+                elif item in ["runtime_executor"]:
+                    self.conf[item] = schema.RUNTIME_EXECUTOR_SHELLLESS
                 # default scp is allowed
                 elif item in ["scp_upload", "scp_download"]:
                     self.conf[item] = 1
@@ -541,6 +544,12 @@ class CheckConfig:
 
         if self.conf["prompt_short"] not in [0, 1, 2]:
             self.log.critical("lshell: config: 'prompt_short' must be 0, 1, or 2")
+            sys.exit(1)
+
+        try:
+            schema.validate_runtime_executor(self.conf["runtime_executor"])
+        except ValueError as exception:
+            self.log.critical(f"lshell: config: {exception}")
             sys.exit(1)
 
         try:

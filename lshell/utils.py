@@ -21,6 +21,7 @@ from lshell import builtincmd
 from lshell import audit
 from lshell import containment
 from lshell import expansion_inspector
+from lshell.config import schema
 from lshell.engine import executor as engine_executor
 
 
@@ -279,11 +280,30 @@ def replace_exit_code(line, retcode):
 
 
 _ENV_VAR_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_TRUSTED_BASH_CANDIDATES = (
+    "/usr/bin/bash",
+    "/bin/bash",
+    "/usr/local/bin/bash",
+    "/opt/homebrew/bin/bash",
+)
 
 
 def _is_bash_function_env_name(name):
     """Return True for env vars used by Bash function import."""
     return name.startswith("BASH_FUNC_")
+
+
+def resolve_trusted_bash_path(candidates=None):
+    """Resolve a trusted absolute bash path without PATH lookup."""
+    if candidates is None:
+        candidates = _TRUSTED_BASH_CANDIDATES
+
+    for candidate in candidates:
+        if not os.path.isabs(candidate):
+            continue
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
 
 
 def _expand_braced_parameter(expr, support_advanced=True):
@@ -536,6 +556,16 @@ def _contains_unquoted_redirection(command):
     return False
 
 
+def _runtime_executor_from_conf(conf):
+    """Return normalized runtime executor mode from config."""
+    if not conf:
+        return schema.RUNTIME_EXECUTOR_SHELLLESS
+    mode = conf.get("runtime_executor", schema.RUNTIME_EXECUTOR_SHELLLESS)
+    if mode in schema.RUNTIME_EXECUTOR_VALUES:
+        return mode
+    return schema.RUNTIME_EXECUTOR_SHELLLESS
+
+
 def unsupported_runtime_syntax_reason(command):
     """Return user-facing reason when command relies on unsupported shell syntax."""
     expansion_info = expansion_inspector.inspect_shell_expansions(command)
@@ -615,48 +645,66 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
         if _is_bash_function_env_name(key):
             exec_env.pop(key, None)
 
-    stage_texts = _split_pipeline_for_execution(cmd)
-    if stage_texts is None or not stage_texts:
-        sys.stderr.write(f"lshell: unknown syntax: {cmd}\n")
-        return 1
-
-    stage_specs = []
-    for stage_text in stage_texts:
-        expanded_stage = expand_vars_quoted(stage_text, support_advanced_braced=True)
-        unsupported_reason = unsupported_runtime_syntax_reason(expanded_stage)
-        if unsupported_reason:
+    runtime_executor = _runtime_executor_from_conf(conf)
+    if runtime_executor == schema.RUNTIME_EXECUTOR_BASH_COMPAT:
+        bash_path = resolve_trusted_bash_path()
+        if not bash_path:
             sys.stderr.write(
-                "lshell: unsupported shell syntax in command execution: "
-                f"{unsupported_reason}\n"
+                "lshell: runtime_executor=bash_compat requires a trusted absolute bash path\n"
             )
             return 126
-
-        executable, _argument, split, assignments = _parse_command(expanded_stage)
-        if executable is None:
-            sys.stderr.write(f"lshell: unknown syntax: {stage_text}\n")
-            return 1
-
-        if not executable:
-            sys.stderr.write(f"lshell: unknown syntax: {stage_text}\n")
-            return 1
-
-        stage_env = dict(exec_env)
-        for var_name, var_value in assignments:
-            stage_env[var_name] = var_value
-
-        stage_specs.append(
+        stage_specs = [
             {
-                "argv": split[len(assignments) :],
-                "env": stage_env,
+                "argv": [bash_path, "-c", cmd],
+                "env": dict(exec_env),
             }
-        )
-
-    if stage_specs and stage_specs[0]["argv"] and stage_specs[0]["argv"][0] in (
-        "sudo",
-        "su",
-    ):
-        if not background:
+        ]
+        executable, _argument, _split, _assignments = _parse_command(cmd)
+        if executable in ("sudo", "su") and not background:
             detached_session = False
+    else:
+        stage_texts = _split_pipeline_for_execution(cmd)
+        if stage_texts is None or not stage_texts:
+            sys.stderr.write(f"lshell: unknown syntax: {cmd}\n")
+            return 1
+
+        stage_specs = []
+        for stage_text in stage_texts:
+            expanded_stage = expand_vars_quoted(stage_text, support_advanced_braced=True)
+            unsupported_reason = unsupported_runtime_syntax_reason(expanded_stage)
+            if unsupported_reason:
+                sys.stderr.write(
+                    "lshell: unsupported shell syntax in command execution: "
+                    f"{unsupported_reason}\n"
+                )
+                return 126
+
+            executable, _argument, split, assignments = _parse_command(expanded_stage)
+            if executable is None:
+                sys.stderr.write(f"lshell: unknown syntax: {stage_text}\n")
+                return 1
+
+            if not executable:
+                sys.stderr.write(f"lshell: unknown syntax: {stage_text}\n")
+                return 1
+
+            stage_env = dict(exec_env)
+            for var_name, var_value in assignments:
+                stage_env[var_name] = var_value
+
+            stage_specs.append(
+                {
+                    "argv": split[len(assignments) :],
+                    "env": stage_env,
+                }
+            )
+
+        if stage_specs and stage_specs[0]["argv"] and stage_specs[0]["argv"][0] in (
+            "sudo",
+            "su",
+        ):
+            if not background:
+                detached_session = False
 
     class CtrlZException(Exception):
         """Custom exception to handle Ctrl+Z (SIGTSTP)."""

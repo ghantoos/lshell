@@ -2,6 +2,7 @@
 
 import errno
 import io
+import os
 import unittest
 from contextlib import redirect_stderr
 from unittest.mock import patch
@@ -218,6 +219,83 @@ class TestAttackSurfacePart3(unittest.TestCase):
         self.assertEqual(ret, 126)
         self.assertIn(
             "unsupported shell syntax in command execution: redirection operators",
+            stderr.getvalue(),
+        )
+        mock_popen.assert_not_called()
+
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.resolve_trusted_bash_path", return_value="/bin/bash")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_bash_compat_uses_trusted_bash_and_scrubs_env(
+        self,
+        mock_popen,
+        _mock_resolve_bash,
+        _mock_signal,
+        _mock_getsignal,
+    ):
+        """bash_compat execution must use trusted bash path and hardened child env."""
+
+        class FakeProc:
+            """Minimal successful foreground process stub."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 8181
+                self.args = ["/bin/bash", "-c", "echo ok"]
+                self.lshell_cmd = ""
+
+            def poll(self):
+                """Report completed process state."""
+                return self.returncode
+
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
+                """Simulate a successful foreground command run."""
+                return self.returncode
+
+        mock_popen.return_value = FakeProc()
+
+        with patch.dict(
+            os.environ,
+            {
+                "BASH_ENV": "/tmp/inject",
+                "ENV": "/tmp/inject",
+                "BASH_FUNC_echo%%": "() { id; }",
+                "LSHELL_SAFE_ENV": "ok",
+            },
+            clear=True,
+        ):
+            ret = utils.exec_cmd("echo ok", conf={"runtime_executor": "bash_compat"})
+
+        self.assertEqual(ret, 0)
+        self.assertEqual(
+            mock_popen.call_args.args[0], ["/bin/bash", "-c", "echo ok"]
+        )
+        child_env = mock_popen.call_args.kwargs["env"]
+        self.assertNotIn("BASH_ENV", child_env)
+        self.assertNotIn("ENV", child_env)
+        self.assertNotIn("BASH_FUNC_echo%%", child_env)
+        self.assertEqual(child_env.get("LSHELL_SAFE_ENV"), "ok")
+
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.resolve_trusted_bash_path", return_value=None)
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_bash_compat_fails_closed_when_no_trusted_bash(
+        self,
+        mock_popen,
+        _mock_resolve_bash,
+        _mock_signal,
+        _mock_getsignal,
+    ):
+        """bash_compat should fail closed if no trusted absolute bash path is present."""
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            ret = utils.exec_cmd("echo ok", conf={"runtime_executor": "bash_compat"})
+
+        self.assertEqual(ret, 126)
+        self.assertIn(
+            "runtime_executor=bash_compat requires a trusted absolute bash path",
             stderr.getvalue(),
         )
         mock_popen.assert_not_called()

@@ -176,6 +176,48 @@ class TestEnginePipeline(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_runtime_authorizer_allows_substitutions_in_bash_compat(self):
+        """bash_compat runtime mode should allow both substitution families."""
+        policy = _policy(
+            allowed=["echo", "printf", "cat", "tee"],
+            forbidden=[],
+            strict=0,
+            runtime_executor="bash_compat",
+        )
+        command_cases = [
+            "echo $(printf ok)",
+            "echo `printf ok`",
+            "cat <(printf ok)",
+            "printf ok | tee >(cat)",
+        ]
+        for line in command_cases:
+            with self.subTest(line=line):
+                decision = authorizer.authorize_line(
+                    line,
+                    policy,
+                    mode="runtime",
+                    check_current_dir=False,
+                )
+                self.assertTrue(decision.allowed)
+
+    def test_runtime_authorizer_keeps_nested_allowlist_checks_in_command_substitution(
+        self,
+    ):
+        """Enabled substitution must still recurse into nested allow-list checks."""
+        decision = authorizer.authorize_line(
+            "echo $(id)",
+            _policy(
+                allowed=["echo"],
+                forbidden=[],
+                strict=1,
+                runtime_executor="bash_compat",
+            ),
+            mode="runtime",
+            check_current_dir=False,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason.code, reasons.FORBIDDEN_COMMAND)
+
     def test_authorizer_enforces_overssh_allowlist_inside_nested_expansions(self):
         """SSH-mode nested expansions must use overssh allow-list decisions."""
         decision = authorizer.authorize_line(

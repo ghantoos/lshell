@@ -1,30 +1,41 @@
 # Shellless Execution Migration
 
-This change removes runtime `shell -c` command execution from `lshell.utils.exec_cmd`
-and replaces it with direct `subprocess.Popen(shell=False)` invocation.
+This change removes implicit runtime `shell -c` execution and introduces an explicit
+runtime executor mode switch:
+
+- `runtime_executor=shellless` (default, hardened/fail-closed)
+- `runtime_executor=bash_compat` (explicit compatibility opt-in)
 
 ## Compatibility Matrix
 
-| Feature | Policy/Parser Handling | Runtime Behavior (Shellless) | Notes |
-| --- | --- | --- | --- |
-| Quoting (`'...'`, `"..."`, escapes) | Parsed by `shlex` and engine splitters | Supported | Quoting is interpreted by lshell parsing, not by an external shell. |
-| Variable expansion (`$VAR`, `${...}` subset) | Authorized through existing expansion inspector checks | Supported for lshell-supported forms via `expand_vars_quoted(..., support_advanced_braced=True)` | Unsupported `${...}` forms remain fail-closed via existing parser/authorizer safeguards. |
-| Globbing (`*`, `?`, `[]`, brace patterns) | Path ACL checks still expand wildcards/brace forms for authorization | No implicit shell glob expansion at execution time | Commands receive literal operands unless tool itself expands internally. |
-| Pipelines (`|`) | Parsed at top level by canonical engine | Supported | Implemented by manually wiring `stdout` -> `stdin` between `Popen` stages. |
-| `&&`, `||`, `;`, `&` | Canonical engine handles sequencing/branching/background logic | Supported | No delegation to shell operator parsing. |
-| Command substitution (`$(...)`, `` `...` ``) | Still inspected recursively for allowlist/path policy | Unsupported at runtime (fail closed) | Executor returns unknown-syntax denial with explicit unsupported-shell message. |
-| Process substitution (`<(...)`, `>(...)`) | Still inspected recursively for allowlist/path policy | Unsupported at runtime (fail closed) | Same fail-closed runtime path as above. |
-| Redirections (`>`, `<`, `>>`, `2>&1`, here-doc/here-string forms) | Existing checks continue to classify malformed forms | Unsupported at runtime (fail closed) | Runtime rejects unquoted redirection markers explicitly. |
+| Feature | Policy/Parser Handling | `shellless` Runtime | `bash_compat` Runtime | Notes |
+| --- | --- | --- | --- | --- |
+| Quoting (`'...'`, `"..."`, escapes) | Parsed by `shlex` and engine splitters | Supported | Supported | Quoting is parsed by lshell in shellless; delegated to bash in compat mode. |
+| Variable expansion (`$VAR`, `${...}` subset) | Authorized through expansion inspector checks | Supported for lshell-supported forms via `expand_vars_quoted` | Supported by bash | Unsupported/unsafe forms remain fail-closed in policy path. |
+| Globbing (`*`, `?`, `[]`, brace patterns) | Path ACL checks expand wildcard/brace forms for authorization | No implicit shell glob expansion at execution time | Bash globbing semantics | Path ACL checks still run before execution. |
+| Pipelines (`|`) | Parsed by canonical engine | Supported via explicit `Popen` pipe wiring | Supported via bash parser/executor | Runtime containment still applies per execution mode constraints. |
+| `&&`, `||`, `;`, `&` | Canonical engine sequencing/branching logic | Supported | Supported |  |
+| Command substitution (`$(...)`, `` `...` ``) | Nested commands still recursively authorized (allowlist/path) | Unsupported at runtime (fail-closed) | Allowed (historic behavior) | |
+| Process substitution (`<(...)`, `>(...)`) | Nested commands still recursively authorized (allowlist/path) | Unsupported at runtime (fail-closed) | Allowed (historic behavior) | |
+| Redirections (`>`, `<`, `>>`, `2>&1`, here-doc/here-string forms) | Existing checks continue to classify malformed forms | Unsupported at runtime (fail-closed) | Supported by bash syntax, still subject to policy checks | Forbidden-character config can still block metacharacters. |
+
+### Runtime Executor Matrix
+
+| `runtime_executor` | Effective behavior |
+| --- | --- |
+| `shellless` | Hardened mode: command/process substitution denied at runtime. |
+| `bash_compat` | Compatibility mode: command/process substitution allowed (historic behavior). |
 
 ## Security Outcome
 
-- No interpreter invocation through `PATH` for command execution (`shell -c` removed).
-- No implicit shell metacharacter execution path remains in `exec_cmd`.
-- `sudo_noexec` compatibility probing no longer runs through `bash -c`; it executes a trusted absolute `true` binary directly.
-- Existing environment scrubbing (`BASH_ENV`, `ENV`, `BASH_FUNC_*`) remains in place.
+- Default mode (`shellless`) keeps fail-closed behavior with no external shell parser.
+- `bash_compat` uses only trusted absolute bash candidates (`/bin/bash`, `/usr/bin/bash`, etc.); no PATH-based interpreter lookup is used.
+- Nested allowlist/path checks for commands inside substitutions remain enforced before execution.
+- Environment hardening remains in place for both modes: `BASH_ENV`, `ENV`, and `BASH_FUNC_*` are stripped from child envs.
+- `sudo_noexec` probe remains shellless and uses a trusted absolute `true` binary.
 
 ## Known Compatibility Tradeoffs
 
-1. Shell-only runtime syntax (command/process substitution, redirection forms) is now denied explicitly rather than delegated.
-2. Execution-time shell glob expansion is not performed; path policy wildcard validation remains unchanged.
-3. Workflows that depended on shell redirection side effects must use allowed helper tools instead of inline shell redirection syntax.
+1. `bash_compat` is a compatibility mode and broadens runtime shell semantics versus `shellless`.
+2. In `shellless`, shell-only forms (substitution/redirection) are denied explicitly.
+3. In `bash_compat`, runtime containment limits such as pipeline-stage counting apply to the outer bash process, not each shell-internal stage.

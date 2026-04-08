@@ -35,16 +35,28 @@ from lshell.config import resolve
 class CheckConfig:
     """Load, resolve, validate, and apply runtime config for one session."""
 
+    _NOEXEC_PROBE_CANDIDATES = ("/usr/bin/true", "/bin/true")
+
+    def _resolve_noexec_probe_binary(self):
+        """Return an absolute probe binary path for noexec validation."""
+        for candidate in self._NOEXEC_PROBE_CANDIDATES:
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+        return None
+
     def noexec_library_usable(self, path_noexec):
         """Return True when a noexec library can be safely preloaded."""
         probe_env = dict(os.environ)
         probe_env["LD_PRELOAD"] = path_noexec
         probe_env.pop("BASH_ENV", None)
         probe_env.pop("ENV", None)
+        probe_binary = self._resolve_noexec_probe_binary()
+        if not probe_binary:
+            return False
 
         try:
             probe = subprocess.run(
-                ["bash", "-c", "/usr/bin/true"],
+                [probe_binary],
                 env=probe_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -482,13 +494,13 @@ class CheckConfig:
             "login_script",
             "winscp",
             "disable_exit",
-            "policy_commands",
             "quiet",
             "security_audit_json",
             "max_sessions_per_user",
             "max_background_jobs",
             "command_timeout",
             "max_processes",
+            "runtime_executor",
         ]:
             try:
                 if len(self.conf_raw[item]) == 0:
@@ -509,8 +521,8 @@ class CheckConfig:
                     self.conf[item] = []
                 elif item in ["history_size"]:
                     self.conf[item] = -1
-                elif item in ["policy_commands"]:
-                    self.conf[item] = 1
+                elif item in ["runtime_executor"]:
+                    self.conf[item] = schema.RUNTIME_EXECUTOR_SHELLLESS
                 # default scp is allowed
                 elif item in ["scp_upload", "scp_download"]:
                     self.conf[item] = 1
@@ -529,6 +541,12 @@ class CheckConfig:
 
         if self.conf["prompt_short"] not in [0, 1, 2]:
             self.log.critical("lshell: config: 'prompt_short' must be 0, 1, or 2")
+            sys.exit(1)
+
+        try:
+            schema.validate_runtime_executor(self.conf["runtime_executor"])
+        except ValueError as exception:
+            self.log.critical(f"lshell: config: {exception}")
             sys.exit(1)
 
         try:
@@ -640,14 +658,6 @@ class CheckConfig:
 
         # append default commands to allowed list
         self.conf["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
-
-        # Optionally hide policy introspection commands from users.
-        if self.conf.get("policy_commands") != 1:
-            self.conf["allowed"] = [
-                cmd
-                for cmd in self.conf["allowed"]
-                if cmd not in builtincmd.POLICY_COMMANDS
-            ]
 
         # in case sudo_commands is not empty, append sudo to allowed commands
         if self.conf["sudo_commands"]:

@@ -466,9 +466,9 @@ class TestAttackSurface(unittest.TestCase):
                 self.args = ["sudo", "ls"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Simulate foreground process I/O completion."""
-                return None
+                return self.returncode
 
             def poll(self):
                 """Simulate an already-finished subprocess."""
@@ -500,9 +500,9 @@ class TestAttackSurface(unittest.TestCase):
                 self.args = ["sudo", "ls"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Simulate foreground process I/O completion."""
-                return None
+                return self.returncode
 
             def poll(self):
                 """Simulate an already-finished subprocess."""
@@ -537,9 +537,9 @@ class TestAttackSurface(unittest.TestCase):
                 self.args = ["su", "-"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Simulate foreground process I/O completion."""
-                return None
+                return self.returncode
 
             def poll(self):
                 """Simulate an already-finished subprocess."""
@@ -571,9 +571,9 @@ class TestAttackSurface(unittest.TestCase):
                 self.args = ["su", "-"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Simulate foreground process I/O completion."""
-                return None
+                return self.returncode
 
             def poll(self):
                 """Simulate an already-finished subprocess."""

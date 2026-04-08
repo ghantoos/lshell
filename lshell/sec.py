@@ -155,6 +155,47 @@ def warn_unknown_syntax(command, conf, strict=None, ssh=None):
     return 1, conf
 
 
+def warn_unsupported_shell_syntax(command, conf, strict=None, ssh=None):
+    """Warn on unsupported shell syntax with explicit non-unknown-syntax wording."""
+    log = conf["logpath"]
+    detail = str(command).strip()
+    prefix = "unsupported shell syntax:"
+    if detail.startswith(prefix):
+        detail = detail[len(prefix) :].strip()
+
+    primary_message = f"lshell: unsupported shell syntax: {detail}"
+    audit.set_decision_reason(conf, f"unsupported shell syntax: {detail}")
+
+    if ssh:
+        return 1, conf
+
+    if strict:
+        conf["warning_counter"] -= 1
+        if conf["warning_counter"] < 0:
+            log.critical(primary_message)
+            log.critical(messages.get_message(conf, "session_terminated"))
+            sys.exit(1)
+
+        log.critical(primary_message)
+        remaining = conf["warning_counter"]
+        violation_label = "violation" if remaining == 1 else "violations"
+        sys.stderr.write(
+            messages.get_message(
+                conf,
+                "warning_remaining",
+                remaining=remaining,
+                violation_label=violation_label,
+            )
+            + "\n"
+        )
+        log.error(f"lshell: user warned, counter: {remaining}")
+        return 1, conf
+
+    log.warning(f'INFO: unsupported shell syntax -> "{detail}"')
+    sys.stderr.write(primary_message + "\n")
+    return 1, conf
+
+
 def tokenize_command(command):
     """Tokenize the command line into separate commands based on the operators"""
 

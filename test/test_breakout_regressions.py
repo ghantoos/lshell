@@ -105,7 +105,10 @@ class TestBreakoutRegressions(unittest.TestCase):
                 child,
                 "echo ${LSHELL_BREAKOUT_TEST:-$(id)}",
             )
-            self.assertIn('lshell: forbidden command: "id"', breakout)
+            self.assertTrue(
+                ('lshell: forbidden command: "id"' in breakout)
+                or ("unsupported shell syntax: command substitution" in breakout)
+            )
             self.assertNotRegex(breakout, r"uid=[0-9]+")
         finally:
             self._safe_exit(child)

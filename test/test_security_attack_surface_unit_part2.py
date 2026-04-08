@@ -90,7 +90,7 @@ class TestAttackSurfacePart2(unittest.TestCase):
                 self.args = ["sudo", "ls"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Raise keyboard interrupt while waiting for process I/O."""
                 raise KeyboardInterrupt
 
@@ -129,10 +129,10 @@ class TestAttackSurfacePart2(unittest.TestCase):
             def __init__(self):
                 self.returncode = None
                 self.pid = 5252
-                self.args = ["bash", "-c", "sleep 60"]
+                self.args = ["sleep", "60"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Raise keyboard interrupt while waiting for process I/O."""
                 raise KeyboardInterrupt
 
@@ -164,12 +164,12 @@ class TestAttackSurfacePart2(unittest.TestCase):
             def __init__(self):
                 self.returncode = 0
                 self.pid = 3131
-                self.args = ["bash", "-c", "echo ok"]
+                self.args = ["echo", "ok"]
                 self.lshell_cmd = ""
 
-            def communicate(self):
+            def wait(self, timeout=None):  # pylint: disable=unused-argument
                 """Simulate a successful foreground command run."""
-                return None
+                return self.returncode
 
             def poll(self):
                 """Report completed process state."""

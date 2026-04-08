@@ -184,6 +184,14 @@ test-fedora-pypi-pre:
 test-ssh-e2e:
     ./scripts/test-ssh-e2e.sh "{{e2e_compose}}"
 
+# Update config coverage manifest (supported keys + test fingerprint)
+test-manifest-update:
+    python3 scripts/update_config_coverage_manifest.py --write
+
+# Verify config coverage manifest freshness
+test-manifest-check:
+    python3 scripts/update_config_coverage_manifest.py --check
+
 # Lint Python sources
 test-lint-flake8:
     pylint lshell test

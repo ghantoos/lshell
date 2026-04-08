@@ -42,7 +42,6 @@ INT_VALUE_KEYS = {
     "history_size",
     "winscp",
     "disable_exit",
-    "policy_commands",
     "quiet",
     "loglevel",
     "security_audit_json",
@@ -62,6 +61,7 @@ STRING_VALUE_KEYS = {
     "scpforce",
     "logfilename",
     "syslogname",
+    "runtime_executor",
 }
 DEDUP_LIST_KEYS = {
     "allowed",
@@ -70,6 +70,13 @@ DEDUP_LIST_KEYS = {
     "forbidden",
     "overssh",
     "sudo_commands",
+}
+
+RUNTIME_EXECUTOR_SHELLLESS = "shellless"
+RUNTIME_EXECUTOR_BASH_COMPAT = "bash_compat"
+RUNTIME_EXECUTOR_VALUES = {
+    RUNTIME_EXECUTOR_SHELLLESS,
+    RUNTIME_EXECUTOR_BASH_COMPAT,
 }
 
 
@@ -140,3 +147,10 @@ def parse_config_value(value, key=""):
         evaluated = list(set(evaluated))
 
     return evaluated
+
+
+def validate_runtime_executor(runtime_executor):
+    """Validate runtime-executor mode."""
+    if runtime_executor not in RUNTIME_EXECUTOR_VALUES:
+        valid_values = ", ".join(sorted(RUNTIME_EXECUTOR_VALUES))
+        raise ValueError(f"runtime_executor must be one of: {valid_values}")

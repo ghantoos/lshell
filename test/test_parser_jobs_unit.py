@@ -5,7 +5,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from lshell import builtincmd
 from lshell import completion
@@ -34,6 +34,26 @@ class FakeJob:
         return self.returncode
 
 
+class FakePipelineMember:
+    """Simple fake process object representing one pipeline stage."""
+
+    def __init__(self, poll_value=None, returncode=0, pid=20000):
+        self._poll_value = poll_value
+        self.returncode = returncode
+        self.pid = pid
+        self.wait_called = False
+
+    def poll(self):
+        """Return the configured running/completed state."""
+        return self._poll_value
+
+    def wait(self):
+        """Mark member as completed when waited."""
+        self.wait_called = True
+        self._poll_value = self.returncode
+        return self.returncode
+
+
 class FakeProcess:
     """Simple fake subprocess object used by exec_cmd signal tests."""
 
@@ -50,13 +70,18 @@ class FakeProcess:
         """Report running state until the fake process completes."""
         return self._poll_value
 
-    def communicate(self):
+    def wait(self, timeout=None):  # pylint: disable=unused-argument
         """Simulate command execution, optionally triggering Ctrl+Z."""
         if self.trigger_suspend:
             handler = self._signal_handlers.get(utils.signal.SIGTSTP)
             if handler is not None:
                 handler(utils.signal.SIGTSTP, None)
         self._poll_value = self.returncode
+        return self.returncode
+
+    def communicate(self):
+        """Simulate command execution, optionally triggering Ctrl+Z."""
+        self.wait()
 
 
 class TestParserUtilities(unittest.TestCase):
@@ -331,11 +356,11 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         self.assertEqual(ret, 1)
         self.assertIn("lshell: invalid job ID", stdout.getvalue())
 
-    @patch("os.getpgid", return_value=4242)
-    @patch("os.killpg")
-    def test_cmd_bg_fg_resumes_and_removes_job(self, mock_killpg, _mock_getpgid):
+    @patch("lshell.builtincmd.os.killpg")
+    def test_cmd_bg_fg_resumes_and_removes_job(self, mock_killpg):
         """Resume a running job in foreground and remove it once completed."""
         job = FakeJob(poll_value=None, returncode=0, pid=9876, cmd="sleep 10")
+        job.lshell_pgid = 4242
         builtincmd.BACKGROUND_JOBS.append(job)
         stdout = io.StringIO()
 
@@ -346,13 +371,13 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         self.assertTrue(job.wait_called)
         self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 0)
         self.assertIn("sleep 10", stdout.getvalue())
-        mock_killpg.assert_called_once()
+        mock_killpg.assert_called_once_with(4242, utils.signal.SIGCONT)
 
-    @patch("lshell.builtincmd.os.getpgid", return_value=4242)
     @patch("lshell.builtincmd.os.killpg")
-    def test_cmd_bg_fg_ctrl_z_keeps_single_job_entry(self, mock_killpg, _mock_getpgid):
+    def test_cmd_bg_fg_ctrl_z_keeps_single_job_entry(self, mock_killpg):
         """Ctrl+Z during fg should not duplicate the same job or raise."""
         job = FakeJob(poll_value=None, returncode=0, pid=9876, cmd="tail -f blabla")
+        job.lshell_pgid = 4242
         builtincmd.BACKGROUND_JOBS.append(job)
         stdout = io.StringIO()
         handlers = {}
@@ -378,6 +403,12 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 1)
         self.assertIn("Stopped", stdout.getvalue())
         self.assertEqual(mock_killpg.call_count, 2)
+        mock_killpg.assert_has_calls(
+            [
+                call(4242, utils.signal.SIGCONT),
+                call(4242, utils.signal.SIGSTOP),
+            ]
+        )
 
     @patch("lshell.utils.os.getpgid", return_value=4242)
     @patch("lshell.utils.os.killpg")
@@ -473,6 +504,150 @@ class TestBuiltinsJobsAndSource(unittest.TestCase):
         output = stdout.getvalue()
         self.assertEqual(output.count("Done"), 2)
         self.assertEqual(output.count("Failed"), 1)
+
+    def test_check_background_jobs_keeps_pipeline_until_all_members_finish(self):
+        """Do not mark a pipeline done while any earlier stage is still running."""
+        producer = FakePipelineMember(poll_value=None, returncode=0, pid=2001)
+        consumer = FakePipelineMember(poll_value=0, returncode=0, pid=2002)
+        job = FakeJob(poll_value=0, returncode=0, pid=2002, cmd="sleep 10 | cat")
+        job.lshell_pipeline = (producer, consumer)
+        builtincmd.BACKGROUND_JOBS.append(job)
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            builtincmd.check_background_jobs()
+
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 1)
+        self.assertIs(builtincmd.BACKGROUND_JOBS[0], job)
+        self.assertEqual(stdout.getvalue(), "")
+
+    def test_jobs_keeps_pipeline_listed_while_any_member_is_running(self):
+        """jobs() must not prune a pipeline when only its last stage has exited."""
+        producer = FakePipelineMember(poll_value=None, returncode=0, pid=2101)
+        consumer = FakePipelineMember(poll_value=0, returncode=0, pid=2102)
+        job = FakeJob(poll_value=0, returncode=0, pid=2102, cmd="sleep 5 | cat")
+        job.lshell_pipeline = (producer, consumer)
+        builtincmd.BACKGROUND_JOBS.append(job)
+
+        joblist = builtincmd.jobs()
+
+        self.assertEqual(joblist, [[1, "Stopped", "sleep 5 | cat"]])
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 1)
+        self.assertIs(builtincmd.BACKGROUND_JOBS[0], job)
+
+    @patch("lshell.builtincmd.os.kill")
+    @patch("lshell.builtincmd.os.killpg")
+    def test_cmd_bg_fg_waits_running_pipeline_members_when_tail_already_exited(
+        self, mock_killpg, mock_kill
+    ):
+        """fg should still manage a pipeline if only an earlier stage remains alive."""
+        producer = FakePipelineMember(poll_value=None, returncode=0, pid=2201)
+        consumer = FakePipelineMember(poll_value=0, returncode=0, pid=2202)
+        job = FakeJob(poll_value=0, returncode=0, pid=2202, cmd="sleep 15 | cat")
+        job.lshell_pipeline = (producer, consumer)
+        job.lshell_pgid = 4242
+        builtincmd.BACKGROUND_JOBS.append(job)
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            ret = builtincmd.cmd_bg_fg("fg", "1")
+
+        self.assertEqual(ret, 0)
+        self.assertTrue(producer.wait_called)
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 0)
+        self.assertIn("sleep 15 | cat", stdout.getvalue())
+        mock_killpg.assert_called_with(4242, utils.signal.SIGCONT)
+        mock_kill.assert_not_called()
+
+    @patch("lshell.builtincmd.os.kill")
+    @patch("lshell.builtincmd.os.killpg")
+    def test_cmd_bg_fg_non_detached_pipeline_signals_running_members_only(
+        self, mock_killpg, mock_kill
+    ):
+        """fg on non-detached jobs must signal running members by PID only."""
+        producer = FakePipelineMember(poll_value=None, returncode=0, pid=2301)
+        consumer = FakePipelineMember(poll_value=0, returncode=0, pid=2302)
+        job = FakeJob(poll_value=0, returncode=0, pid=2302, cmd="sudo whoami | cat")
+        job.lshell_pipeline = (producer, consumer)
+        builtincmd.BACKGROUND_JOBS.append(job)
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            ret = builtincmd.cmd_bg_fg("fg", "1")
+
+        self.assertEqual(ret, 0)
+        self.assertTrue(producer.wait_called)
+        self.assertFalse(consumer.wait_called)
+        self.assertEqual(len(builtincmd.BACKGROUND_JOBS), 0)
+        mock_killpg.assert_not_called()
+        mock_kill.assert_called_once_with(2301, utils.signal.SIGCONT)
+
+    @patch("lshell.builtincmd.os.kill")
+    @patch("lshell.builtincmd.os.killpg")
+    def test_signal_job_detached_pipeline_uses_tracked_pgid_only(
+        self, mock_killpg, mock_kill
+    ):
+        """Detached jobs should keep the process-group signaling fast path."""
+        producer = FakePipelineMember(poll_value=None, returncode=0, pid=2401)
+        consumer = FakePipelineMember(poll_value=None, returncode=0, pid=2402)
+        job = FakeJob(poll_value=None, returncode=0, pid=2402, cmd="sleep 1 | cat")
+        job.lshell_pipeline = (producer, consumer)
+        job.lshell_pgid = 7788
+
+        builtincmd._signal_job(job, utils.signal.SIGCONT)
+
+        mock_killpg.assert_called_once_with(7788, utils.signal.SIGCONT)
+        mock_kill.assert_not_called()
+
+    @patch("lshell.builtincmd.os.kill")
+    @patch(
+        "lshell.builtincmd.os.killpg",
+        side_effect=OSError("failed process-group signal"),
+    )
+    def test_signal_job_falls_back_to_member_kill_when_killpg_fails(
+        self, mock_killpg, mock_kill
+    ):
+        """Detached jobs should still signal running members if killpg fails."""
+        producer = FakePipelineMember(poll_value=None, returncode=0, pid=2501)
+        consumer = FakePipelineMember(poll_value=0, returncode=0, pid=2502)
+        job = FakeJob(poll_value=0, returncode=0, pid=2502, cmd="sleep 2 | cat")
+        job.lshell_pipeline = (producer, consumer)
+        job.lshell_pgid = 8899
+
+        builtincmd._signal_job(job, utils.signal.SIGSTOP)
+
+        mock_killpg.assert_called_once_with(8899, utils.signal.SIGSTOP)
+        mock_kill.assert_called_once_with(2501, utils.signal.SIGSTOP)
+
+    @patch("lshell.builtincmd.os.kill")
+    @patch("lshell.builtincmd.os.killpg")
+    def test_signal_job_member_fallback_continues_after_partial_kill_errors(
+        self, mock_killpg, mock_kill
+    ):
+        """Per-member fallback should continue signaling remaining running members."""
+        first = FakePipelineMember(poll_value=None, returncode=0, pid=2601)
+        second = FakePipelineMember(poll_value=None, returncode=0, pid=2602)
+        job = FakeJob(poll_value=None, returncode=0, pid=2602, cmd="sudo sleep 60")
+        job.lshell_pipeline = (first, second)
+
+        def _kill_side_effect(pid, signum):
+            if pid == 2601:
+                raise OSError("first member already gone")
+            self.assertEqual(signum, utils.signal.SIGINT)
+            return None
+
+        mock_kill.side_effect = _kill_side_effect
+
+        builtincmd._signal_job(job, utils.signal.SIGINT)
+
+        mock_killpg.assert_not_called()
+        self.assertEqual(
+            mock_kill.call_args_list,
+            [
+                call(2601, utils.signal.SIGINT),
+                call(2602, utils.signal.SIGINT),
+            ],
+        )
 
     def test_jobs_prunes_finished_and_reindexes_running(self):
         """jobs() should drop non-running jobs and reindex active ones from 1."""

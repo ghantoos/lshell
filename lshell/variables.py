@@ -3,7 +3,7 @@
 import sys
 import os
 
-__version__ = "0.12.0rc1"
+__version__ = "0.12.0rc2"
 
 # Required config variable list per user
 required_config = ["allowed", "forbidden", "warning_counter"]
@@ -104,9 +104,9 @@ configparams = [
     "path_noexec=",
     "umask=",
     "allowed_shell_escape=",
+    "runtime_executor=",
     "winscp=",
     "disable_exit=",
-    "policy_commands=",
     "include_dir=",
     "security_audit_json=",
     "max_sessions_per_user=",

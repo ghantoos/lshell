@@ -473,16 +473,17 @@ class TestFunctions(unittest.TestCase):
                 else:
                     os.environ[key] = value
 
-    def test_policy_commands_enabled_by_default(self):
-        """U45 | policy commands should be available by default."""
+    def test_lshow_is_available_by_default(self):
+        """U45 | lshow should always be available by default."""
         userconf = CheckConfig(self.args).returnconf()
         self.assertIn("lshow", userconf["allowed"])
 
-    def test_policy_commands_can_be_hidden(self):
-        """U46 | policy commands can be hidden via --policy_commands=0."""
+    def test_removed_policy_commands_cli_option_is_rejected(self):
+        """U46 | removed --policy_commands CLI option should be rejected."""
         args = self.args + ["--policy_commands=0"]
-        userconf = CheckConfig(args).returnconf()
-        self.assertNotIn("lshow", userconf["allowed"])
+        with self.assertRaises(SystemExit) as exc:
+            CheckConfig(args).returnconf()
+        self.assertEqual(exc.exception.code, 1)
 
     def test_history_file_accepts_string_and_expands_home(self):
         """U48 | --history_file should parse as string and resolve under home path."""
@@ -510,3 +511,42 @@ class TestFunctions(unittest.TestCase):
             args = self.args + [f"--path_noexec='{fake_lib.name}'"]
             userconf = CheckConfig(args).returnconf()
         self.assertNotIn("path_noexec", userconf)
+
+    @patch("lshell.config.runtime.subprocess.run")
+    @patch("lshell.config.runtime.os.access")
+    @patch("lshell.config.runtime.os.path.isfile")
+    def test_noexec_probe_uses_absolute_true_binary_without_shell(
+        self,
+        mock_isfile,
+        mock_access,
+        mock_run,
+    ):
+        """U51 | noexec probe should execute trusted `true` directly, not via shell."""
+        mock_isfile.side_effect = lambda path: path == "/usr/bin/true"
+        mock_access.return_value = True
+        mock_run.return_value.returncode = 0
+
+        checker = object.__new__(CheckConfig)
+        result = checker.noexec_library_usable("/tmp/fake_noexec.so")
+
+        self.assertTrue(result)
+        self.assertEqual(mock_run.call_args.args[0], ["/usr/bin/true"])
+        child_env = mock_run.call_args.kwargs["env"]
+        self.assertEqual(child_env.get("LD_PRELOAD"), "/tmp/fake_noexec.so")
+        self.assertNotIn("BASH_ENV", child_env)
+        self.assertNotIn("ENV", child_env)
+
+    @patch("lshell.config.runtime.subprocess.run")
+    @patch("lshell.config.runtime.os.access", return_value=False)
+    @patch("lshell.config.runtime.os.path.isfile", return_value=False)
+    def test_noexec_probe_fails_closed_when_no_trusted_true_binary(
+        self,
+        _mock_isfile,
+        _mock_access,
+        mock_run,
+    ):
+        """U52 | noexec probe should fail closed when no trusted probe binary exists."""
+        checker = object.__new__(CheckConfig)
+        result = checker.noexec_library_usable("/tmp/fake_noexec.so")
+        self.assertFalse(result)
+        mock_run.assert_not_called()

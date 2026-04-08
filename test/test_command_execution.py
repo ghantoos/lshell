@@ -241,19 +241,27 @@ class TestFunctions(unittest.TestCase):
         self.do_exit(child)
 
     def test_redirection_is_shell_compatible(self):
-        """F46 | Redirections should be handled by shell semantics."""
+        """F46 | Redirections should fail closed in shellless execution mode."""
+        output_path = "/tmp/lshell_redir_test"
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
         child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} --path \"['/tmp']\" "
+            f"{LSHELL} --config {CONFIG} --strict 1 --path \"['/tmp']\" "
             "--forbidden \"-['>','<','&']\" --allowed \"+['cat']\""
         )
         child.expect(PROMPT)
 
-        child.sendline("ls does_not_exist >/tmp/lshell_redir_test 2>&1")
+        child.sendline(f"ls does_not_exist >{output_path} 2>&1")
         child.expect(PROMPT)
-        child.sendline("cat /tmp/lshell_redir_test")
+        rejected = child.before.decode("utf8")
+        self.assertIn("lshell: unknown syntax:", rejected)
+        self.assertIn("unsupported shell syntax: redirection operators", rejected)
+
+        child.sendline(f"cat {output_path}")
         child.expect(PROMPT)
         result = child.before.decode("utf8").split("\n", 1)[1]
-        self.assertIn("does_not_exist", result)
+        self.assertIn("No such file or directory", result)
         self.do_exit(child)
 
     def test_allowed_missing_binary_uses_lshell_error(self):
@@ -274,6 +282,47 @@ class TestFunctions(unittest.TestCase):
         self.assertIn(expected, output)
         self.assertEqual(output.count(expected), 1)
         self.assertNotIn("bash:", output)
+        self.do_exit(child)
+
+    def test_bash_compat_allows_historic_substitution_behavior(self):
+        """F68 | bash_compat should allow command/process substitution semantics."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 0 --forbidden \"[]\" "
+            "--allowed \"+['printf','cat','tee']\" "
+            "--runtime_executor bash_compat"
+        )
+        child.expect(PROMPT)
+        try:
+            cases = [
+                ("echo $(printf CMD_OK)", "CMD_OK"),
+                ("echo `printf TICK_OK`", "TICK_OK"),
+                ("cat <(printf PROC_OK)", "PROC_OK"),
+                ("printf PROCW_OK | tee >(cat)", "PROCW_OK"),
+            ]
+            for command, expected in cases:
+                child.sendline(command)
+                child.expect(PROMPT)
+                output = child.before.decode("utf8")
+                self.assertNotIn("lshell: unknown syntax:", output)
+                self.assertIn(expected, output)
+
+            self.do_exit(child)
+        finally:
+            if child.isalive():
+                child.close()
+
+    def test_bash_compat_keeps_nested_substitution_allowlist_checks(self):
+        """F68b | Enabled substitutions must still enforce nested allow-list rules."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1 --forbidden \"[]\" "
+            "--allowed \"['echo']\" "
+            "--runtime_executor bash_compat"
+        )
+        child.expect(PROMPT)
+        child.sendline("echo $(id)")
+        child.expect(PROMPT)
+        output = child.before.decode("utf8")
+        self.assertIn('lshell: forbidden command: "id"', output)
         self.do_exit(child)
 
     def test_operator_matrix_fuzz(self):
@@ -299,18 +348,34 @@ class TestFunctions(unittest.TestCase):
                 ("echo MATRIX_START", ["MATRIX_START"]),
                 ("echo 'a b c' | wc -w", ["3"]),
                 ("printf matrix | wc -c", ["6"]),
-                (f"echo one > {temp_file}", []),
-                (f"echo two >> {temp_file}", []),
-                (f"cat {temp_file}", ["one", "two"]),
                 ("true && echo branch_true", ["branch_true"]),
                 ("false || echo branch_false", ["branch_false"]),
                 ("cd /tmp && pwd", ["/tmp"]),
-                ("echo $(printf nested_ok)", ["nested_ok"]),
                 ('NAME=ALPHA echo "$NAME"', ["ALPHA"]),
                 ("echo ${HOME}", ["/"]),
             ]
 
             for command, expected_bits in matrix:
+                child.sendline(command)
+                output = expect_clean_prompt()
+                for expected in expected_bits:
+                    self.assertIn(expected, output)
+
+            rejected_matrix = [
+                (
+                    f"echo one > {temp_file}",
+                    ["lshell: unknown syntax:", "unsupported shell syntax: redirection operators"],
+                ),
+                (
+                    "echo $(printf nested_ok)",
+                    [
+                        "lshell: unsupported shell syntax:",
+                        "unsupported shell syntax: command substitution",
+                    ],
+                ),
+            ]
+
+            for command, expected_bits in rejected_matrix:
                 child.sendline(command)
                 output = expect_clean_prompt()
                 for expected in expected_bits:

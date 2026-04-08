@@ -12,6 +12,7 @@ scp_upload      : 0
 scp_download    : 1
 sftp            : 1
 strict          : 1
+runtime_executor : shellless
 warning_counter : 2
 allowed_file_extensions : ['.txt']
 
@@ -38,6 +39,14 @@ forbidden       : [';', '&', '`', '>', '<', '$(', '${']
 
 [ltestalias]
 aliases         : {'ll': 'ls'}
+
+[ltestshellless]
+runtime_executor : shellless
+overssh         : + ['echo']
+
+[ltestbashcompat]
+runtime_executor : bash_compat
+overssh         : + ['echo']
 
 [ltestscpover]
 scp             : 0

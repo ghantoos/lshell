@@ -179,6 +179,19 @@ class TestFunctions(unittest.TestCase):
             "lshell: config: 'aliases' must be a dictionary",
         )
 
+    def test_schema_rejects_unknown_runtime_executor(self):
+        """F63b | runtime_executor must match supported values."""
+        self.assert_startup_failure(
+            f"{LSHELL} --config {CONFIG} --runtime_executor unknown_mode",
+            "lshell: config: runtime_executor must be one of: bash_compat, shellless",
+        )
+
+    def test_schema_accepts_bash_compat_runtime_executor(self):
+        """F63c | runtime_executor=bash_compat should start successfully."""
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --runtime_executor bash_compat")
+        child.expect(PROMPT)
+        self.do_exit(child)
+
     def test_custom_messages_override_warning_output(self):
         """F64 | messages config should override warning text."""
         child = pexpect.spawn(

@@ -20,9 +20,9 @@ jobs:
         python-version: ["3.10", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Set up Python path
@@ -34,6 +34,9 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Install the lshell package
       run: pip install .
+    - name: Check config coverage manifest freshness
+      run: |
+        python3 scripts/update_config_coverage_manifest.py --check
     - name: Test with pytest
       run: |
         pytest
@@ -47,9 +50,9 @@ jobs:
         python-version: ["3.10", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Set up Python path
@@ -72,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Install just
       uses: taiki-e/install-action@just
     - name: Fuzz security parser/policy
@@ -85,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Run SSH end-to-end tests
       run: |
         docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from ansible-runner ansible-runner

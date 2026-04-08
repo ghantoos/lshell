@@ -17,10 +17,6 @@ from lshell import sec as sec_policy
 # Store background jobs
 BACKGROUND_JOBS = []
 
-POLICY_COMMANDS = [
-    "lshow",
-]
-
 builtins_list = [
     "cd",
     "ls",
@@ -51,6 +47,68 @@ def _cancel_job_timeout(job):
     timer = getattr(job, "lshell_timeout_timer", None)
     if timer is not None:
         timer.cancel()
+
+
+def _job_members(job):
+    """Return every process member that belongs to a tracked job."""
+    members = getattr(job, "lshell_pipeline", None)
+    if not members:
+        return [job]
+    return [member for member in members if member is not None]
+
+
+def _job_is_running(job):
+    """Return True while any pipeline member is still alive."""
+    return any(member.poll() is None for member in _job_members(job))
+
+
+def _job_returncode(job):
+    """Return the job's terminal stage return code once known."""
+    members = _job_members(job)
+    if not members:
+        return getattr(job, "returncode", None)
+
+    terminal = members[-1]
+    if terminal.returncode is not None:
+        return terminal.returncode
+
+    poll_value = terminal.poll()
+    if poll_value is not None:
+        return terminal.returncode if terminal.returncode is not None else poll_value
+
+    return getattr(job, "returncode", None)
+
+
+def _signal_job(job, signum):
+    """Send a signal to all running members of a job."""
+    running_members = [member for member in _job_members(job) if member.poll() is None]
+    if not running_members:
+        return
+
+    if os.name == "posix":
+        job_pgid = getattr(job, "lshell_pgid", None)
+        if job_pgid is not None:
+            try:
+                os.killpg(job_pgid, signum)
+                return
+            except OSError:
+                pass
+
+    for member in running_members:
+        try:
+            os.kill(member.pid, signum)
+        except OSError:
+            continue
+
+
+def _wait_job_members(job):
+    """Wait for every still-running process in a job."""
+    for member in _job_members(job):
+        if member.poll() is not None:
+            continue
+        wait_method = getattr(member, "wait", None)
+        if callable(wait_method):
+            wait_method()
 
 
 def cmd_lpath(conf):
@@ -214,7 +272,7 @@ def check_background_jobs():
     """Check the status of background jobs and print a completion message if done."""
     active_jobs = []
     for idx, job in enumerate(BACKGROUND_JOBS, start=1):
-        if job.poll() is None:
+        if _job_is_running(job):
             active_jobs.append(job)
             continue
 
@@ -223,10 +281,11 @@ def check_background_jobs():
             print(f"[{idx}]+  Timed Out               {_job_command(job)}")
             continue
 
-        status = "Done" if job.returncode == 0 else "Failed"
+        returncode = _job_returncode(job)
+        status = "Done" if returncode == 0 else "Failed"
         args = _job_command(job)
         # only print if the job has not been interrupted by the user
-        if job.returncode != -2:
+        if returncode != -2:
             print(f"[{idx}]+  {status}                    {args}")
 
     BACKGROUND_JOBS[:] = active_jobs
@@ -236,9 +295,9 @@ def get_job_status(job):
     """Return the status of a background job."""
     if getattr(job, "lshell_timeout_triggered", False):
         return "Timed Out"
-    if job.poll() is None:
+    if _job_is_running(job):
         status = "Stopped"
-    elif job.poll() == 0:
+    elif _job_returncode(job) == 0:
         status = "Completed"  # Process completed successfully
     else:
         status = "Killed"  # Process was killed or terminated with a non-zero code
@@ -255,7 +314,7 @@ def jobs():
     joblist = []
     active_jobs = []
     for job in BACKGROUND_JOBS:
-        if job.poll() is not None:
+        if not _job_is_running(job):
             _cancel_job_timeout(job)
             continue
 
@@ -315,7 +374,7 @@ def cmd_bg_fg(job_type, job_id):
 
     if 0 < job_id <= len(BACKGROUND_JOBS):
         job = BACKGROUND_JOBS[job_id - 1]
-        if job.poll() is None:
+        if _job_is_running(job):
             if job_type == "fg":
                 class CtrlZForeground(Exception):
                     """Raised when the foreground job is suspended with Ctrl+Z."""
@@ -324,8 +383,8 @@ def cmd_bg_fg(job_type, job_id):
 
                 def handle_sigtstp(signum, frame):
                     """Suspend the foreground job and keep/update its jobs list entry."""
-                    if job.poll() is None:
-                        os.killpg(os.getpgid(job.pid), signal.SIGSTOP)
+                    if _job_is_running(job):
+                        _signal_job(job, signal.SIGSTOP)
                         if job in BACKGROUND_JOBS:
                             current_job_id = BACKGROUND_JOBS.index(job) + 1
                         else:
@@ -342,16 +401,16 @@ def cmd_bg_fg(job_type, job_id):
                     signal.signal(signal.SIGTSTP, handle_sigtstp)
                     print(_job_command(job))
                     # Bring it to the foreground and wait
-                    os.killpg(os.getpgid(job.pid), signal.SIGCONT)
-                    job.wait()
+                    _signal_job(job, signal.SIGCONT)
+                    _wait_job_members(job)
                     # Remove the job from the list if it has completed
-                    if job.poll() is not None:
+                    if not _job_is_running(job):
                         BACKGROUND_JOBS.pop(job_id - 1)
                     return 0
                 except CtrlZForeground:
                     return 0
                 except KeyboardInterrupt:
-                    os.killpg(os.getpgid(job.pid), signal.SIGINT)
+                    _signal_job(job, signal.SIGINT)
                     BACKGROUND_JOBS.pop(job_id - 1)
                     return 130
                 finally:

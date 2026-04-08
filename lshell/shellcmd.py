@@ -270,7 +270,7 @@ class ShellCmd(cmd.Cmd, object):
                     self.ssh_warn("command over SSH", self.conf["ssh"])
             else:
                 # case of local shell escapes (e.g. pager/editor invoking
-                # the login shell with -c). Validate against normal policy.
+                # a shell with -c). Validate against normal policy.
                 self.conf["ssh"] = utils.get_aliases(
                     self.conf["ssh"], _aliases_for_ssh_command()
                 )
@@ -600,10 +600,6 @@ class ShellCmd(cmd.Cmd, object):
         if decision is None:
             return 0
         return 0 if decision["allowed"] else 2
-
-    def do_policy_show(self, arg=None):
-        """Compatibility shim for legacy internal command name."""
-        return self.do_lshow(arg)
 
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""

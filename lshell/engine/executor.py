@@ -12,6 +12,7 @@ from lshell import messages
 from lshell import sec
 from lshell import utils
 from lshell import variables
+from lshell.config import schema
 from lshell.engine import authorizer
 from lshell.engine import normalizer
 from lshell.engine import parser as engine_parser
@@ -40,11 +41,20 @@ def build_decisions(command_line, policy):
 
 
 def _unknown_syntax_retcode(shell_context, command):
-    ret, shell_context.conf = sec.warn_unknown_syntax(
-        command,
-        shell_context.conf,
-        strict=shell_context.conf["strict"],
-    )
+    if command.startswith("unsupported shell syntax:") and (
+        "command substitution" in command or "process substitution" in command
+    ):
+        ret, shell_context.conf = sec.warn_unsupported_shell_syntax(
+            command,
+            shell_context.conf,
+            strict=shell_context.conf["strict"],
+        )
+    else:
+        ret, shell_context.conf = sec.warn_unknown_syntax(
+            command,
+            shell_context.conf,
+            strict=shell_context.conf["strict"],
+        )
     audit.log_command_event(
         shell_context.conf,
         command,
@@ -330,6 +340,24 @@ def execute(decisions, runtime):
             retcode = 0
             i = j + (2 if background else 1)
             continue
+
+        runtime_executor = shell_context.conf.get(
+            "runtime_executor",
+            schema.RUNTIME_EXECUTOR_SHELLLESS,
+        )
+        if runtime_executor == schema.RUNTIME_EXECUTOR_SHELLLESS:
+            unsupported_reason = None
+            for part in pipeline_parts:
+                part_reason = utils.unsupported_runtime_syntax_reason(part)
+                if part_reason is not None:
+                    unsupported_reason = part_reason
+                    break
+            if unsupported_reason:
+                retcode = _unknown_syntax_retcode(
+                    shell_context,
+                    f"unsupported shell syntax: {unsupported_reason}",
+                )
+                return ExecutionResult(retcode=retcode, audit_reason="unknown syntax")
 
         if not trusted_protocol:
             decision = authorizer.authorize_line(

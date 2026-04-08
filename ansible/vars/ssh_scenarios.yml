@@ -100,6 +100,20 @@ ssh_scenarios:
     expected_rc: 0
     expect_text: "hello from txt"
 
+  - name: shellless runtime_executor keeps tilde literal
+    command: "echo ~"
+    user: "ltestshellless"
+    password: "ltestshelllesspass"
+    expected_rc: 0
+    expect_text: "~"
+
+  - name: bash_compat runtime_executor expands tilde
+    command: "echo ~"
+    user: "ltestbashcompat"
+    password: "ltestbashcompatpass"
+    expected_rc: 0
+    expect_text: "/home/ltestbashcompat"
+
   - name: blocks chained extension violation
     command: "cat readme.txt && cat secret.bin"
     expected_rc: 1

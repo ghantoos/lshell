@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "tracked_tests_glob": "test/test_*.py",
+  "tests_fingerprint_sha256": "1dbd7b9fbaaef3950d99d04ed162b1d2a2864458442cf3e9e6c4b0cc271f884c",
+  "supported_keys": [
+    "aliases",
+    "allowed",
+    "allowed_cmd_path",
+    "allowed_file_extensions",
+    "allowed_shell_escape",
+    "command_timeout",
+    "disable_exit",
+    "env_path",
+    "env_vars",
+    "env_vars_files",
+    "forbidden",
+    "history_file",
+    "history_size",
+    "home_path",
+    "include_dir",
+    "intro",
+    "logfilename",
+    "login_script",
+    "loglevel",
+    "logpath",
+    "max_background_jobs",
+    "max_processes",
+    "max_sessions_per_user",
+    "messages",
+    "overssh",
+    "path",
+    "path_noexec",
+    "prompt",
+    "prompt_short",
+    "quiet",
+    "runtime_executor",
+    "scp",
+    "scp_download",
+    "scp_upload",
+    "scpforce",
+    "security_audit_json",
+    "sftp",
+    "strict",
+    "sudo_commands",
+    "syslogname",
+    "timer",
+    "umask",
+    "warning_counter",
+    "winscp"
+  ],
+  "coverage": {
+    "aliases": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_alias_expansion_smuggling_is_blocked_and_session_recovers"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_lshow_always_available_while_aliases_expand"
+      ]
+    },
+    "allowed": {
+      "direct": [
+        "test/test_config.py::TestFunctions::test_schema_accepts_valid_allowed_list"
+      ],
+      "interaction": [
+        "test/test_policy_merge_parity_unit.py::TestPolicyMergeParity::test_parity_user_group_default_precedence_with_include_overlay"
+      ]
+    },
+    "allowed_cmd_path": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_allowed_cmd_path_resolves_and_allows_executable"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "allowed_file_extensions": {
+      "direct": [
+        "test/test_file_extension.py::TestFunctions::test_allowed_extension_success"
+      ],
+      "interaction": [
+        "test/test_file_extension.py::TestFunctions::test_allowed_file_extensions_plus_minus_chain"
+      ]
+    },
+    "allowed_shell_escape": {
+      "direct": [
+        "test/test_config.py::TestFunctions::test_allowed_shell_escape_plus_minus_chain"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_runtime_executor_allowed_shell_escape_and_path_noexec_interaction"
+      ]
+    },
+    "command_timeout": {
+      "direct": [
+        "test/test_containment_functional.py::TestRuntimeContainmentFunctional::test_command_timeout_kills_long_running_command"
+      ],
+      "interaction": [
+        "test/test_containment_functional.py::TestRuntimeContainmentFunctional::test_max_processes_denies_forking_pipeline"
+      ]
+    },
+    "disable_exit": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_disable_exit_blocks_quit_and_ctrl_d"
+      ],
+      "interaction": [
+        "test/test_exit.py::TestFunctions::test_disable_exit"
+      ]
+    },
+    "env_path": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_env_path_resolves_allowed_command_binary"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "env_vars": {
+      "direct": [
+        "test/test_env_vars.py::TestFunctions::test_env_variable_with_dollar_braces"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "env_vars_files": {
+      "direct": [
+        "test/test_env_vars.py::TestFunctions::test_load_env_vars_from_file"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "forbidden": {
+      "direct": [
+        "test/test_config.py::TestFunctions::test_forbidden_remove_one_b"
+      ],
+      "interaction": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_alias_expansion_smuggling_is_blocked_and_session_recovers"
+      ]
+    },
+    "history_file": {
+      "direct": [
+        "test/test_unit.py::TestFunctions::test_history_file_accepts_string_and_expands_home"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_home_path_and_history_file_expand_username_placeholder",
+        "test/test_history_size_unit.py::TestHistorySizeUnit::test_cmdloop_applies_history_size_when_history_file_exists"
+      ]
+    },
+    "history_size": {
+      "direct": [
+        "test/test_history_size_unit.py::TestHistorySizeUnit::test_history_size_accepts_integer_override"
+      ],
+      "interaction": [
+        "test/test_history_size_unit.py::TestHistorySizeUnit::test_cmdloop_applies_history_size_when_history_file_exists"
+      ]
+    },
+    "home_path": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_home_path_and_history_file_expand_username_placeholder"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "include_dir": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_include_dir_runtime_precedence_user_group_default"
+      ],
+      "interaction": [
+        "test/test_policy_merge_parity_unit.py::TestPolicyMergeParity::test_parity_user_group_default_precedence_with_include_overlay"
+      ]
+    },
+    "intro": {
+      "direct": [
+        "test/test_builtins.py::TestFunctions::test_welcome_message"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_custom_intro_is_displayed_before_first_prompt"
+      ]
+    },
+    "logfilename": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_global_log_settings_create_custom_log_file_and_logger_name"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_observability_interaction_custom_logfilename_with_json_audit"
+      ]
+    },
+    "login_script": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_login_script_runs_before_first_prompt"
+      ],
+      "interaction": [
+        "test/test_security_attack_surface_unit.py::TestAttackSurface::test_cmdloop_executes_login_script_with_bash_script_invocation"
+      ]
+    },
+    "loglevel": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_global_loglevel_is_clamped_to_supported_range"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_observability_interaction_custom_logfilename_with_json_audit"
+      ]
+    },
+    "logpath": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_global_log_settings_create_custom_log_file_and_logger_name"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_observability_interaction_custom_logfilename_with_json_audit"
+      ]
+    },
+    "max_background_jobs": {
+      "direct": [
+        "test/test_containment_functional.py::TestRuntimeContainmentFunctional::test_max_background_jobs_enforced"
+      ],
+      "interaction": [
+        "test/test_audit_functional.py::TestAuditFunctional::test_runtime_limit_denial_reason_is_machine_readable_in_audit"
+      ]
+    },
+    "max_processes": {
+      "direct": [
+        "test/test_containment_functional.py::TestRuntimeContainmentFunctional::test_max_processes_denies_forking_pipeline"
+      ],
+      "interaction": [
+        "test/test_containment_unit.py::TestRuntimeExecutionHelpers::test_apply_rlimits_applies_max_processes"
+      ]
+    },
+    "max_sessions_per_user": {
+      "direct": [
+        "test/test_containment_functional.py::TestRuntimeContainmentFunctional::test_max_sessions_per_user_enforced"
+      ],
+      "interaction": [
+        "test/test_cli_unit.py::TestCliArgs::test_main_logs_and_exits_when_session_limit_denied"
+      ]
+    },
+    "messages": {
+      "direct": [
+        "test/test_config.py::TestFunctions::test_custom_messages_override_warning_output"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_messages_config_rejects_unsupported_keys_and_placeholders"
+      ]
+    },
+    "overssh": {
+      "direct": [
+        "test/test_ssh.py::TestFunctions::test_overssh_allowed_command_exit_0"
+      ],
+      "interaction": [
+        "test/test_ssh.py::TestFunctions::test_overssh_plus_minus_chain_controls_warning_and_allow"
+      ]
+    },
+    "path": {
+      "direct": [
+        "test/test_path.py::TestFunctions::test_external_forbidden_path"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "path_noexec": {
+      "direct": [
+        "test/test_unit.py::TestFunctions::test_disable_ld_preload"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_runtime_executor_allowed_shell_escape_and_path_noexec_interaction"
+      ]
+    },
+    "prompt": {
+      "direct": [
+        "test/test_prompt_unit.py::TestPromptUnit::test_getpromptbase_uses_config_prompt_when_lps1_not_set"
+      ],
+      "interaction": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_lps1_prompt_override_persists_across_prompt_refresh"
+      ]
+    },
+    "prompt_short": {
+      "direct": [
+        "test/test_prompt_unit.py::TestPromptUnit::test_prompt_short_rejects_values_outside_documented_range"
+      ],
+      "interaction": [
+        "test/test_unit.py::TestFunctions::test_prompt_short_2"
+      ]
+    },
+    "quiet": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_quiet_is_parsed_and_rejects_non_integer_values"
+      ],
+      "interaction": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_unknown_command_user_message_differs_by_strict_mode"
+      ]
+    },
+    "runtime_executor": {
+      "direct": [
+        "test/test_runtime_executor_config_unit.py::TestRuntimeExecutorConfig::test_runtime_executor_accepts_bash_compat"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_runtime_executor_allowed_shell_escape_and_path_noexec_interaction"
+      ]
+    },
+    "scp": {
+      "direct": [
+        "test/test_ssh_scp_sftp_attack_surface_unit.py::TestSSHScpSftpAttackSurface::test_run_overssh_rejects_scp_when_disabled_and_not_in_overssh"
+      ],
+      "interaction": [
+        "test/test_ssh.py::TestFunctions::test_overssh_scp_upload_denied_when_uploads_disabled"
+      ]
+    },
+    "scp_download": {
+      "direct": [
+        "test/test_ssh.py::TestFunctions::test_overssh_scp_download_denied_when_downloads_disabled"
+      ],
+      "interaction": [
+        "test/test_ssh_scp_sftp_attack_surface_unit.py::TestSSHScpSftpAttackSurface::test_run_overssh_rejects_scp_download_when_scp_download_disabled"
+      ]
+    },
+    "scp_upload": {
+      "direct": [
+        "test/test_ssh.py::TestFunctions::test_overssh_scp_upload_denied_when_uploads_disabled"
+      ],
+      "interaction": [
+        "test/test_ssh_scp_sftp_attack_surface_unit.py::TestSSHScpSftpAttackSurface::test_run_overssh_rejects_scp_upload_when_scp_upload_disabled"
+      ]
+    },
+    "scpforce": {
+      "direct": [
+        "test/test_ssh.py::TestFunctions::test_overssh_scpforce_rewrites_upload_target_before_path_check"
+      ],
+      "interaction": [
+        "test/test_ssh_scp_sftp_attack_surface_unit.py::TestSSHScpSftpAttackSurface::test_run_overssh_applies_scpforce_to_upload_target"
+      ]
+    },
+    "security_audit_json": {
+      "direct": [
+        "test/test_audit_unit.py::TestAuditLogging::test_security_audit_json_flag_is_parsed"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_observability_interaction_custom_logfilename_with_json_audit"
+      ]
+    },
+    "sftp": {
+      "direct": [
+        "test/test_ssh.py::TestFunctions::test_overssh_sftp_server_denied_when_sftp_disabled"
+      ],
+      "interaction": [
+        "test/test_ssh_scp_sftp_attack_surface_unit.py::TestSSHScpSftpAttackSurface::test_run_overssh_allows_sftp_when_enabled"
+      ]
+    },
+    "strict": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_unknown_command_user_message_differs_by_strict_mode"
+      ],
+      "interaction": [
+        "test/test_exit.py::TestFunctions::test_warnings_then_kickout"
+      ]
+    },
+    "sudo_commands": {
+      "direct": [
+        "test/test_config.py::TestFunctions::test_sudo_commands_all_quoted_reflected_in_lshow"
+      ],
+      "interaction": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_forbidden_sudo_subcommand_shows_policy_denial"
+      ]
+    },
+    "syslogname": {
+      "direct": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_global_log_settings_create_custom_log_file_and_logger_name"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_global_log_settings_create_custom_log_file_and_logger_name"
+      ]
+    },
+    "timer": {
+      "direct": [
+        "test/test_session_interaction_functional.py::TestSessionInteractionFunctional::test_timer_expiry_prints_message_and_ends_session"
+      ],
+      "interaction": [
+        "test/test_cli_unit.py::TestCliArgs::test_main_handles_timer_timeout_path"
+      ]
+    },
+    "umask": {
+      "direct": [
+        "test/test_unit.py::TestFunctions::test_umask_sets_process_mask"
+      ],
+      "interaction": [
+        "test/test_config_coverage_functional.py::TestConfigCoverageFunctional::test_path_env_umask_and_env_file_interaction"
+      ]
+    },
+    "warning_counter": {
+      "direct": [
+        "test/test_exit.py::TestFunctions::test_warnings_then_kickout"
+      ],
+      "interaction": [
+        "test/test_config.py::TestFunctions::test_custom_messages_override_warning_output"
+      ]
+    },
+    "winscp": {
+      "direct": [
+        "test/test_ssh_scp_sftp_config_unit.py::TestSSHScpSftpConfig::test_winscp_allowed_commands"
+      ],
+      "interaction": [
+        "test/test_ssh.py::TestFunctions::test_winscp_mode_allows_semicolon_in_interactive_session"
+      ]
+    }
+  }
+}

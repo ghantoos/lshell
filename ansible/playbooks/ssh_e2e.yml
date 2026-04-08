@@ -13,6 +13,8 @@
     test_user_winscp: ltestwinscp
     test_user_pipe_on: ltestpipeon
     test_user_alias: ltestalias
+    test_user_shellless: ltestshellless
+    test_user_bash_compat: ltestbashcompat
     test_user_scp_over: ltestscpover
     test_user_scp_force: ltestscpforce
     test_home: /home/ltest
@@ -24,6 +26,8 @@
     test_user_winscp_password: ltestwinscppass
     test_user_pipe_on_password: ltestpipeonpass
     test_user_alias_password: ltestaliaspass
+    test_user_shellless_password: ltestshelllesspass
+    test_user_bash_compat_password: ltestbashcompatpass
     test_user_scp_over_password: ltestscpoverpass
     test_user_scp_force_password: ltestscpforcepass
   tasks:
@@ -158,6 +162,32 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Create SSH test user with explicit shellless runtime executor profile
+      ansible.builtin.user:
+        name: "{{ test_user_shellless }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for shellless-runtime SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_shellless }}:{{ test_user_shellless_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Create SSH test user with bash_compat runtime executor profile
+      ansible.builtin.user:
+        name: "{{ test_user_bash_compat }}"
+        shell: "{{ lshell_bin }}"
+        create_home: true
+
+    - name: Set password for bash_compat SSH test user
+      ansible.builtin.shell: |
+        echo "{{ test_user_bash_compat }}:{{ test_user_bash_compat_password }}" | chpasswd
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Create SSH test user with scp fallback through overssh
       ansible.builtin.user:
         name: "{{ test_user_scp_over }}"
@@ -221,6 +251,7 @@
         - { user: "{{ test_user_scp_off }}" }
         - { user: "{{ test_user_winscp }}" }
         - { user: "{{ test_user_alias }}" }
+        - { user: "{{ test_user_bash_compat }}" }
         - { user: "{{ test_user_scp_over }}" }
         - { user: "{{ test_user_scp_force }}" }
 
@@ -265,6 +296,8 @@
     ssh_user_winscp: ltestwinscp
     ssh_user_pipe_on: ltestpipeon
     ssh_user_alias: ltestalias
+    ssh_user_shellless: ltestshellless
+    ssh_user_bash_compat: ltestbashcompat
     ssh_user_scp_over: ltestscpover
     ssh_user_scp_force: ltestscpforce
     ssh_host: lshell-ssh-target
@@ -276,6 +309,8 @@
     ssh_password_winscp: ltestwinscppass
     ssh_password_pipe_on: ltestpipeonpass
     ssh_password_alias: ltestaliaspass
+    ssh_password_shellless: ltestshelllesspass
+    ssh_password_bash_compat: ltestbashcompatpass
     ssh_password_scp_over: ltestscpoverpass
     ssh_password_scp_force: ltestscpforcepass
     ssh_common_opts: >-

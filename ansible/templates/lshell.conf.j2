@@ -40,6 +40,14 @@ forbidden       : [';', '&', '`', '>', '<', '$(', '${']
 [ltestalias]
 aliases         : {'ll': 'ls'}
 
+[ltestshellless]
+runtime_executor : shellless
+overssh         : + ['echo']
+
+[ltestbashcompat]
+runtime_executor : bash_compat
+overssh         : + ['echo']
+
 [ltestscpover]
 scp             : 0
 

@@ -17,10 +17,6 @@ from lshell import sec as sec_policy
 # Store background jobs
 BACKGROUND_JOBS = []
 
-POLICY_COMMANDS = [
-    "lshow",
-]
-
 builtins_list = [
     "cd",
     "ls",

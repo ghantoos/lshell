@@ -107,7 +107,6 @@ configparams = [
     "runtime_executor=",
     "winscp=",
     "disable_exit=",
-    "policy_commands=",
     "include_dir=",
     "security_audit_json=",
     "max_sessions_per_user=",

@@ -601,10 +601,6 @@ class ShellCmd(cmd.Cmd, object):
             return 0
         return 0 if decision["allowed"] else 2
 
-    def do_policy_show(self, arg=None):
-        """Compatibility shim for legacy internal command name."""
-        return self.do_lshow(arg)
-
     def do_exit(self, arg=None):
         """This method overrides the original do_exit method."""
         # Check for background jobs

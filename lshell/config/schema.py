@@ -42,7 +42,6 @@ INT_VALUE_KEYS = {
     "history_size",
     "winscp",
     "disable_exit",
-    "policy_commands",
     "quiet",
     "loglevel",
     "security_audit_json",

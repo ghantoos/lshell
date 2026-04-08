@@ -473,16 +473,17 @@ class TestFunctions(unittest.TestCase):
                 else:
                     os.environ[key] = value
 
-    def test_policy_commands_enabled_by_default(self):
-        """U45 | policy commands should be available by default."""
+    def test_lshow_is_available_by_default(self):
+        """U45 | lshow should always be available by default."""
         userconf = CheckConfig(self.args).returnconf()
         self.assertIn("lshow", userconf["allowed"])
 
-    def test_policy_commands_can_be_hidden(self):
-        """U46 | policy commands can be hidden via --policy_commands=0."""
+    def test_removed_policy_commands_cli_option_is_rejected(self):
+        """U46 | removed --policy_commands CLI option should be rejected."""
         args = self.args + ["--policy_commands=0"]
-        userconf = CheckConfig(args).returnconf()
-        self.assertNotIn("lshow", userconf["allowed"])
+        with self.assertRaises(SystemExit) as exc:
+            CheckConfig(args).returnconf()
+        self.assertEqual(exc.exception.code, 1)
 
     def test_history_file_accepts_string_and_expands_home(self):
         """U48 | --history_file should parse as string and resolve under home path."""

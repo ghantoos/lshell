@@ -102,12 +102,6 @@ Inside an interactive session:
 `lshow` includes effective command policy, allowed/denied paths, and sudo
 policy in one output.
 
-Hide these built-ins if needed:
-
-```ini
-policy_commands : 0
-```
-
 ## Hardened profile generator
 
 `harden-init` ships secure-by-default templates to bootstrap restricted accounts quickly:

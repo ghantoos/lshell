@@ -47,7 +47,6 @@ DISPLAY_KEY_ORDER = [
     "aliases",
     "messages",
     "winscp",
-    "policy_commands",
     "disable_exit",
     "timer",
     "history_size",
@@ -106,7 +105,6 @@ def _build_runtime_policy(conf_raw, username):
         "messages",
         "allowed_cmd_path",
         "winscp",
-        "policy_commands",
         "scp_upload",
         "scp_download",
     ]:
@@ -131,8 +129,6 @@ def _build_runtime_policy(conf_raw, username):
                 policy[item] = schema.RUNTIME_EXECUTOR_SHELLLESS
             elif item in ["aliases", "messages"]:
                 policy[item] = {}
-            elif item in ["policy_commands"]:
-                policy[item] = 1
             else:
                 policy[item] = 0
 
@@ -154,10 +150,6 @@ def _build_runtime_policy(conf_raw, username):
         policy["path"][0] = policy["home_path"]
 
     policy["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
-    if policy.get("policy_commands") != 1:
-        policy["allowed"] = [
-            cmd for cmd in policy["allowed"] if cmd not in builtincmd.POLICY_COMMANDS
-        ]
     if policy["sudo_commands"]:
         policy["allowed"].append("sudo")
 

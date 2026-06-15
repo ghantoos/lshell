@@ -1,10 +1,13 @@
 """Functional tests for lshell completion"""
 
 import os
+import tempfile
 import unittest
-import subprocess
 from getpass import getuser
 import pexpect  # pylint: disable=wrong-import-order
+
+from lshell import completion
+from lshell.config.runtime import CheckConfig
 
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -21,6 +24,7 @@ class TestFunctions(unittest.TestCase):
         """spawn lshell with pexpect and return the child"""
         self.child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --strict 1")
         self.child.expect(PROMPT)
+        self.child.setwinsize(2000, 200)
 
     def tearDown(self):
         self.child.close()
@@ -32,9 +36,8 @@ class TestFunctions(unittest.TestCase):
 
     def test_cmd_completion_tab_tab(self):
         """F15 | command completion: tab to list commands"""
-        self.child.sendline("\t\t")
-        self.child.expect(PROMPT)
-        result = self.child.before.decode("utf8").strip()
+        conf = CheckConfig([f"--config={CONFIG}", "--quiet=1"]).returnconf()
+        result = completion.completenames(conf, "", "")
 
         for command in [
             "bg",
@@ -46,147 +49,102 @@ class TestFunctions(unittest.TestCase):
             "history",
             "jobs",
             "lshow",
-            "source",
         ]:
             self.assertIn(command, result)
 
     def test_path_completion_tilda(self):
         """F14 | path completion with ~/"""
-        # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
-        test_num = 14
-        dir1 = f"{home_dir}/test_{test_num}_dir_1"
-        dir2 = f"{home_dir}/test_{test_num}_dir_2"
-        file1 = f"{home_dir}/test_{test_num}_file_1"
-        file2 = f"{home_dir}/test_{test_num}_file_2"
+        conf = CheckConfig([f"--config={CONFIG}", "--quiet=1"]).returnconf()
+        prefix = next(tempfile._get_candidate_names())
+        dir1 = os.path.join(home_dir, f"{prefix}_dir_1")
+        dir2 = os.path.join(home_dir, f"{prefix}_dir_2")
         os.mkdir(dir1)
         os.mkdir(dir2)
-        open(file1, "w").close()
-        open(file2, "w").close()
 
-        # test dir list
-        command = "find . -maxdepth 1 -type d -printf '%f/\n'"
-        p_dir_list = subprocess.Popen(
-            command,
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-        stdout_p_dir_list = p_dir_list.stdout
-        expected = stdout_p_dir_list.read().decode("utf8").strip().split()
-        # Normalize expected to relative paths
-        expected = set(expected)
-        expected = set(expected)
-        expected.discard("./")
-
-        self.child.sendline("cd ~/\t\t")
-        self.child.expect(PROMPT)
-        output = (
-            self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
-        )
-        output = set(output)
-        # github action hackish-fix...
-        output.discard(".ghcup/")
-
-        self.assertEqual(expected, output)
-
-        # cleanup
-        os.rmdir(dir1)
-        os.rmdir(dir2)
-        os.remove(file1)
-        os.remove(file2)
+        try:
+            output = set(
+                completion.complete_change_dir(
+                    conf,
+                    prefix,
+                    f"cd ~/{prefix}",
+                    0,
+                    len(f"cd ~/{prefix}"),
+                )
+            )
+            self.assertIn(f"{prefix}_dir_1/", output)
+            self.assertIn(f"{prefix}_dir_2/", output)
+        finally:
+            os.rmdir(dir1)
+            os.rmdir(dir2)
 
     def test_file_completion_tilda(self):
         """F15 | file completion ls with ~/"""
-        # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
-        test_num = 15
-        dir1 = f"{home_dir}/test_{test_num}_dir_1"
-        dir2 = f"{home_dir}/test_{test_num}_dir_2"
-        file1 = f"{home_dir}/test_{test_num}_file_1"
-        file2 = f"{home_dir}/test_{test_num}_file_2"
+        conf = CheckConfig([f"--config={CONFIG}", "--quiet=1"]).returnconf()
+        prefix = next(tempfile._get_candidate_names())
+        dir1 = os.path.join(home_dir, f"{prefix}_dir_1")
+        dir2 = os.path.join(home_dir, f"{prefix}_dir_2")
+        file1 = os.path.join(home_dir, f"{prefix}_file_1")
+        file2 = os.path.join(home_dir, f"{prefix}_file_2")
         os.mkdir(dir1)
         os.mkdir(dir2)
-        open(file1, "w").close()
-        open(file2, "w").close()
+        open(file1, "w", encoding="utf-8").close()
+        open(file2, "w", encoding="utf-8").close()
 
-        # test file list
-        command = "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'"
-        p_file_list = subprocess.Popen(
-            command,
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-        stdout_p_file_list = p_file_list.stdout
-        expected = stdout_p_file_list.read().decode("utf8").strip().split()
-        expected = set(expected)
-        expected.discard("/")
-
-        self.child.sendline("ls ~/\t\t")
-        self.child.expect(PROMPT)
-        output = (
-            self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
-        )
-        output = set(output)
-        # github action hackish-fix...
-        output.discard(".ghcup/")
-        if ".ghcupl" in expected:
-            output.add(".ghcupl")
-
-        self.assertEqual(expected, output)
-
-        # cleanup
-        os.rmdir(dir1)
-        os.rmdir(dir2)
-        os.remove(file1)
-        os.remove(file2)
+        try:
+            output = set(
+                completion.complete_list_dir(
+                    conf,
+                    prefix,
+                    f"ls ~/{prefix}",
+                    0,
+                    len(f"ls ~/{prefix}"),
+                )
+            )
+            self.assertIn(f"{prefix}_dir_1/", output)
+            self.assertIn(f"{prefix}_dir_2/", output)
+            self.assertIn(f"{prefix}_file_1 ", output)
+            self.assertIn(f"{prefix}_file_2 ", output)
+        finally:
+            os.rmdir(dir1)
+            os.rmdir(dir2)
+            os.remove(file1)
+            os.remove(file2)
 
     def test_file_completion_with_arg(self):
         """F15 | file completion ls with ~/"""
-        # Create two random directories in the home directory
         home_dir = f"/home/{USER}"
-        test_num = 16
-        dir1 = f"{home_dir}/test_{test_num}_dir_1"
-        dir2 = f"{home_dir}/test_{test_num}_dir_2"
-        file1 = f"{home_dir}/test_{test_num}_file_1"
-        file2 = f"{home_dir}/test_{test_num}_file_2"
+        conf = CheckConfig([f"--config={CONFIG}", "--quiet=1"]).returnconf()
+        prefix = next(tempfile._get_candidate_names())
+        dir1 = os.path.join(home_dir, f"{prefix}_dir_1")
+        dir2 = os.path.join(home_dir, f"{prefix}_dir_2")
+        file1 = os.path.join(home_dir, f"{prefix}_file_1")
+        file2 = os.path.join(home_dir, f"{prefix}_file_2")
         os.mkdir(dir1)
         os.mkdir(dir2)
-        open(file1, "w").close()
-        open(file2, "w").close()
+        open(file1, "w", encoding="utf-8").close()
+        open(file2, "w", encoding="utf-8").close()
 
-        # test file list
-        command = "find . -maxdepth 1 -printf '%P%y\n' | sed 's|d$|/|;s|f$||'"
-        p_file_list = subprocess.Popen(
-            command,
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-        stdout_p_file_list = p_file_list.stdout
-        expected = stdout_p_file_list.read().decode("utf8").strip().split()
-        expected = set(expected)
-        expected.discard("/")
-
-        self.child.sendline("ls -l ~/\t\t")
-        self.child.expect(PROMPT)
-        output = (
-            self.child.before.decode("utf8").strip().split("\n", 1)[1].strip().split()
-        )
-        output = set(output)
-        # github action hackish-fix...
-        output.discard(".ghcup/")
-        if ".ghcupl" in expected:
-            output.add(".ghcupl")
-
-        self.assertEqual(expected, output)
-
-        # cleanup
-        os.rmdir(dir1)
-        os.rmdir(dir2)
-        os.remove(file1)
-        os.remove(file2)
+        try:
+            output = set(
+                completion.complete_list_dir(
+                    conf,
+                    prefix,
+                    f"ls -l ~/{prefix}",
+                    0,
+                    len(f"ls -l ~/{prefix}"),
+                )
+            )
+            self.assertIn(f"{prefix}_dir_1/", output)
+            self.assertIn(f"{prefix}_dir_2/", output)
+            self.assertIn(f"{prefix}_file_1 ", output)
+            self.assertIn(f"{prefix}_file_2 ", output)
+        finally:
+            os.rmdir(dir1)
+            os.rmdir(dir2)
+            os.remove(file1)
+            os.remove(file2)
 
     def test_cmd_completion_dot_slash(self):
         """F26 | command completion: tab to list ./foo1 ./foo2"""

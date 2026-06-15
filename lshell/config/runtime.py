@@ -37,10 +37,12 @@ class CheckConfig:
 
     def noexec_library_usable(self, path_noexec):
         """Return True when a noexec library can be safely preloaded."""
-        probe_env = dict(os.environ)
+        probe_env = {
+            key: value
+            for key, value in os.environ.items()
+            if not variables.should_strip_from_exec_env(key)
+        }
         probe_env["LD_PRELOAD"] = path_noexec
-        probe_env.pop("BASH_ENV", None)
-        probe_env.pop("ENV", None)
 
         try:
             probe = subprocess.run(
@@ -132,13 +134,6 @@ class CheckConfig:
             if option in ["--version"]:
                 utils.version()
 
-        # put the expanded path of configfile and logpath (if exists) in
-        # LSHELL_ARGS environment variable
-        args = ["--config", conf["configfile"]]
-        if "logpath" in conf:
-            args += ["--log", conf["logpath"]]
-        os.environ["LSHELL_ARGS"] = str(args)
-
         # if lshell is invoked using shh autorized_keys file e.g.
         # command="/usr/bin/lshell", ssh-dss ....
         if "SSH_ORIGINAL_COMMAND" in os.environ:
@@ -151,6 +146,11 @@ class CheckConfig:
         if "env_vars" in self.conf:
             env_vars = self.conf["env_vars"]
             for key in env_vars.keys():
+                if variables.is_forbidden_environment_key(key):
+                    self.log.warning(
+                        f"lshell: ignoring forbidden environment variable from config: {key}"
+                    )
+                    continue
                 os.environ[key] = str(env_vars[key])
 
         # Check paths to files that contain env vars
@@ -639,7 +639,7 @@ class CheckConfig:
                 sys.exit(1)
 
         # append default commands to allowed list
-        self.conf["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
+        self.conf["allowed"] += builtincmd.default_builtins_list
 
         # Optionally hide policy introspection commands from users.
         if self.conf.get("policy_commands") != 1:

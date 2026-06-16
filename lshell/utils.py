@@ -12,7 +12,7 @@ import shlex
 import shutil
 import threading
 from getpass import getuser
-from time import strftime, gmtime
+from time import strftime, localtime
 import signal
 
 # import lshell specifics
@@ -806,6 +806,7 @@ def parse_ps1(ps1):
     cwd = os.getcwd()
     home = os.path.expanduser("~")
     prompt_symbol = "#" if os.geteuid() == 0 else "$"
+    current_time = localtime()
 
     # Define LPS1 replacement mappings
     replacements = {
@@ -816,11 +817,11 @@ def parse_ps1(ps1):
         r"\W": os.path.basename(cwd),
         r"\$": prompt_symbol,
         r"\\": "\\",
-        r"\t": strftime("%H:%M:%S", gmtime()),
-        r"\T": strftime("%I:%M:%S", gmtime()),
-        r"\A": strftime("%H:%M", gmtime()),
-        r"\@": strftime("%I:%M:%S%p", gmtime()),
-        r"\d": strftime("%a %b %d", gmtime()),
+        r"\t": strftime("%H:%M:%S", current_time),
+        r"\T": strftime("%I:%M:%S", current_time),
+        r"\A": strftime("%H:%M", current_time),
+        r"\@": strftime("%I:%M:%S%p", current_time),
+        r"\d": strftime("%a %b %d", current_time),
     }
     # Replace each placeholder with its corresponding value
     for placeholder, value in replacements.items():

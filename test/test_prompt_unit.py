@@ -3,10 +3,11 @@
 import os
 import unittest
 from getpass import getuser
+from time import struct_time
 from unittest.mock import patch
 
 from lshell.config.runtime import CheckConfig
-from lshell.utils import getpromptbase, updateprompt
+from lshell.utils import getpromptbase, parse_ps1, updateprompt
 
 TOPDIR = f"{os.path.dirname(os.path.realpath(__file__))}/../"
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
@@ -39,6 +40,14 @@ class TestPromptUnit(unittest.TestCase):
             rendered = getpromptbase(conf)
         expected = f"{getuser()}@{os.uname()[1].split('.')[0]}"
         self.assertEqual(rendered, expected)
+
+    def test_parse_ps1_time_placeholders_use_localtime(self):
+        """LPS1 time placeholders should render in local server time."""
+        fixed_localtime = struct_time((2026, 6, 16, 21, 7, 5, 1, 167, -1))
+        with patch("lshell.utils.localtime", return_value=fixed_localtime) as mock_localtime:
+            rendered = parse_ps1(r"\t|\T|\A")
+        self.assertEqual(rendered, "21:07:05|09:07:05|21:07")
+        mock_localtime.assert_called_once()
 
 
 if __name__ == "__main__":

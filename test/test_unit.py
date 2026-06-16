@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from getpass import getuser
-from time import strftime, gmtime
+from time import strftime, localtime
 from unittest.mock import patch
 
 # import lshell specifics
@@ -317,7 +317,10 @@ class TestFunctions(unittest.TestCase):
     def test_lps1_user_host_time(self):
         r"""U32 | LPS1 using \u@\h - \t> format"""
         os.environ["LPS1"] = r"\u@\h - \t> "
-        expected = f"{getuser()}@{os.uname()[1].split('.')[0]} - {strftime('%H:%M:%S', gmtime())}> "
+        expected = (
+            f"{getuser()}@{os.uname()[1].split('.')[0]} - "
+            f"{strftime('%H:%M:%S', localtime())}> "
+        )
         prompt = parse_ps1(os.getenv("LPS1"))
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]

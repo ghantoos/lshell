@@ -11,6 +11,7 @@ import signal
 from lshell import variables
 from lshell import utils
 from lshell import sec as sec_policy
+from lshell import history as history_utils
 
 
 # Store background jobs
@@ -99,6 +100,7 @@ def cmd_history(conf, log):
     """print the commands history"""
     try:
         try:
+            history_utils.prepare_history_for_write()
             readline.write_history_file(conf["history_file"])
         except IOError:
             log.error(f"WARN: couldn't write history to file {conf['history_file']}\n")

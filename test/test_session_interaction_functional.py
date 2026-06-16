@@ -159,6 +159,115 @@ class TestSessionInteractionFunctional(unittest.TestCase):
             self._safe_exit(strict)
             strict.close(force=True)
 
+    def test_up_down_arrows_search_history_by_current_prefix(self):
+        """Up/down arrows should recall history entries matching the typed prefix."""
+        def run_sequence(*keys):
+            history_path = None
+            child = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    "w",
+                    encoding="utf-8",
+                    delete=False,
+                    prefix="lshell-history-search-",
+                ) as history_file:
+                    history_file.write("echo alpha\n")
+                    history_file.write("help\n")
+                    history_file.write("echo alpha beta\n")
+                    history_path = history_file.name
+
+                child = self._spawn_shell(
+                    "--allowed \"['echo', 'help']\" "
+                    '--forbidden "[]" '
+                    "--strict 0 "
+                    f"--history_file='{history_path}'"
+                )
+                child.send("echo a")
+                for key in keys:
+                    child.send(key)
+                child.sendline("")
+                child.expect(PROMPT)
+                return child.before.replace("\r", "").replace("\x08", "")
+            finally:
+                if child is not None:
+                    self._safe_exit(child)
+                    child.close(force=True)
+                if history_path and os.path.exists(history_path):
+                    os.unlink(history_path)
+
+        latest_match = run_sequence("\x1b[A")
+        self.assertRegex(latest_match, r"(?m)^alpha beta$")
+
+        older_match = run_sequence("\x1b[A", "\x1b[A")
+        self.assertRegex(older_match, r"(?m)^alpha$")
+
+        forward_match = run_sequence("\x1b[A", "\x1b[A", "\x1b[B")
+        self.assertRegex(forward_match, r"(?m)^alpha beta$")
+
+    def test_history_command_persists_deduplicated_normalized_entries(self):
+        """History output should apply duplicate removal and blank reduction policies."""
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            delete=False,
+            prefix="lshell-history-policies-",
+        ) as history_file:
+            history_path = history_file.name
+
+        child = self._spawn_shell(
+            "--allowed \"['echo', 'history']\" "
+            '--forbidden "[]" '
+            "--strict 0 "
+            f"--history_file='{history_path}'"
+        )
+        try:
+            self._run_command(child, "echo    alpha")
+            self._run_command(child, "echo beta")
+            self._run_command(child, "echo alpha")
+            history_output = self._run_command(child, "history")
+
+            self.assertEqual(history_output.count("echo alpha"), 1)
+            self.assertEqual(history_output.count("echo beta"), 1)
+            self.assertNotIn("echo    alpha", history_output)
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+            if os.path.exists(history_path):
+                os.unlink(history_path)
+
+    def test_ctrl_d_does_not_persist_literal_eof_into_history(self):
+        """Ctrl-D should exit cleanly without rewriting the last history entry as EOF."""
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            delete=False,
+            prefix="lshell-history-eof-",
+        ) as history_file:
+            history_file.write("echo seed\n")
+            history_path = history_file.name
+
+        child = self._spawn_shell(
+            "--allowed \"['echo']\" "
+            '--forbidden "[]" '
+            "--strict 0 "
+            f"--history_file='{history_path}'"
+        )
+        try:
+            self._run_command(child, "echo keep")
+            child.sendeof()
+            child.expect(pexpect.EOF)
+        finally:
+            child.close(force=True)
+
+        try:
+            with open(history_path, "r", encoding="utf-8") as handle:
+                persisted = handle.read()
+            self.assertIn("echo keep", persisted)
+            self.assertNotIn("EOF", persisted)
+        finally:
+            if os.path.exists(history_path):
+                os.unlink(history_path)
+
     def test_bg_builtin_reports_not_supported(self):
         """`bg` should report explicit unsupported status to the user."""
         child = self._spawn_shell()
@@ -405,8 +514,7 @@ class TestSessionInteractionFunctional(unittest.TestCase):
     def test_lps1_prompt_override_persists_across_prompt_refresh(self):
         """LPS1 environment prompt override should remain stable after commands."""
         custom_prompt = "LSHELL_PROMPT> "
-        env = os.environ.copy()
-        env["LPS1"] = custom_prompt
+        env = {"LPS1": custom_prompt}
 
         child = self._spawn_shell(env=env, prompt=re.escape(custom_prompt))
         try:

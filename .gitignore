@@ -10,7 +10,7 @@ test.lsh
 .pylint_cache/
 .pylint.d/
 .hypothesis/
-local-docs/
 .venv/
+local-docs/
 .vscode/
 .idea/

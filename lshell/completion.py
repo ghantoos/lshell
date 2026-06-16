@@ -15,6 +15,18 @@ def completedefault(*ignored):
     return []
 
 
+def _prefix_matches(candidates, prefix):
+    """Return prefix matches, with a case-insensitive fallback when needed."""
+    matches = [candidate for candidate in candidates if candidate.startswith(prefix)]
+    if matches or not prefix:
+        return matches
+
+    prefix_lower = prefix.lower()
+    return [
+        candidate for candidate in candidates if candidate.lower().startswith(prefix_lower)
+    ]
+
+
 def completenames(conf, text, line, *ignored):
     """This method is meant to override the original completenames method
     to overload it's output with the command available in the 'allowed'
@@ -27,12 +39,13 @@ def completenames(conf, text, line, *ignored):
     # depending on completer delimiters/platform.
     if line.startswith("./") or text.startswith("./"):
         prefix = text[2:] if text.startswith("./") else text
-        matches = [cmd for cmd in commands if cmd.startswith(f"./{prefix}")]
+        relative_commands = [cmd for cmd in commands if cmd.startswith("./")]
+        matches = _prefix_matches(relative_commands, f"./{prefix}")
         if text.startswith("./"):
             return matches
         return [cmd[2:] for cmd in matches]
 
-    return [cmd for cmd in commands if cmd.startswith(text)]
+    return _prefix_matches(commands, text)
 
 
 def complete_sudo(conf, text, line, begidx, endidx):

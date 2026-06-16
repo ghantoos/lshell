@@ -300,6 +300,18 @@ class TestParserUtilities(unittest.TestCase):
         result = completion.completenames(conf, "./shut", "./shut", 0, 6)
         self.assertEqual(result, ["./shutdown.sh"])
 
+    def test_completenames_falls_back_to_case_insensitive_allowed_commands(self):
+        """Allowed-command completion should retry with a case-insensitive prefix match."""
+        conf = {"allowed": ["echo", "Help", "history"]}
+        result = completion.completenames(conf, "he", "he", 0, 2)
+        self.assertEqual(result, ["Help"])
+
+    def test_completenames_dot_slash_falls_back_to_case_insensitive_matching(self):
+        """Relative allowed commands should use the same case-insensitive fallback."""
+        conf = {"allowed": ["./Shutdown.sh", "./show.sh"]}
+        result = completion.completenames(conf, "shut", "./shut", 0, 6)
+        self.assertEqual(result, ["Shutdown.sh"])
+
 
 class TestBuiltinsJobsAndSource(unittest.TestCase):
     """Tests for built-in commands around job control."""

@@ -147,7 +147,7 @@ def _build_runtime_policy(conf_raw, username):
         policy["path"] = ["", ""]
         policy["path"][0] = policy["home_path"]
 
-    policy["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
+    policy["allowed"] += builtincmd.default_builtins_list
     if policy.get("policy_commands") != 1:
         policy["allowed"] = [
             cmd for cmd in policy["allowed"] if cmd not in builtincmd.POLICY_COMMANDS

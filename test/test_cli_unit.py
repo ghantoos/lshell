@@ -48,10 +48,12 @@ class TestCliArgs(unittest.TestCase):
 
         return captured["args"]
 
-    def test_main_appends_valid_lshell_args_from_env(self):
-        """Append safely parsed list arguments from LSHELL_ARGS env var."""
-        args = self._run_main_and_capture_args("['--config', '/tmp/lshell.conf']")
-        self.assertEqual(args, ["--quiet=1", "--config", "/tmp/lshell.conf"])
+    def test_main_ignores_lshell_args_env_even_when_well_formed(self):
+        """Startup should ignore LSHELL_ARGS entirely."""
+        args = self._run_main_and_capture_args(
+            "['--config', '/tmp/lshell.conf', '--allowed=all', '--log', '/tmp/lshell.log']"
+        )
+        self.assertEqual(args, ["--quiet=1"])
 
     def test_main_ignores_invalid_or_unsafe_lshell_args_env(self):
         """Ignore malformed, non-sequence, or non-string entries in LSHELL_ARGS."""
@@ -59,6 +61,7 @@ class TestCliArgs(unittest.TestCase):
             "__import__('os').system('id')",
             "'--config'",
             "['--config', 123]",
+            "['--allowed=all']",
         ]
         for value in invalid_values:
             with self.subTest(value=value):

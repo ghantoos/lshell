@@ -301,7 +301,7 @@ def execute(decisions, runtime):
 
         for _executable_name, _argument, _split, assignments in parsed_parts:
             for var_name, _var_value in assignments:
-                if var_name in variables.FORBIDDEN_ENVIRON:
+                if variables.is_forbidden_environment_key(var_name):
                     deny_decision = authorizer.AuthorizationDecision(
                         False,
                         reasons.make_reason(

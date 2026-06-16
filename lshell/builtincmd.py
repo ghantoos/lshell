@@ -6,7 +6,6 @@ import os
 import shlex
 import readline
 import signal
-import re
 
 # import lshell specifics
 from lshell import variables
@@ -36,14 +35,7 @@ builtins_list = [
     "source",
 ]
 
-_BASH_FUNCTION_ENV_RE = re.compile(r"^BASH_FUNC_.*$")
-
-
-def _is_forbidden_env_name(name):
-    """Return True when env var name is blocked for security reasons."""
-    if name in variables.FORBIDDEN_ENVIRON:
-        return True
-    return bool(_BASH_FUNCTION_ENV_RE.match(name))
+default_builtins_list = [cmd for cmd in builtins_list if cmd not in ("export", "source")]
 
 
 def _cancel_job_timeout(job):
@@ -136,7 +128,7 @@ def cmd_export(args):
     if len(tokens) >= 2 and "=" in tokens[1]:
         var, value = tokens[1].split("=", 1)
         # disallow dangerous variable
-        if _is_forbidden_env_name(var):
+        if variables.is_forbidden_environment_key(var):
             return 1, var
         os.environ.update({var: value})
     return 0, None

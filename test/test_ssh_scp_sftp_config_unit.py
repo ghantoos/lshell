@@ -21,7 +21,7 @@ class TestSSHScpSftpConfig(unittest.TestCase):
         """U20 | when winscp is enabled, new allowed commands are automatically added."""
         args = self.args + ["--allowed=[]", "--winscp=1"]
         userconf = CheckConfig(args).returnconf()
-        exclude = list(set(builtincmd.builtins_list) - set(["export"]))
+        exclude = list(builtincmd.default_builtins_list)
         expected = exclude + ["scp", "env", "pwd", "groups", "unset", "unalias"]
         expected.sort()
         allowed = userconf["allowed"]

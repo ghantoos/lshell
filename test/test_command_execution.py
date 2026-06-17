@@ -2,6 +2,7 @@
 
 import os
 import random
+import re
 import unittest
 from getpass import getuser
 import pexpect
@@ -16,6 +17,11 @@ PROMPT_ANY_DIR = f"{USER}:.+\\$"
 
 class TestFunctions(unittest.TestCase):
     """Functional tests for lshell"""
+
+    @staticmethod
+    def _normalize_ls_error_prefix(text):
+        """Collapse pinned absolute ls paths back to the user-facing command name."""
+        return re.sub(r"^/\S*/ls:", "ls:", text)
 
     def _clean_env(self, extra=None):
         """Return a sanitized environment for deterministic child shells."""
@@ -78,7 +84,7 @@ class TestFunctions(unittest.TestCase):
         result_1 = result[1].strip()
         result_2 = result[2].strip()
         result_3 = result[3].strip()
-        self.assertEqual(expected_1, result_1)
+        self.assertEqual(expected_1, self._normalize_ls_error_prefix(result_1))
         self.assertEqual(expected_2, result_2)
         self.assertEqual(expected_3, result_3)
         self.do_exit(child)
@@ -101,7 +107,7 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n")
         result_1 = result[1].strip()
         result_2 = result[2].strip()
-        self.assertEqual(expected_1, result_1)
+        self.assertEqual(expected_1, self._normalize_ls_error_prefix(result_1))
         self.assertEqual(expected_2, result_2)
         self.do_exit(child)
 

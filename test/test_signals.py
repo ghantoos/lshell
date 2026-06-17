@@ -1,6 +1,7 @@
 """Functional tests for lshell terminal signals"""
 
 import os
+import re
 import unittest
 import time
 from getpass import getuser
@@ -16,6 +17,11 @@ PROMPT = f"{USER}:~\\$"
 
 class TestFunctions(unittest.TestCase):
     """Functional tests for lshell"""
+
+    @staticmethod
+    def _normalize_command_paths(text):
+        """Remove pinned absolute command paths from user-visible job output."""
+        return re.sub(r"/\S*/(sleep|tail)\b", r"\1", text)
 
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
@@ -111,13 +117,15 @@ class TestFunctions(unittest.TestCase):
             time.sleep(1)
             child.sendcontrol("z")
             # Verify stopped job message
-            child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+            child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -f", timeout=1)
 
         # Check jobs output
         child.expect(PROMPT)
         child.sendline("jobs")
         child.expect(PROMPT)
-        output = child.before.decode("utf-8").split("\n", 1)[1].strip()
+        output = self._normalize_command_paths(
+            child.before.decode("utf-8").split("\n", 1)[1].strip()
+        )
         expected_output = (
             "[1]   Stopped        tail -f file1\r\n"
             "[2]-  Stopped        tail -f file2\r\n"
@@ -151,17 +159,19 @@ class TestFunctions(unittest.TestCase):
 
         # Run a background command with &
         child.sendline("sleep 60 &")
-        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 60 \(pid: \d+\)", timeout=5)
         child.sendline("sleep 60 &")
-        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 60 \(pid: \d+\)", timeout=5)
         child.sendline("sleep 60 &")
-        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 60 \(pid: \d+\)", timeout=5)
 
         # Verify it's listed in jobs
         child.expect(PROMPT)
         child.sendline("jobs")
         child.expect(PROMPT)
-        output = child.before.decode("utf-8").split("\n", 1)[1].strip()
+        output = self._normalize_command_paths(
+            child.before.decode("utf-8").split("\n", 1)[1].strip()
+        )
         expected_output = (
             "[1]   Stopped        sleep 60\r\n"
             "[2]-  Stopped        sleep 60\r\n"
@@ -182,7 +192,7 @@ class TestFunctions(unittest.TestCase):
         time.sleep(1)
         child.sendcontrol("z")
         # CI/container scheduling can delay job-control status emission slightly.
-        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=3)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -f", timeout=3)
 
         # Attempt to exit
         child.sendline("exit")
@@ -190,7 +200,7 @@ class TestFunctions(unittest.TestCase):
 
         # Verify stopped jobs are listed
         child.sendline("jobs")
-        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=5)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -f", timeout=5)
 
         # Exit again
         child.sendline("exit")
@@ -205,19 +215,19 @@ class TestFunctions(unittest.TestCase):
         child.sendline("tail -f")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -f", timeout=1)
         child.sendline("tail -ff")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -ff", timeout=1)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -ff", timeout=1)
         child.sendline("tail -fff")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -fff", timeout=1)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -fff", timeout=1)
         child.sendline("tail -ffff")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -ffff", timeout=1)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -ffff", timeout=1)
 
         # Resume the second job
         child.sendline("fg 2")
@@ -250,7 +260,7 @@ class TestFunctions(unittest.TestCase):
 
         # Run a background command
         child.sendline("sleep 60 &")
-        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 60 \(pid: \d+\)", timeout=5)
 
         # Interrupt the foreground process (should not affect background)
         child.sendcontrol("c")
@@ -263,7 +273,7 @@ class TestFunctions(unittest.TestCase):
 
         # Verify the background command is still running
         child.sendline("jobs")
-        child.expect(r"\[\d+\]\+  Stopped        sleep 60", timeout=5)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?sleep 60", timeout=5)
 
     def test_jobs_after_completion(self):
         """F76 | Test that completed jobs are removed from the `jobs` list."""
@@ -274,7 +284,7 @@ class TestFunctions(unittest.TestCase):
 
         # Run a short-lived background command
         child.sendline("sleep 2 &")
-        child.expect(r"\[\d+\] sleep 2 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 2 \(pid: \d+\)", timeout=5)
 
         # Wait for the process to complete
         time.sleep(3)
@@ -295,19 +305,21 @@ class TestFunctions(unittest.TestCase):
 
         # Start a background command
         child.sendline("sleep 60 &")
-        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 60 \(pid: \d+\)", timeout=5)
 
         # Start and stop a foreground command
         child.sendline("tail -f file1")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -f", timeout=1)
 
         # Verify jobs output
         child.expect(PROMPT)
         child.sendline("jobs")
         child.expect(PROMPT)
-        output = child.before.decode("utf-8").split("\n", 1)[1].strip()
+        output = self._normalize_command_paths(
+            child.before.decode("utf-8").split("\n", 1)[1].strip()
+        )
         expected_output = (
             "[1]-  Stopped        sleep 60\r\n[2]+  Stopped        tail -f file1"
         )
@@ -324,7 +336,7 @@ class TestFunctions(unittest.TestCase):
         child.sendline("tail -f")
         time.sleep(1)
         child.sendcontrol("z")
-        child.expect(r"\[\d+\]\+  Stopped        tail -f", timeout=1)
+        child.expect(r"\[\d+\]\+  Stopped        (?:/\S*/)?tail -f", timeout=1)
         child.expect(PROMPT)
 
         # First Ctrl+D should warn and keep shell alive.
@@ -374,7 +386,7 @@ class TestFunctions(unittest.TestCase):
         child.expect(PROMPT)
 
         child.sendline("sleep 60 &")
-        child.expect(r"\[\d+\] sleep 60 \(pid: \d+\)", timeout=5)
+        child.expect(r"\[\d+\] (?:/\S*/)?sleep 60 \(pid: \d+\)", timeout=5)
         child.expect(PROMPT)
 
         # Allow the background timeout handler to kill the process.

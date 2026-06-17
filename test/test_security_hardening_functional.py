@@ -190,3 +190,21 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
 
             combined = result.stdout + result.stderr
             self.assertIn(f'lshell: forbidden path: "{sibling_dir}/"', combined)
+
+    def test_path_acl_blocks_bareword_symlink_escape_for_cat(self):
+        """Bareword symlink operands should be denied after canonical path resolution."""
+        with tempfile.TemporaryDirectory(prefix="lshell-path-symlink-hardening-", dir="/tmp") as tmpdir:
+            link_path = os.path.join(tmpdir, "passwdlink")
+            os.symlink("/etc/passwd", link_path)
+
+            result = self._run_lsh_script(
+                script_body=f"cd {tmpdir}\ncat passwdlink\necho SAFE\n",
+                extra_shell_args=(
+                    f"--allowed \"+['cat']\" --path \"['{tmpdir}']\" --strict 0"
+                ),
+            )
+
+            combined = result.stdout + result.stderr
+            self.assertIn('lshell: forbidden path: "/etc/passwd"', combined)
+            self.assertIn("SAFE", combined)
+            self.assertNotIn("root:x:0:0:", combined)

@@ -27,6 +27,46 @@ inspect_shell_expansions = expansion_inspector.inspect_shell_expansions
 
 _EXTGLOB_OPENERS = ("@(", "!(", "+(", "*(", "?(")
 
+# Commands whose positional operands commonly refer to filesystem entries.
+# We use this to protect bareword symlink targets without treating generic
+# literals (for example `echo hello`) as path operands.
+_BAREWORD_FILESYSTEM_COMMANDS = {
+    "cat",
+    "chgrp",
+    "chmod",
+    "chown",
+    "cmp",
+    "comm",
+    "cp",
+    "diff",
+    "du",
+    "file",
+    "grep",
+    "egrep",
+    "fgrep",
+    "rgrep",
+    "head",
+    "install",
+    "less",
+    "ln",
+    "ls",
+    "mkdir",
+    "more",
+    "mv",
+    "nl",
+    "patch",
+    "readlink",
+    "realpath",
+    "rm",
+    "rmdir",
+    "stat",
+    "tac",
+    "tail",
+    "tee",
+    "touch",
+    "wc",
+}
+
 
 def _is_assignment_word(word):
     return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", word))
@@ -184,6 +224,14 @@ def _safe_expand_path(path):
         return os.path.expandvars(expanded)
     except (TypeError, ValueError):
         return None
+
+
+def _safe_lexists(path):
+    """Return os.path.lexists(path) while rejecting malformed inputs."""
+    try:
+        return os.path.lexists(path)
+    except (OSError, TypeError, ValueError):
+        return False
 
 
 def _contains_unescaped_extglob(pattern):
@@ -456,6 +504,39 @@ def _looks_like_path_token(token):
     return False
 
 
+def _looks_like_numeric_literal(token):
+    """Return True for plain numeric arguments such as `10` or `-1`."""
+    return bool(re.fullmatch(r"[-+]?\d+(?:\.\d+)?", token))
+
+
+def _references_existing_path(token):
+    """Return True when token resolves to an existing filesystem entry."""
+    expanded = _safe_expand_path(token)
+    if expanded is None:
+        return False
+    if not os.path.isabs(expanded):
+        expanded = os.path.join(os.getcwd(), expanded)
+    return _safe_lexists(expanded)
+
+
+def _command_name(command):
+    """Return a basename-style command identifier for operand heuristics."""
+    if not command:
+        return ""
+    return os.path.basename(command)
+
+
+def _should_check_bareword_path_operand(command, token):
+    """Return True when a bareword operand should be treated as a path."""
+    if not token or token == "-" or token.startswith("-"):
+        return False
+    if _looks_like_numeric_literal(token):
+        return False
+    if _command_name(command) not in _BAREWORD_FILESYSTEM_COMMANDS:
+        return False
+    return _references_existing_path(token)
+
+
 def _grep_implicit_pattern_index(args):
     """Return the grep implicit PATTERN arg index, or None when explicit patterns are used."""
     has_explicit_pattern = False
@@ -535,7 +616,11 @@ def _path_tokens_from_line(line):
             path_tokens.extend(
                 token
                 for idx, token in enumerate(args)
-                if idx not in skip_indices and _looks_like_path_token(token)
+                if idx not in skip_indices
+                and (
+                    _looks_like_path_token(token)
+                    or _should_check_bareword_path_operand(command, token)
+                )
             )
             continue
 

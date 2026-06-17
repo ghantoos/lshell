@@ -259,11 +259,33 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         finally:
             self._restore_ssh_env(saved_env)
 
-    def test_run_overssh_allows_sftp_when_enabled(self):
-        """Execute sftp-server sessions when sftp flag is enabled."""
+    def test_run_overssh_rejects_sftp_when_enabled_without_legacy_override(self):
+        """Refuse legacy sftp-server passthrough unless override is explicit."""
         saved_env = self._with_forced_ssh_env()
         try:
             conf = CheckConfig(self.args + ["--sftp=1", "--strict=0"]).returnconf()
+            conf["ssh"] = "/usr/libexec/sftp-server"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_allows_sftp_with_explicit_legacy_override(self):
+        """Execute sftp-server only when legacy override is explicitly enabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--sftp=1", "--sftp_unsafe_legacy=1", "--strict=0"]
+            ).returnconf()
             conf["ssh"] = "/usr/libexec/sftp-server"
             with patch("lshell.shellcmd.utils.cmd_parse_execute", return_value=0) as mock_exec:
                 with self.assertRaises(SystemExit) as cm:

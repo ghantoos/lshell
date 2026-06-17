@@ -351,6 +351,13 @@ class ShellCmd(cmd.Cmd, object):
                 aliases.pop("ls", None)
             return aliases
 
+        def _is_sftp_protocol_request(command_line):
+            for part in utils.split_commands(command_line):
+                executable, _argument, _split, _assignments = utils._parse_command(part)
+                if executable in variables.TRUSTED_SFTP_PROTOCOL_BINARIES:
+                    return True
+            return False
+
         if "ssh" in self.conf:
             if "SSH_CLIENT" in os.environ and "SSH_TTY" not in os.environ:
                 # Apply aliases consistently for all SSH command paths.
@@ -359,8 +366,8 @@ class ShellCmd(cmd.Cmd, object):
                 ).strip()
 
                 # check if sftp is requested and allowed
-                if "sftp-server" in self.conf["ssh"]:
-                    if self.conf["sftp"] == 1:
+                if _is_sftp_protocol_request(self.conf["ssh"]):
+                    if self.conf["sftp"] == 1 and self.conf.get("sftp_unsafe_legacy") == 1:
                         _with_protocol_in_overssh(
                             variables.TRUSTED_SFTP_PROTOCOL_BINARIES
                         )
@@ -371,6 +378,21 @@ class ShellCmd(cmd.Cmd, object):
                         retcode = _execute_trusted_ssh_protocol(trusted_protocol=True)
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
+                    elif self.conf["sftp"] == 1:
+                        message = (
+                            "lshell: refusing legacy SFTP passthrough; "
+                            "set sftp_unsafe_legacy=1 to override or use "
+                            "sshd_config ForceCommand internal-sftp with ChrootDirectory\n"
+                        )
+                        self.log.error("*** legacy SFTP passthrough refused")
+                        audit.log_command_event(
+                            self.conf,
+                            self.conf["ssh"],
+                            allowed=False,
+                            reason="refused legacy SFTP passthrough",
+                        )
+                        sys.stderr.write(message)
+                        sys.exit(1)
                     else:
                         self.log.error("*** forbidden SFTP connection")
                         audit.log_command_event(

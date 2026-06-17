@@ -21,6 +21,7 @@ REQUIRED_PROFILE_KEYS = {
     "scp_upload",
     "scp_download",
     "sftp",
+    "sftp_unsafe_legacy",
     "overssh",
 }
 UNSAFE_ALLOWED_SHELL_ESCAPE = {
@@ -71,7 +72,8 @@ PROFILE_DEFINITIONS = {
             "scp": 0,
             "scp_upload": 0,
             "scp_download": 0,
-            "sftp": 1,
+            "sftp": 0,
+            "sftp_unsafe_legacy": 0,
             "overssh": [],
             "sudo_commands": [],
             "allowed_file_extensions": [],
@@ -79,9 +81,9 @@ PROFILE_DEFINITIONS = {
             "umask": "0077",
         },
         "explain": [
-            "Use this for file-drop or file-retrieval accounts over SFTP.",
-            "Interactive shell functionality is intentionally minimal.",
-            "SCP is disabled to reduce protocol surface area.",
+            "Use this as the companion lshell policy for accounts whose real SFTP boundary is enforced in sshd_config.",
+            "Prefer ForceCommand internal-sftp plus ChrootDirectory for the actual transport path control.",
+            "Legacy sftp-server passthrough is left disabled on purpose.",
         ],
     },
     "rsync-backup": {
@@ -101,6 +103,7 @@ PROFILE_DEFINITIONS = {
             "scp_upload": 0,
             "scp_download": 0,
             "sftp": 0,
+            "sftp_unsafe_legacy": 0,
             "overssh": ["rsync"],
             "sudo_commands": [],
             "allowed_file_extensions": [],
@@ -143,6 +146,7 @@ PROFILE_DEFINITIONS = {
             "scp_upload": 1,
             "scp_download": 0,
             "sftp": 0,
+            "sftp_unsafe_legacy": 0,
             "overssh": ["rsync", "scp"],
             "sudo_commands": [],
             "allowed_file_extensions": [".log", ".txt", ".yml", ".yaml"],
@@ -172,6 +176,7 @@ PROFILE_DEFINITIONS = {
             "scp_upload": 0,
             "scp_download": 0,
             "sftp": 0,
+            "sftp_unsafe_legacy": 0,
             "overssh": [],
             "sudo_commands": [],
             "allowed_file_extensions": [".conf", ".ini", ".json", ".log", ".txt", ".yaml"],
@@ -198,7 +203,10 @@ FIELD_COMMENTS = {
     "scp": "Enable/disable SCP protocol surface.",
     "scp_upload": "Allow SCP uploads only when operationally required.",
     "scp_download": "Allow SCP downloads only when operationally required.",
-    "sftp": "Enable/disable SFTP protocol surface.",
+    "sftp": "Enable/disable legacy lshell SFTP passthrough surface.",
+    "sftp_unsafe_legacy": (
+        "Explicit override for legacy sftp-server passthrough. Keep 0 unless you intentionally accept the risk."
+    ),
     "overssh": "Commands allowed for direct SSH command execution; keep as small as possible.",
     "sudo_commands": "Keep empty by default. Add only audited, non-interactive commands.",
     "allowed_file_extensions": (
@@ -278,7 +286,7 @@ def validate_profile(profile_name, profile_data):
                     "allowed_shell_escape contains unsafe command: " + raw_command
                 )
 
-    for key in ("scp", "scp_upload", "scp_download", "sftp", "warning_counter"):
+    for key in ("scp", "scp_upload", "scp_download", "sftp", "sftp_unsafe_legacy", "warning_counter"):
         value = default.get(key)
         if not isinstance(value, int):
             errors.append(f"{key} must be an integer")
@@ -289,8 +297,10 @@ def validate_profile(profile_name, profile_data):
             errors.append(f"{key} must be a list")
 
     if profile_name == "sftp-only":
-        if default.get("sftp") != 1 or default.get("scp") != 0:
-            errors.append("sftp-only profile must set sftp=1 and scp=0")
+        if default.get("sftp") != 0 or default.get("scp") != 0:
+            errors.append("sftp-only profile must set sftp=0 and scp=0")
+        if default.get("sftp_unsafe_legacy") != 0:
+            errors.append("sftp-only profile must keep sftp_unsafe_legacy=0")
         if default.get("overssh"):
             errors.append("sftp-only profile must keep overssh empty")
     elif profile_name == "rsync-backup":

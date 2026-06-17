@@ -156,7 +156,8 @@ Key settings to review:
 Security note:
 `path` restrictions apply to commands parsed by `lshell`, but they do not inspect
 individual file requests handled inside the SFTP protocol itself. If you enable
-`sftp`, treat OpenSSH `ChrootDirectory` plus `ForceCommand internal-sftp` as the
+legacy `sftp`, `lshell` now refuses the passthrough by default unless you set
+`sftp_unsafe_legacy=1`. Treat OpenSSH `ChrootDirectory` plus `ForceCommand internal-sftp` as the
 real filesystem boundary, and use SSH-side controls such as `DisableForwarding`
 or read-only SFTP modes when needed.
 
@@ -226,7 +227,8 @@ timer           : 0
 path            : ['/etc', '/usr']
 env_path        : '/sbin:/usr/foo'
 scp             : 1
-sftp            : 1
+sftp            : 0
+sftp_unsafe_legacy : 0
 overssh         : ['rsync','ls']
 aliases         : {'ls':'ls --color=auto','ll':'ls -l'}
 

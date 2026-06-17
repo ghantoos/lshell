@@ -211,7 +211,7 @@ class TestFunctions(unittest.TestCase):
     def test_overssh_trusted_sftp_rejects_assignment_prefix(self):
         """Trusted sftp-server flow should deny env-assignment command prefixes."""
         child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} --sftp 1 "
+            f"{LSHELL} --config {CONFIG} --sftp 1 --sftp_unsafe_legacy 1 "
             "--overssh \"['sftp-server']\" "
             "-c 'TMPDIR=/tmp sftp-server'",
             env=self._ssh_env(),
@@ -221,6 +221,18 @@ class TestFunctions(unittest.TestCase):
         child.close()
         self.assertIn("lshell: forbidden trusted SSH protocol command", output)
         self.assertEqual(child.exitstatus, 126)
+
+    def test_overssh_sftp_requires_explicit_legacy_override(self):
+        """sftp=1 alone should refuse legacy sftp-server passthrough."""
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --sftp 1 -c 'sftp-server'",
+            env=self._ssh_env(),
+        )
+        child.expect(pexpect.EOF, timeout=10)
+        output = child.before.decode("utf-8")
+        child.close()
+        self.assertIn("refusing legacy SFTP passthrough", output)
+        self.assertEqual(child.exitstatus, 1)
 
     def test_overssh_trusted_sftp_rejects_prefixed_wrapper_command(self):
         """Trusted sftp flow should reject wrapper commands containing sftp-server text."""

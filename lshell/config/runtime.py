@@ -478,6 +478,7 @@ class CheckConfig:
             "scp_upload",
             "scp_download",
             "sftp",
+            "sftp_unsafe_legacy",
             "overssh",
             "strict",
             "aliases",

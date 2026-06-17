@@ -42,6 +42,7 @@ DISPLAY_KEY_ORDER = [
     "scp_upload",
     "scp_download",
     "sftp",
+    "sftp_unsafe_legacy",
     "umask",
     "aliases",
     "messages",
@@ -107,6 +108,9 @@ def _build_runtime_policy(conf_raw, username):
         "policy_commands",
         "scp_upload",
         "scp_download",
+        "scp",
+        "sftp",
+        "sftp_unsafe_legacy",
     ]:
         try:
             if len(conf_raw[item]) == 0:

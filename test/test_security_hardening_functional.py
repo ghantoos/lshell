@@ -16,7 +16,7 @@ LSHELL = f"{TOPDIR}/bin/lshell"
 class TestSecurityHardeningFunctional(unittest.TestCase):
     """Functional tests for attack-oriented script execution scenarios."""
 
-    def _run_lsh_script(self, script_body, extra_shell_args=""):
+    def _run_lsh_script(self, script_body, extra_shell_args="", env=None):
         """Run a temporary .lsh script and return subprocess.CompletedProcess."""
         with tempfile.TemporaryDirectory(prefix="lshell-hardening-") as tempdir:
             wrapper_path = os.path.join(tempdir, "wrapper.sh")
@@ -37,12 +37,17 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
                 handle.write(script)
             os.chmod(script_path, stat.S_IRWXU)
 
+            child_env = os.environ.copy()
+            if env:
+                child_env.update(env)
+
             return subprocess.run(
                 [wrapper_path, script_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 check=False,
+                env=child_env,
             )
 
     def test_inline_assignment_does_not_persist_between_commands(self):
@@ -190,6 +195,24 @@ class TestSecurityHardeningFunctional(unittest.TestCase):
 
             combined = result.stdout + result.stderr
             self.assertIn(f'lshell: forbidden path: "{sibling_dir}/"', combined)
+
+    def test_inherited_shellopts_and_ps4_do_not_execute_payload(self):
+        """Inherited bash-control variables should not influence bash -c execution."""
+        result = self._run_lsh_script(
+            script_body="echo SAFE\n",
+            extra_shell_args="--forbidden \"[]\"",
+            env={
+                "SHELLOPTS": "xtrace",
+                "PS4": "$(echo LSHELL_POC >&2) ",
+                "PROMPT_COMMAND": "echo PROMPT_POC >&2",
+            },
+        )
+
+        self.assertEqual(result.returncode, 0)
+        combined = result.stdout + result.stderr
+        self.assertIn("SAFE", result.stdout)
+        self.assertNotIn("LSHELL_POC", combined)
+        self.assertNotIn("PROMPT_POC", combined)
 
     def test_path_acl_blocks_bareword_symlink_escape_for_cat(self):
         """Bareword symlink operands should be denied after canonical path resolution."""

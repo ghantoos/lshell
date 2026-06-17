@@ -10,6 +10,7 @@ import pexpect
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
+TESTFILES_PATH_ARG = f'--path "[\'{TOPDIR}/test/testfiles\']"'
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
 
@@ -32,7 +33,8 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
             "--allowed \"+ ['cat']\" "
-            "--allowed_file_extensions \"['.log']\""
+            "--allowed_file_extensions \"['.log']\" "
+            f"{TESTFILES_PATH_ARG}"
         )
         child.expect(PROMPT)
 
@@ -70,7 +72,8 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
             "--allowed \"+ ['cat']\" "
-            '--allowed_file_extensions "[]"'
+            '--allowed_file_extensions "[]" '
+            f"{TESTFILES_PATH_ARG}"
         )
         child.expect(PROMPT)
 
@@ -113,7 +116,8 @@ class TestFunctions(unittest.TestCase):
             f"{LSHELL} --config {CONFIG} "
             "--allowed \"+ ['cat']\" "
             "--allowed_file_extensions \"['.log'] + ['.conf'] - ['.log']\" "
-            "--warning_counter 2 --strict 1"
+            "--warning_counter 2 --strict 1 "
+            f"{TESTFILES_PATH_ARG}"
         )
         child.expect(PROMPT)
 

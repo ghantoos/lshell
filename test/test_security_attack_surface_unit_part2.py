@@ -189,6 +189,58 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertNotIn("BASH_FUNC_echo%%", child_env)
         self.assertEqual(child_env.get("LSHELL_SAFE_ENV"), "ok")
 
+    @patch.dict(
+        os.environ,
+        {
+            "PATH": "/usr/bin",
+            "SHELLOPTS": "xtrace",
+            "PS4": "$(echo PWNED >&2)",
+            "PROMPT_COMMAND": "id",
+            "PYTHONPATH": "/tmp/evil",
+            "BASH_ENV": "/tmp/bashenv",
+            "BASH_FUNC_echo%%": "() { :; }",
+        },
+        clear=True,
+    )
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_strips_shell_sensitive_environment_variables(
+        self, mock_popen, _mock_signal, _mock_getsignal
+    ):
+        """Regular command execution must scrub shell-sensitive inherited env vars."""
+
+        class FakeProc:
+            """Minimal subprocess fake for exec_cmd foreground path."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 31337
+                self.args = ["bash", "-c", "echo hi"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Simulate foreground process I/O completion."""
+                return None
+
+            def poll(self):
+                """Simulate an already-finished subprocess."""
+                return 0
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("echo hi")
+
+        self.assertEqual(ret, 0)
+        exec_env = mock_popen.call_args.kwargs["env"]
+        self.assertEqual(exec_env["PATH"], "/usr/bin")
+        self.assertNotIn("SHELLOPTS", exec_env)
+        self.assertNotIn("PS4", exec_env)
+        self.assertNotIn("PROMPT_COMMAND", exec_env)
+        self.assertNotIn("PYTHONPATH", exec_env)
+        self.assertNotIn("BASH_ENV", exec_env)
+        self.assertFalse(any(name.startswith("BASH_FUNC_") for name in exec_env))
+
     def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(
         self,
     ):

@@ -8,13 +8,20 @@ from contextlib import redirect_stderr
 from unittest.mock import patch
 
 from lshell import builtincmd
+from lshell.config.runtime import CheckConfig
 
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SOURCE_FIXTURE = f"{TOPDIR}/test/testfiles/source_command_fixture.lsh"
+CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 
 
 class TestSourceCommand(unittest.TestCase):
     """Tests for sourcing environment files into the current shell context."""
+
+    def test_source_is_not_enabled_by_default(self):
+        """Default allowed builtins should not expose source implicitly."""
+        conf = CheckConfig([f"--config={CONFIG}", "--quiet=1"]).returnconf()
+        self.assertNotIn("source", conf["allowed"])
 
     @patch.dict(os.environ, {}, clear=True)
     def test_cmd_source_loads_fixture_exports(self):
@@ -98,6 +105,25 @@ class TestSourceCommand(unittest.TestCase):
             ):
                 self.assertEqual(builtincmd.cmd_source("$ENV_FILE_PATH"), 0)
                 self.assertEqual(os.environ.get("ENV_SCOPED"), "value")
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_cmd_source_rejects_forbidden_environment_variables(self):
+        """Dangerous environment variables must be rejected when sourcing files."""
+        with tempfile.NamedTemporaryFile("w", delete=False) as env_file:
+            env_file.write("export SHELLOPTS=xtrace\n")
+            file_path = env_file.name
+
+        stderr = io.StringIO()
+        try:
+            with redirect_stderr(stderr):
+                self.assertEqual(builtincmd.cmd_source(file_path), 1)
+            self.assertIsNone(os.environ.get("SHELLOPTS"))
+            self.assertIn(
+                "lshell: forbidden environment variable: SHELLOPTS",
+                stderr.getvalue(),
+            )
+        finally:
+            os.remove(file_path)
 
 
 if __name__ == "__main__":

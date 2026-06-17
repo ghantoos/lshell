@@ -8,6 +8,7 @@ import pexpect
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
+TESTFILES_PATH_ARG = f'--path "[\'{TOPDIR}/test/testfiles\']"'
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
 
@@ -31,7 +32,8 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(
             (
                 f"{LSHELL} --config {CONFIG} "
-                f'--allowed "+ [\'grep\']" --forbidden "[]"'
+                f'--allowed "+ [\'grep\']" --forbidden "[]" '
+                f"{TESTFILES_PATH_ARG}"
             )
         )
         child.expect(PROMPT)
@@ -52,7 +54,9 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
+            f"{LSHELL} --config {CONFIG} "
+            '--allowed "+ [\'grep\']" --forbidden "[]" '
+            f"{TESTFILES_PATH_ARG}"
         )
         child.expect(PROMPT)
 
@@ -72,7 +76,9 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
+            f"{LSHELL} --config {CONFIG} "
+            '--allowed "+ [\'grep\']" --forbidden "[]" '
+            f"{TESTFILES_PATH_ARG}"
         )
         child.expect(PROMPT)
 
@@ -93,7 +99,9 @@ class TestFunctions(unittest.TestCase):
         command = f"grep -P '{pattern}' {log_file}"
 
         child = pexpect.spawn(
-            f"{LSHELL} --config {CONFIG} " '--allowed "+ [\'grep\']" --forbidden "[]"'
+            f"{LSHELL} --config {CONFIG} "
+            '--allowed "+ [\'grep\']" --forbidden "[]" '
+            f"{TESTFILES_PATH_ARG}"
         )
         child.expect(PROMPT)
 

@@ -1,6 +1,7 @@
 """Functional attacker/sysadmin behavior tests for lshell sessions."""
 
 import os
+import tempfile
 import unittest
 from getpass import getuser
 
@@ -10,6 +11,7 @@ import pexpect
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG = f"{TOPDIR}/test/testfiles/test.conf"
 LSHELL = f"{TOPDIR}/bin/lshell"
+SOURCE_FIXTURE = f"{TOPDIR}/test/testfiles/source_command_fixture.lsh"
 USER = getuser()
 PROMPT = f"{USER}:~\\$"
 
@@ -17,12 +19,16 @@ PROMPT = f"{USER}:~\\$"
 class TestUserBehaviorSecurityFunctional(unittest.TestCase):
     """End-to-end tests that mimic realistic operator and attacker behavior."""
 
-    def _spawn_shell(self, extra_args=""):
+    def _spawn_shell(self, extra_args="", env=None):
         """Spawn lshell and wait for prompt."""
+        child_env = os.environ.copy()
+        if env:
+            child_env.update(env)
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} {extra_args}",
             encoding="utf-8",
             timeout=10,
+            env=child_env,
         )
         child.expect(PROMPT)
         return child
@@ -92,3 +98,58 @@ class TestUserBehaviorSecurityFunctional(unittest.TestCase):
             self._exit_shell(child)
         finally:
             child.close()
+
+    def test_source_is_blocked_by_default_but_shell_remains_usable(self):
+        """Interactive source should require explicit admin opt-in."""
+        child = self._spawn_shell("--strict 0")
+        try:
+            body = self._run_command(child, f"source {SOURCE_FIXTURE}")
+            self.assertIn("lshell: unknown syntax: source", body)
+
+            still_usable = self._run_command(child, "echo STILL_OK")
+            self.assertIn("STILL_OK", still_usable)
+            self._exit_shell(child)
+        finally:
+            child.close()
+
+    def test_export_rejects_shellopts_and_session_recovers(self):
+        """Dangerous bash-control variables should be rejected interactively."""
+        child = self._spawn_shell("--strict 0 --forbidden \"[]\" --allowed \"+['export']\"")
+        try:
+            body = self._run_command(child, "export SHELLOPTS=xtrace")
+            self.assertIn("lshell: forbidden environment variable: SHELLOPTS", body)
+
+            still_usable = self._run_command(child, "echo AFTER_BLOCK")
+            self.assertIn("AFTER_BLOCK", still_usable)
+            self._exit_shell(child)
+        finally:
+            child.close()
+
+    def test_lshell_args_env_cannot_override_active_config(self):
+        """External LSHELL_ARGS must not be able to swap in a weaker config."""
+        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".conf") as handle:
+            handle.write(
+                "[global]\n"
+                "logpath : /tmp/lshell-logs/\n\n"
+                "[default]\n"
+                "allowed : ['echo','id']\n"
+                "forbidden : [';','&','|','`','>','<','$(','${']\n"
+                "warning_counter : 2\n"
+                "strict : 0\n"
+            )
+            malicious_config = handle.name
+
+        try:
+            child = self._spawn_shell(
+                "--strict 0",
+                env={"LSHELL_ARGS": f"['--config', '{malicious_config}']"},
+            )
+            try:
+                body = self._run_command(child, "id")
+                self.assertIn("lshell:", body)
+                self.assertIn("id", body)
+                self.assertNotIn("uid=", body)
+            finally:
+                self._exit_shell(child)
+        finally:
+            os.remove(malicious_config)

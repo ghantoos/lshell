@@ -24,7 +24,6 @@ POLICY_HELP_COMMANDS = [
     "history",
     "jobs",
     "lshow",
-    "source",
 ]
 
 

@@ -12,7 +12,7 @@ import shlex
 import shutil
 import threading
 from getpass import getuser
-from time import strftime, gmtime
+from time import strftime, localtime
 import signal
 
 # import lshell specifics
@@ -364,11 +364,6 @@ def _resolve_trusted_shell():
     return None
 
 
-def _is_bash_function_env_name(name):
-    """Return True for env vars used by Bash function import."""
-    return name.startswith("BASH_FUNC_")
-
-
 def _expand_braced_parameter(expr, support_advanced=True):
     """Expand ${...} expressions for the supported shell parameter forms."""
     if not expr:
@@ -589,7 +584,11 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
     detached_session = True
-    exec_env = dict(os.environ)
+    exec_env = {
+        key: value
+        for key, value in os.environ.items()
+        if not variables.should_strip_from_exec_env(key)
+    }
     runtime_limits = containment.get_runtime_limits(conf or {})
     command_timeout = runtime_limits.command_timeout
     unsupported_limits = containment.unsupported_rlimits(runtime_limits)
@@ -605,13 +604,6 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             conf[logged_key] = sorted(already_logged.union(pending))
     if extra_env:
         exec_env.update(extra_env)
-    # Prevent non-interactive shell startup file injection.
-    exec_env.pop("BASH_ENV", None)
-    exec_env.pop("ENV", None)
-    # Prevent function import from environment (e.g. BASH_FUNC_* poisoning).
-    for key in list(exec_env):
-        if _is_bash_function_env_name(key):
-            exec_env.pop(key, None)
 
     class CtrlZException(Exception):
         """Custom exception to handle Ctrl+Z (SIGTSTP)."""
@@ -806,6 +798,7 @@ def parse_ps1(ps1):
     cwd = os.getcwd()
     home = os.path.expanduser("~")
     prompt_symbol = "#" if os.geteuid() == 0 else "$"
+    current_time = localtime()
 
     # Define LPS1 replacement mappings
     replacements = {
@@ -816,11 +809,11 @@ def parse_ps1(ps1):
         r"\W": os.path.basename(cwd),
         r"\$": prompt_symbol,
         r"\\": "\\",
-        r"\t": strftime("%H:%M:%S", gmtime()),
-        r"\T": strftime("%I:%M:%S", gmtime()),
-        r"\A": strftime("%H:%M", gmtime()),
-        r"\@": strftime("%I:%M:%S%p", gmtime()),
-        r"\d": strftime("%a %b %d", gmtime()),
+        r"\t": strftime("%H:%M:%S", current_time),
+        r"\T": strftime("%I:%M:%S", current_time),
+        r"\A": strftime("%H:%M", current_time),
+        r"\@": strftime("%I:%M:%S%p", current_time),
+        r"\d": strftime("%a %b %d", current_time),
     }
     # Replace each placeholder with its corresponding value
     for placeholder, value in replacements.items():

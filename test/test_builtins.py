@@ -1,6 +1,7 @@
 """Functional tests for lshell built-in commands"""
 
 import os
+import tempfile
 import unittest
 import subprocess
 from getpass import getuser
@@ -160,47 +161,61 @@ class TestFunctions(unittest.TestCase):
     def test_source_valid_file(self):
         """F69 | Test sourcing a valid environment file sets variables"""
 
-        # Start lshell and source the environment file
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
-        child.expect(PROMPT)
+        with tempfile.NamedTemporaryFile(
+            "w", delete=False, dir=os.path.expanduser("~")
+        ) as env_file:
+            env_file.write('export SOURCE_DOUBLE_QUOTED="hello world"\n')
+            env_path = env_file.name
 
-        # Source the file and check if the variable is set
-        child.sendline(f"source {SOURCE_FIXTURE}")
-        child.expect(PROMPT)
-        child.sendline("echo $SOURCE_DOUBLE_QUOTED")
-        child.expect(PROMPT)
+        try:
+            child = pexpect.spawn(
+                f"{LSHELL} --config {CONFIG} --allowed \"+['source']\""
+            )
+            child.expect(PROMPT)
 
-        output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = "hello world"
+            child.sendline(f"source {env_path}")
+            child.expect(PROMPT)
+            child.sendline("echo $SOURCE_DOUBLE_QUOTED")
+            child.expect(PROMPT)
 
-        assert (
-            output == expected_output
-        ), f"Expected '{expected_output}', got '{output}'"
+            output = child.before.decode("utf-8").split("\n")[1].strip()
+            expected_output = "hello world"
 
-        # Clean up and end session
-        self.do_exit(child)
+            assert (
+                output == expected_output
+            ), f"Expected '{expected_output}', got '{output}'"
+            self.do_exit(child)
+        finally:
+            os.remove(env_path)
 
     def test_source_overwrite_variable(self):
         """F70 | Test sourcing a file overwrites existing environment variables"""
 
-        # Start lshell, set initial variable, and source file to overwrite it
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --allowed \"+['source']\"")
-        child.expect(PROMPT)
+        with tempfile.NamedTemporaryFile(
+            "w", delete=False, dir=os.path.expanduser("~")
+        ) as env_file:
+            env_file.write("export SOURCE_SIMPLE=value\n")
+            env_path = env_file.name
 
-        # Set initial variable and source the file
-        child.sendline("export SOURCE_SIMPLE='initial_value'")
-        child.expect(PROMPT)
-        child.sendline(f"source {SOURCE_FIXTURE}")
-        child.expect(PROMPT)
-        child.sendline("echo $SOURCE_SIMPLE")
-        child.expect(PROMPT)
+        try:
+            child = pexpect.spawn(
+                f"{LSHELL} --config {CONFIG} --allowed \"+['source','export']\""
+            )
+            child.expect(PROMPT)
 
-        output = child.before.decode("utf-8").split("\n")[1].strip()
-        expected_output = "value"
+            child.sendline("export SOURCE_SIMPLE='initial_value'")
+            child.expect(PROMPT)
+            child.sendline(f"source {env_path}")
+            child.expect(PROMPT)
+            child.sendline("echo $SOURCE_SIMPLE")
+            child.expect(PROMPT)
 
-        assert (
-            output == expected_output
-        ), f"Expected '{expected_output}', got '{output}'"
+            output = child.before.decode("utf-8").split("\n")[1].strip()
+            expected_output = "value"
 
-        # Clean up and end session
-        self.do_exit(child)
+            assert (
+                output == expected_output
+            ), f"Expected '{expected_output}', got '{output}'"
+            self.do_exit(child)
+        finally:
+            os.remove(env_path)

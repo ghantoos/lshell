@@ -13,6 +13,7 @@ import re
 import signal
 import readline
 import shutil
+import shlex
 
 # import lshell specifics
 from lshell.config.runtime import CheckConfig
@@ -43,6 +44,45 @@ _READLINE_COMMAND_FUNC = None
 _READLINE_HISTORY_SEARCH_CALLBACKS = []
 _ACTIVE_HISTORY_SEARCH_SHELL = None
 _ACTIVE_COMPLETION_SHELL = None
+
+
+def _classify_scp_direction(command_line):
+    """Return the SCP transfer direction for a forced SSH command.
+
+    Returns ``"download"`` for ``-f``, ``"upload"`` for ``-t``, ``"ambiguous"``
+    when both appear, and ``None`` when the command line does not contain a
+    recognized transfer direction.
+    """
+    try:
+        tokens = shlex.split(command_line, posix=True)
+    except ValueError:
+        return None
+
+    if not tokens or tokens[0] != "scp":
+        return None
+
+    saw_download = False
+    saw_upload = False
+
+    for token in tokens[1:]:
+        if token == "--":
+            break
+        if token == "-" or not token.startswith("-") or token.startswith("--"):
+            break
+
+        for option in token[1:]:
+            if option == "f":
+                saw_download = True
+            elif option == "t":
+                saw_upload = True
+
+    if saw_download and saw_upload:
+        return "ambiguous"
+    if saw_download:
+        return "download"
+    if saw_upload:
+        return "upload"
+    return None
 
 
 def _readline_uses_gnu_backend():
@@ -345,8 +385,9 @@ class ShellCmd(cmd.Cmd, object):
                 if self.conf["ssh"].startswith("scp "):
                     if self.conf["scp"] == 1 or "scp" in self.conf["overssh"]:
                         _with_protocol_in_overssh(["scp"])
+                        scp_direction = _classify_scp_direction(self.conf["ssh"])
 
-                        if " -f " in self.conf["ssh"]:
+                        if scp_direction == "download":
                             # case scp download is allowed
                             if self.conf["scp_download"]:
                                 self.log.error(f'SCP: GET "{self.conf["ssh"]}"')
@@ -362,7 +403,7 @@ class ShellCmd(cmd.Cmd, object):
                                     reason="forbidden SCP download",
                                 )
                                 sys.exit(1)
-                        elif " -t " in self.conf["ssh"]:
+                        elif scp_direction == "upload":
                             # case scp upload is allowed
                             if self.conf["scp_upload"]:
                                 if "scpforce" in self.conf:
@@ -389,6 +430,17 @@ class ShellCmd(cmd.Cmd, object):
                                     reason="forbidden SCP upload",
                                 )
                                 sys.exit(1)
+                        else:
+                            self.log.error(
+                                f'SCP: unrecognized transfer direction: "{self.conf["ssh"]}"'
+                            )
+                            audit.log_command_event(
+                                self.conf,
+                                self.conf["ssh"],
+                                allowed=False,
+                                reason="forbidden SCP direction",
+                            )
+                            sys.exit(1)
                         _validate_ssh_command()
                         retcode = _execute_trusted_ssh_protocol(trusted_protocol=False)
                         self.log.error("SCP disconnect")

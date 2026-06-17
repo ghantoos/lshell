@@ -153,6 +153,13 @@ Key settings to review:
 - `umask`
 - runtime containment: `max_sessions_per_user`, `max_background_jobs`, `command_timeout`, `max_processes`
 
+Security note:
+`path` restrictions apply to commands parsed by `lshell`, but they do not inspect
+individual file requests handled inside the SFTP protocol itself. If you enable
+`sftp`, treat OpenSSH `ChrootDirectory` plus `ForceCommand internal-sftp` as the
+real filesystem boundary, and use SSH-side controls such as `DisableForwarding`
+or read-only SFTP modes when needed.
+
 CLI overrides are supported, for example:
 
 ```bash

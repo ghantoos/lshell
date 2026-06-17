@@ -491,6 +491,25 @@ class TestSessionInteractionFunctional(unittest.TestCase):
                 self._safe_exit(child)
                 child.close(force=True)
 
+    def test_inherited_path_does_not_hijack_allowed_command_resolution(self):
+        """Ambient PATH should not shadow an allowed command with a rogue binary."""
+        with tempfile.TemporaryDirectory(prefix="lshell-path-shadow-") as bindir:
+            script_path = os.path.join(bindir, "ls")
+            with open(script_path, "w", encoding="utf-8") as handle:
+                handle.write("#!/bin/sh\necho PWNED_STARTUP_PATH\n")
+            os.chmod(script_path, 0o700)
+
+            child = self._spawn_shell(
+                "--allowed \"['ls']\" --strict 0",
+                env={"PATH": f"{bindir}:{os.environ.get('PATH', '')}"},
+            )
+            try:
+                output = self._run_command(child, "ls")
+                self.assertNotIn("PWNED_STARTUP_PATH", output)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
     def test_malformed_sudo_dash_u_is_denied_and_session_recovers(self):
         """Malformed `sudo -u` forms should be denied without killing the session."""
         child = self._spawn_shell(

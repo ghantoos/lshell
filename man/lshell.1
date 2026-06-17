@@ -434,6 +434,11 @@ allow or forbid the use of sftp connection - set to 1 or 0.
 
 WARNING: This option will not work if you are using OpenSSH's \
 internal-sftp service (e.g. when configured in chroot)
+
+WARNING: lshell path restrictions do not inspect per-file requests once the \
+SFTP protocol is handed to sftp-server. Use sshd_config controls such as \
+ChrootDirectory, ForceCommand internal-sftp, DisableForwarding, or read-only \
+SFTP modes to enforce the real filesystem boundary.
 .TP
 .I sudo_commands
 a list of the allowed commands that can be used with sudo(8). If set to \

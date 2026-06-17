@@ -355,6 +355,16 @@ _TRUSTED_SHELL_PATHS = (
     "/usr/bin/sh",
 )
 
+_TRUSTED_RUNTIME_PATH_DIRS = (
+    "/opt/homebrew/bin",
+    "/usr/local/sbin",
+    "/usr/local/bin",
+    "/usr/sbin",
+    "/usr/bin",
+    "/sbin",
+    "/bin",
+)
+
 
 def _resolve_trusted_shell():
     """Return an absolute trusted shell interpreter path, or None."""
@@ -362,6 +372,45 @@ def _resolve_trusted_shell():
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
     return None
+
+
+def _split_path_entries(path_value):
+    """Split a PATH-style string into non-empty entries."""
+    if not path_value:
+        return []
+    return [entry for entry in str(path_value).split(os.pathsep) if entry]
+
+
+def build_trusted_path(env_path="", allowed_cmd_path=None):
+    """Return a deterministic PATH for restricted command resolution."""
+    directories = []
+
+    for entry in _split_path_entries(env_path):
+        directories.append(entry)
+
+    for entry in allowed_cmd_path or []:
+        if entry:
+            directories.append(str(entry))
+
+    for entry in _TRUSTED_RUNTIME_PATH_DIRS:
+        directories.append(entry)
+
+    unique_directories = []
+    seen = set()
+    for entry in directories:
+        if entry in seen:
+            continue
+        seen.add(entry)
+        unique_directories.append(entry)
+
+    return os.pathsep.join(unique_directories) if unique_directories else os.defpath
+
+
+def runtime_search_path(conf=None):
+    """Return the PATH used for restricted lookup and child execution."""
+    if conf and conf.get("runtime_path"):
+        return conf["runtime_path"]
+    return build_trusted_path()
 
 
 def _expand_braced_parameter(expr, support_advanced=True):
@@ -516,7 +565,7 @@ def _is_allowed_command(executable, command, conf):
     return executable in conf["allowed"] or command in conf["allowed"]
 
 
-def _command_exists(executable):
+def _command_exists(executable, conf=None):
     """Return True when command token resolves to a runnable command."""
     if not executable:
         return False
@@ -527,7 +576,7 @@ def _command_exists(executable):
     if "/" in executable:
         return os.path.isfile(executable) and os.access(executable, os.X_OK)
 
-    return shutil.which(executable) is not None
+    return shutil.which(executable, path=runtime_search_path(conf)) is not None
 
 
 def handle_builtin_command(full_command, executable, argument, shell_context):
@@ -589,6 +638,7 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
         for key, value in os.environ.items()
         if not variables.should_strip_from_exec_env(key)
     }
+    exec_env["PATH"] = runtime_search_path(conf)
     runtime_limits = containment.get_runtime_limits(conf or {})
     command_timeout = runtime_limits.command_timeout
     unsupported_limits = containment.unsupported_rlimits(runtime_limits)

@@ -351,12 +351,84 @@ class TestSSHScpSftpAttackSurface(unittest.TestCase):
         finally:
             self._restore_ssh_env(saved_env)
 
+    def test_run_overssh_rejects_clustered_scp_download_when_scp_download_disabled(self):
+        """Deny clustered scp download flags such as -pf when download is disabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(
+                self.args + ["--scp=1", "--scp_download=0", "--strict=0"]
+            ).returnconf()
+            for command in (
+                f"scp -pf {conf['home_path']}/artifact",
+                f"scp -p -f {conf['home_path']}/artifact",
+            ):
+                with self.subTest(command=command):
+                    conf["ssh"] = command
+                    with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                        with self.assertRaises(SystemExit) as cm:
+                            ShellCmd(
+                                conf,
+                                args=[],
+                                stdin=io.StringIO(),
+                                stdout=io.StringIO(),
+                                stderr=io.StringIO(),
+                            )
+                    self.assertEqual(cm.exception.code, 1)
+                    mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
     def test_run_overssh_rejects_scp_upload_when_scp_upload_disabled(self):
         """Deny scp -t when scp_upload flag is disabled."""
         saved_env = self._with_forced_ssh_env()
         try:
             conf = CheckConfig(self.args + ["--scp=1", "--scp_upload=0", "--strict=0"]).returnconf()
             conf["ssh"] = f"scp -t {conf['home_path']}"
+            with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                with self.assertRaises(SystemExit) as cm:
+                    ShellCmd(
+                        conf,
+                        args=[],
+                        stdin=io.StringIO(),
+                        stdout=io.StringIO(),
+                        stderr=io.StringIO(),
+                    )
+            self.assertEqual(cm.exception.code, 1)
+            mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_clustered_scp_upload_when_scp_upload_disabled(self):
+        """Deny clustered scp upload flags such as -pt when upload is disabled."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--scp=1", "--scp_upload=0", "--strict=0"]).returnconf()
+            for command in (
+                f"scp -pt {conf['home_path']}",
+                f"scp -r -t {conf['home_path']}",
+            ):
+                with self.subTest(command=command):
+                    conf["ssh"] = command
+                    with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
+                        with self.assertRaises(SystemExit) as cm:
+                            ShellCmd(
+                                conf,
+                                args=[],
+                                stdin=io.StringIO(),
+                                stdout=io.StringIO(),
+                                stderr=io.StringIO(),
+                            )
+                    self.assertEqual(cm.exception.code, 1)
+                    mock_exec.assert_not_called()
+        finally:
+            self._restore_ssh_env(saved_env)
+
+    def test_run_overssh_rejects_scp_without_recognized_direction(self):
+        """Forced-command SCP should fail closed when neither -f nor -t is present."""
+        saved_env = self._with_forced_ssh_env()
+        try:
+            conf = CheckConfig(self.args + ["--scp=1", "--strict=0"]).returnconf()
+            conf["ssh"] = f"scp -p {conf['home_path']}/artifact"
             with patch("lshell.shellcmd.utils.cmd_parse_execute") as mock_exec:
                 with self.assertRaises(SystemExit) as cm:
                     ShellCmd(

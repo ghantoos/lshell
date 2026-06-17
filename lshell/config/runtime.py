@@ -625,18 +625,21 @@ class CheckConfig:
             )
 
         if self.conf["env_path"]:
-            new_path = f"{self.conf['env_path']}:{os.environ['PATH']}"
-
-            # Check if the new path is valid
-            if all(
-                c in string.ascii_letters + string.digits + "/:-_." for c in new_path
-            ) and not new_path.startswith(":"):
-                os.environ["PATH"] = new_path
-            else:
+            if not all(
+                c in string.ascii_letters + string.digits + "/:-_."
+                for c in self.conf["env_path"]
+            ) or self.conf["env_path"].startswith(":"):
                 self.stderr.write(
                     f"lshell: config: env_path must be a valid $PATH: {self.conf['env_path']}\n"
                 )
                 sys.exit(1)
+                return
+
+        self.conf["runtime_path"] = utils.build_trusted_path(
+            env_path=self.conf["env_path"],
+            allowed_cmd_path=self.conf["allowed_cmd_path"],
+        )
+        os.environ["PATH"] = self.conf["runtime_path"]
 
         # append default commands to allowed list
         self.conf["allowed"] += builtincmd.default_builtins_list
@@ -656,8 +659,6 @@ class CheckConfig:
         # add all commands present in allowed_cmd_path if specified
         if self.conf["allowed_cmd_path"]:
             for path in self.conf["allowed_cmd_path"]:
-                # add path to PATH env variable
-                os.environ["PATH"] += f":{path}"
                 # find executable file, and add them to allowed commands
                 for item in os.listdir(path):
                     cmd = os.path.join(path, item)

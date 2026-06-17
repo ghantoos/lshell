@@ -376,7 +376,7 @@ def execute(decisions, runtime):
                         for executable_name, _, _, _ in parsed_parts
                         if executable_name
                         and executable_name not in builtincmd.builtins_list
-                        and not utils._command_exists(executable_name)
+                        and not utils._command_exists(executable_name, shell_context.conf)
                     ),
                     None,
                 )

@@ -233,7 +233,7 @@ class TestAttackSurfacePart2(unittest.TestCase):
 
         self.assertEqual(ret, 0)
         exec_env = mock_popen.call_args.kwargs["env"]
-        self.assertEqual(exec_env["PATH"], "/usr/bin")
+        self.assertEqual(exec_env["PATH"], utils.build_trusted_path())
         self.assertNotIn("SHELLOPTS", exec_env)
         self.assertNotIn("PS4", exec_env)
         self.assertNotIn("PROMPT_COMMAND", exec_env)

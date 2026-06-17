@@ -12,7 +12,13 @@ from unittest.mock import patch
 
 # import lshell specifics
 from lshell.config.runtime import CheckConfig
-from lshell.utils import get_aliases, updateprompt, parse_ps1, getpromptbase
+from lshell.utils import (
+    build_trusted_path,
+    get_aliases,
+    updateprompt,
+    parse_ps1,
+    getpromptbase,
+)
 from lshell import builtincmd
 from lshell import sec
 from lshell.shellcmd import ShellCmd
@@ -269,10 +275,9 @@ class TestFunctions(unittest.TestCase):
         ]
         CheckConfig(args).returnconf()
 
-        # Verify that the $PATH has been updated correctly
-        expected_path = f"{random_path}:{original_path}"
+        # Verify that the runtime PATH has been rebuilt from trusted/configured entries.
+        expected_path = build_trusted_path(random_path)
 
-        # Assuming CheckConfig sets the environment variable
         self.assertEqual(os.environ["PATH"], expected_path)
 
         # Reset the PATH environment variable

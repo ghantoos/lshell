@@ -852,6 +852,56 @@ class TestAttackSurfacePart2(unittest.TestCase):
         finally:
             os.chdir(previous_cwd)
 
+    def test_check_path_blocks_bareword_symlink_operand_for_text_filters(self):
+        """awk/sed/sort file operands must not bypass path ACL as barewords."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-filter-symlink-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+
+                os.chdir(tmpdir)
+
+                for command in (
+                    "awk 1 passwdlink",
+                    "awk -f passwdlink",
+                    "sed -n 1p passwdlink",
+                    "sed -e 1p passwdlink",
+                    "sed -f passwdlink",
+                    "sort passwdlink",
+                ):
+                    with self.subTest(command=command):
+                        conf = CheckConfig(
+                            self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                        ).returnconf()
+                        os.chdir(tmpdir)
+                        ret, _conf = sec.check_path(command, conf, strict=0)
+                        self.assertEqual(ret, 1)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_check_path_keeps_awk_and_sed_scripts_from_being_treated_as_files(self):
+        """awk/sed inline scripts are syntax operands; following files are paths."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-filter-script-", dir="/tmp") as tmpdir:
+                awk_script_name = "passwdlink"
+                sed_script_name = "sedscript"
+                for name in (awk_script_name, sed_script_name):
+                    os.symlink("/etc/passwd", os.path.join(tmpdir, name))
+
+                conf = CheckConfig(
+                    self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                ).returnconf()
+                os.chdir(tmpdir)
+
+                for command in (f"awk {awk_script_name}", f"sed {sed_script_name}"):
+                    with self.subTest(command=command):
+                        ret, _conf = sec.check_path(command, conf, strict=0)
+                        self.assertEqual(ret, 0)
+        finally:
+            os.chdir(previous_cwd)
+
     def test_check_path_keeps_non_file_command_bareword_symlink_usable(self):
         """Non-filesystem commands should not treat generic barewords as path operands."""
         previous_cwd = os.getcwd()

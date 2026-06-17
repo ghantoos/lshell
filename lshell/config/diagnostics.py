@@ -42,6 +42,7 @@ DISPLAY_KEY_ORDER = [
     "scp_upload",
     "scp_download",
     "sftp",
+    "sftp_unsafe_legacy",
     "umask",
     "aliases",
     "messages",
@@ -107,6 +108,9 @@ def _build_runtime_policy(conf_raw, username):
         "policy_commands",
         "scp_upload",
         "scp_download",
+        "scp",
+        "sftp",
+        "sftp_unsafe_legacy",
     ]:
         try:
             if len(conf_raw[item]) == 0:
@@ -147,7 +151,7 @@ def _build_runtime_policy(conf_raw, username):
         policy["path"] = ["", ""]
         policy["path"][0] = policy["home_path"]
 
-    policy["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
+    policy["allowed"] += builtincmd.default_builtins_list
     if policy.get("policy_commands") != 1:
         policy["allowed"] = [
             cmd for cmd in policy["allowed"] if cmd not in builtincmd.POLICY_COMMANDS

@@ -7,12 +7,18 @@ import sys
 import tempfile
 import unittest
 from getpass import getuser
-from time import strftime, gmtime
+from time import strftime, localtime
 from unittest.mock import patch
 
 # import lshell specifics
 from lshell.config.runtime import CheckConfig
-from lshell.utils import get_aliases, updateprompt, parse_ps1, getpromptbase
+from lshell.utils import (
+    build_trusted_path,
+    get_aliases,
+    updateprompt,
+    parse_ps1,
+    getpromptbase,
+)
 from lshell import builtincmd
 from lshell import sec
 from lshell.shellcmd import ShellCmd
@@ -269,10 +275,9 @@ class TestFunctions(unittest.TestCase):
         ]
         CheckConfig(args).returnconf()
 
-        # Verify that the $PATH has been updated correctly
-        expected_path = f"{random_path}:{original_path}"
+        # Verify that the runtime PATH has been rebuilt from trusted/configured entries.
+        expected_path = build_trusted_path(random_path)
 
-        # Assuming CheckConfig sets the environment variable
         self.assertEqual(os.environ["PATH"], expected_path)
 
         # Reset the PATH environment variable
@@ -317,7 +322,10 @@ class TestFunctions(unittest.TestCase):
     def test_lps1_user_host_time(self):
         r"""U32 | LPS1 using \u@\h - \t> format"""
         os.environ["LPS1"] = r"\u@\h - \t> "
-        expected = f"{getuser()}@{os.uname()[1].split('.')[0]} - {strftime('%H:%M:%S', gmtime())}> "
+        expected = (
+            f"{getuser()}@{os.uname()[1].split('.')[0]} - "
+            f"{strftime('%H:%M:%S', localtime())}> "
+        )
         prompt = parse_ps1(os.getenv("LPS1"))
         self.assertEqual(prompt, expected)
         del os.environ["LPS1"]

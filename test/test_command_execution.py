@@ -2,6 +2,7 @@
 
 import os
 import random
+import re
 import unittest
 from getpass import getuser
 import pexpect
@@ -17,9 +18,26 @@ PROMPT_ANY_DIR = f"{USER}:.+\\$"
 class TestFunctions(unittest.TestCase):
     """Functional tests for lshell"""
 
+    @staticmethod
+    def _normalize_ls_error_prefix(text):
+        """Collapse pinned absolute ls paths back to the user-facing command name."""
+        return re.sub(r"^/\S*/ls:", "ls:", text)
+
+    def _clean_env(self, extra=None):
+        """Return a sanitized environment for deterministic child shells."""
+        env = os.environ.copy()
+        env.pop("LSHELL_ARGS", None)
+        env.pop("LPS1", None)
+        if extra:
+            env.update(extra)
+        return env
+
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
-        self.child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --strict 1")
+        self.child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --strict 1",
+            env=self._clean_env(),
+        )
         self.child.expect(PROMPT)
 
     def tearDown(self):
@@ -48,7 +66,10 @@ class TestFunctions(unittest.TestCase):
 
     def test_exitcode_with_separator_external_cmd(self):
         """F16(a) | external command exit codes with separator"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"',
+            env=self._clean_env(),
+        )
         child.expect(PROMPT)
 
         expected_1 = (
@@ -63,14 +84,17 @@ class TestFunctions(unittest.TestCase):
         result_1 = result[1].strip()
         result_2 = result[2].strip()
         result_3 = result[3].strip()
-        self.assertEqual(expected_1, result_1)
+        self.assertEqual(expected_1, self._normalize_ls_error_prefix(result_1))
         self.assertEqual(expected_2, result_2)
         self.assertEqual(expected_3, result_3)
         self.do_exit(child)
 
     def test_exitcode_with_separator_external_cmd_b(self):
         """F16(b) | external command exit codes with separator"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"',
+            env=self._clean_env(),
+        )
         child.expect(PROMPT)
 
         expected_1 = (
@@ -83,13 +107,16 @@ class TestFunctions(unittest.TestCase):
         result = child.before.decode("utf8").split("\n")
         result_1 = result[1].strip()
         result_2 = result[2].strip()
-        self.assertEqual(expected_1, result_1)
+        self.assertEqual(expected_1, self._normalize_ls_error_prefix(result_1))
         self.assertEqual(expected_2, result_2)
         self.do_exit(child)
 
     def test_exitcode_without_separator_external_cmd(self):
         """F17 | external command exit codes without separator"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"')
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} " '--forbidden "[]"',
+            env=self._clean_env(),
+        )
         child.expect(PROMPT)
 
         expected = "2"
@@ -103,7 +130,10 @@ class TestFunctions(unittest.TestCase):
 
     def test_cd_and_command(self):
         """F24 | cd && command should not be interpreted by internal function"""
-        child = pexpect.spawn(f"{LSHELL} " f"--config {CONFIG} --forbidden \"-['&']\"")
+        child = pexpect.spawn(
+            f"{LSHELL} " f"--config {CONFIG} --forbidden \"-['&']\"",
+            env=self._clean_env(),
+        )
         child.expect(PROMPT)
 
         expected = "OK"
@@ -115,7 +145,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_ls_non_existing_directory_and_echo(self):
         """Test: ls non_existing_directory && echo nothing"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}", env=self._clean_env())
         child.expect(PROMPT)
 
         child.sendline("ls non_existing_directory && echo nothing")
@@ -128,7 +158,10 @@ class TestFunctions(unittest.TestCase):
 
     def test_ls_and_echo_ok(self):
         """Test: ls && echo OK"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['&']\"")
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --forbidden \"-['&']\"",
+            env=self._clean_env(),
+        )
         child.expect(PROMPT)
 
         child.sendline("ls && echo OK")
@@ -141,7 +174,10 @@ class TestFunctions(unittest.TestCase):
 
     def test_ls_non_existing_directory_or_echo_ok(self):
         """Test: ls non_existing_directory || echo OK"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG} --forbidden \"-['|']\"")
+        child = pexpect.spawn(
+            f"{LSHELL} --config {CONFIG} --forbidden \"-['|']\"",
+            env=self._clean_env(),
+        )
         child.expect(PROMPT)
 
         child.sendline("ls non_existing_directory || echo OK")
@@ -154,7 +190,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_ls_or_echo_nothing(self):
         """Test: ls || echo nothing"""
-        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}")
+        child = pexpect.spawn(f"{LSHELL} --config {CONFIG}", env=self._clean_env())
         child.expect(PROMPT)
 
         child.sendline("ls || echo nothing")
@@ -168,7 +204,8 @@ class TestFunctions(unittest.TestCase):
     def test_multicmd_with_wrong_arg_should_fail(self):
         """F20 | Allowing 'echo asd': Test 'echo qwe' should fail"""
         child = pexpect.spawn(
-            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\"",
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -183,7 +220,8 @@ class TestFunctions(unittest.TestCase):
     def test_multicmd_with_near_exact_arg_should_fail(self):
         """F41 | Allowing 'echo asd': Test 'echo asds' should fail"""
         child = pexpect.spawn(
-            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\"",
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -198,7 +236,8 @@ class TestFunctions(unittest.TestCase):
     def test_multicmd_without_arg_should_fail(self):
         """F42 | Allowing 'echo asd': Test 'echo' should fail"""
         child = pexpect.spawn(
-            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\"",
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -214,7 +253,8 @@ class TestFunctions(unittest.TestCase):
         """F43 | Allowing 'echo asd': Test 'echo asd' should pass"""
 
         child = pexpect.spawn(
-            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\""
+            f"{LSHELL} " f"--config {CONFIG} " "--allowed \"['echo asd']\"",
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -230,7 +270,8 @@ class TestFunctions(unittest.TestCase):
         """F45 | Pipeline should pass stdout between commands."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
-            "--forbidden \"-['|']\" --allowed \"+['printf', 'wc']\""
+            "--forbidden \"-['|']\" --allowed \"+['printf', 'wc']\"",
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -244,7 +285,8 @@ class TestFunctions(unittest.TestCase):
         """F46 | Redirections should be handled by shell semantics."""
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --path \"['/tmp']\" "
-            "--forbidden \"-['>','<','&']\" --allowed \"+['cat']\""
+            "--forbidden \"-['>','<','&']\" --allowed \"+['cat']\"",
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -263,7 +305,8 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} "
             f"--allowed \"+['{missing_cmd}']\" "
-            '--forbidden "[]"'
+            '--forbidden "[]"',
+            env=self._clean_env(),
         )
         child.expect(PROMPT)
 
@@ -282,7 +325,8 @@ class TestFunctions(unittest.TestCase):
             f"{LSHELL} --config {CONFIG} --strict 1 "
             "--path \"['/tmp']\" "
             '--forbidden "[]" '
-            "--allowed \"+['printf','wc','cat','pwd','true','false']\""
+            "--allowed \"+['printf','wc','cat','pwd','true','false']\"",
+            env=self._clean_env(),
         )
         temp_file = f"/tmp/lshell_matrix_{os.getpid()}.txt"
 
@@ -325,7 +369,10 @@ class TestFunctions(unittest.TestCase):
 
     def test_multiline_and_interrupt_storm(self):
         """F70 | Repeated multiline and Ctrl-C should recover cleanly."""
-        child = pexpect.spawn(f'{LSHELL} --config {CONFIG} --strict 1 --forbidden "[]"')
+        child = pexpect.spawn(
+            f'{LSHELL} --config {CONFIG} --strict 1 --forbidden "[]"',
+            env=self._clean_env(),
+        )
 
         def expect_clean_prompt():
             child.expect(PROMPT)
@@ -365,7 +412,8 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
             '--forbidden "[]" '
-            "--allowed \"+['printf','wc','pwd','true','false']\""
+            "--allowed \"+['printf','wc','pwd','true','false']\"",
+            env=self._clean_env(),
         )
         rng = random.Random(7101)
         executed_commands = []
@@ -407,7 +455,8 @@ class TestFunctions(unittest.TestCase):
         child = pexpect.spawn(
             f"{LSHELL} --config {CONFIG} --strict 1 "
             '--forbidden "[]" '
-            "--allowed \"+['sleep']\""
+            "--allowed \"+['sleep']\"",
+            env=self._clean_env(),
         )
 
         def expect_clean_prompt():

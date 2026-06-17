@@ -189,6 +189,58 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertNotIn("BASH_FUNC_echo%%", child_env)
         self.assertEqual(child_env.get("LSHELL_SAFE_ENV"), "ok")
 
+    @patch.dict(
+        os.environ,
+        {
+            "PATH": "/usr/bin",
+            "SHELLOPTS": "xtrace",
+            "PS4": "$(echo PWNED >&2)",
+            "PROMPT_COMMAND": "id",
+            "PYTHONPATH": "/tmp/evil",
+            "BASH_ENV": "/tmp/bashenv",
+            "BASH_FUNC_echo%%": "() { :; }",
+        },
+        clear=True,
+    )
+    @patch("lshell.utils.signal.getsignal", return_value=None)
+    @patch("lshell.utils.signal.signal")
+    @patch("lshell.utils.subprocess.Popen")
+    def test_exec_cmd_strips_shell_sensitive_environment_variables(
+        self, mock_popen, _mock_signal, _mock_getsignal
+    ):
+        """Regular command execution must scrub shell-sensitive inherited env vars."""
+
+        class FakeProc:
+            """Minimal subprocess fake for exec_cmd foreground path."""
+
+            def __init__(self):
+                self.returncode = 0
+                self.pid = 31337
+                self.args = ["bash", "-c", "echo hi"]
+                self.lshell_cmd = ""
+
+            def communicate(self):
+                """Simulate foreground process I/O completion."""
+                return None
+
+            def poll(self):
+                """Simulate an already-finished subprocess."""
+                return 0
+
+        mock_popen.return_value = FakeProc()
+
+        ret = utils.exec_cmd("echo hi")
+
+        self.assertEqual(ret, 0)
+        exec_env = mock_popen.call_args.kwargs["env"]
+        self.assertEqual(exec_env["PATH"], utils.build_trusted_path())
+        self.assertNotIn("SHELLOPTS", exec_env)
+        self.assertNotIn("PS4", exec_env)
+        self.assertNotIn("PROMPT_COMMAND", exec_env)
+        self.assertNotIn("PYTHONPATH", exec_env)
+        self.assertNotIn("BASH_ENV", exec_env)
+        self.assertFalse(any(name.startswith("BASH_FUNC_") for name in exec_env))
+
     def test_cmd_parse_execute_should_block_forbidden_env_assignment_via_assignment_only(
         self,
     ):
@@ -242,7 +294,11 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(mock_exec.call_count, 1)
-            self.assertEqual(mock_exec.call_args.args[0], "echo ok")
+            self.assertEqual(
+                os.path.basename(mock_exec.call_args.args[0].split()[0]),
+                "echo",
+            )
+            self.assertTrue(mock_exec.call_args.args[0].endswith(" ok"))
         finally:
             if original is None:
                 os.environ.pop("LSHELL_CHAIN_AND", None)
@@ -266,7 +322,11 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(mock_exec.call_count, 1)
-            self.assertEqual(mock_exec.call_args.args[0], "echo ok")
+            self.assertEqual(
+                os.path.basename(mock_exec.call_args.args[0].split()[0]),
+                "echo",
+            )
+            self.assertTrue(mock_exec.call_args.args[0].endswith(" ok"))
         finally:
             if original is None:
                 os.environ.pop("LSHELL_CHAIN_SEMI", None)
@@ -291,7 +351,13 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(mock_exec.call_count, 1)
-            self.assertEqual(mock_exec.call_args.args[0], "echo '$LSHELL_CHAIN_QUOTED'")
+            self.assertEqual(
+                os.path.basename(mock_exec.call_args.args[0].split()[0]),
+                "echo",
+            )
+            self.assertTrue(
+                mock_exec.call_args.args[0].endswith(" '$LSHELL_CHAIN_QUOTED'")
+            )
         finally:
             if original is None:
                 os.environ.pop("LSHELL_CHAIN_QUOTED", None)
@@ -320,7 +386,11 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 1)
         self.assertEqual(
-            mock_exec.call_args.args[0], "bash test/testfiles/login_script.sh"
+            os.path.basename(mock_exec.call_args.args[0].split()[0]),
+            "bash",
+        )
+        self.assertTrue(
+            mock_exec.call_args.args[0].endswith(" test/testfiles/login_script.sh")
         )
 
     def test_check_secure_blocks_braced_variable_expansion_when_forbidden(self):
@@ -719,8 +789,13 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 1)
         self.assertEqual(
-            mock_exec.call_args.args[0],
-            "echo ${LSHELL_MISSING:-fallback} ${#HOME}",
+            os.path.basename(mock_exec.call_args.args[0].split()[0]),
+            "echo",
+        )
+        self.assertTrue(
+            mock_exec.call_args.args[0].endswith(
+                " ${LSHELL_MISSING:-fallback} ${#HOME}"
+            )
         )
 
     def test_cmd_lpath_handles_paths_with_regex_metacharacters(self):
@@ -834,6 +909,92 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
 
+    def test_check_path_blocks_bareword_symlink_operand_for_file_command(self):
+        """Bareword symlinks must be canonicalized and validated for file commands."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-symlink-deny-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+
+                conf = CheckConfig(
+                    self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                ).returnconf()
+                os.chdir(tmpdir)
+
+                ret, _conf = sec.check_path("cat passwdlink", conf, strict=0)
+                self.assertEqual(ret, 1)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_check_path_blocks_bareword_symlink_operand_for_text_filters(self):
+        """awk/sed/sort file operands must not bypass path ACL as barewords."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-filter-symlink-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+
+                os.chdir(tmpdir)
+
+                for command in (
+                    "awk 1 passwdlink",
+                    "awk -f passwdlink",
+                    "sed -n 1p passwdlink",
+                    "sed -e 1p passwdlink",
+                    "sed -f passwdlink",
+                    "sort passwdlink",
+                ):
+                    with self.subTest(command=command):
+                        conf = CheckConfig(
+                            self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                        ).returnconf()
+                        os.chdir(tmpdir)
+                        ret, _conf = sec.check_path(command, conf, strict=0)
+                        self.assertEqual(ret, 1)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_check_path_keeps_awk_and_sed_scripts_from_being_treated_as_files(self):
+        """awk/sed inline scripts are syntax operands; following files are paths."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-filter-script-", dir="/tmp") as tmpdir:
+                awk_script_name = "passwdlink"
+                sed_script_name = "sedscript"
+                for name in (awk_script_name, sed_script_name):
+                    os.symlink("/etc/passwd", os.path.join(tmpdir, name))
+
+                conf = CheckConfig(
+                    self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                ).returnconf()
+                os.chdir(tmpdir)
+
+                for command in (f"awk {awk_script_name}", f"sed {sed_script_name}"):
+                    with self.subTest(command=command):
+                        ret, _conf = sec.check_path(command, conf, strict=0)
+                        self.assertEqual(ret, 0)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_check_path_keeps_non_file_command_bareword_symlink_usable(self):
+        """Non-filesystem commands should not treat generic barewords as path operands."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-symlink-echo-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+
+                conf = CheckConfig(
+                    self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                ).returnconf()
+                os.chdir(tmpdir)
+
+                ret, _conf = sec.check_path("echo passwdlink", conf, strict=0)
+                self.assertEqual(ret, 0)
+        finally:
+            os.chdir(previous_cwd)
+
     def test_check_path_rejects_nul_byte_path_without_crashing(self):
         """Malformed NUL-byte path operands should fail closed without exceptions."""
         conf = CheckConfig(
@@ -915,7 +1076,10 @@ class TestAttackSurfacePart2(unittest.TestCase):
 
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 2)
-        self.assertEqual(mock_exec.call_args_list[0].args[0], "sftp-server")
+        self.assertEqual(
+            os.path.basename(mock_exec.call_args_list[0].args[0].split()[0]),
+            "sftp-server",
+        )
         self.assertEqual(mock_exec.call_args_list[1].args[0], "/usr/libexec/sftp-server")
 
     def test_check_allowed_file_extensions_allows_existing_directory_target(self):

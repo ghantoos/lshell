@@ -105,11 +105,12 @@ class TestExtensionParser(unittest.TestCase):
         shell_context = DummyShellContext(conf)
         retcode = utils.cmd_parse_execute("ls /tmp", shell_context=shell_context)
         self.assertEqual(retcode, 0)
-        mock_exec_cmd.assert_called_once_with(
-            "ls /tmp",
-            conf=ANY,
-            log=ANY,
-        )
+        mock_exec_cmd.assert_called_once()
+        called_command = mock_exec_cmd.call_args.args[0]
+        self.assertEqual(os.path.basename(called_command.split()[0]), "ls")
+        self.assertTrue(called_command.endswith(" /tmp"))
+        self.assertIs(mock_exec_cmd.call_args.kwargs["conf"], conf)
+        self.assertIs(mock_exec_cmd.call_args.kwargs["log"], shell_context.log)
 
 
 if __name__ == "__main__":

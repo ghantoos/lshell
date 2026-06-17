@@ -71,7 +71,8 @@ class TestHardenInit(unittest.TestCase):
         self.assertEqual(code, 0)
         rendered = stdout.getvalue()
         self.assertIn("[default]", rendered)
-        self.assertIn("sftp            : 1", rendered)
+        self.assertIn("sftp            : 0", rendered)
+        self.assertIn("sftp_unsafe_legacy : 0", rendered)
 
     def test_main_stdout_group_and_user_flags_render_scoped_sections(self):
         """--group/--user render [grp:*]/[user:*] sections and skip [default]."""

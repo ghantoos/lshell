@@ -10,9 +10,10 @@ import random
 import string
 import shlex
 import shutil
+import stat
 import threading
 from getpass import getuser
-from time import strftime, gmtime
+from time import strftime, localtime
 import signal
 
 # import lshell specifics
@@ -355,6 +356,16 @@ _TRUSTED_SHELL_PATHS = (
     "/usr/bin/sh",
 )
 
+_TRUSTED_RUNTIME_PATH_DIRS = (
+    "/opt/homebrew/bin",
+    "/usr/local/sbin",
+    "/usr/local/bin",
+    "/usr/sbin",
+    "/usr/bin",
+    "/sbin",
+    "/bin",
+)
+
 
 def _resolve_trusted_shell():
     """Return an absolute trusted shell interpreter path, or None."""
@@ -364,9 +375,220 @@ def _resolve_trusted_shell():
     return None
 
 
-def _is_bash_function_env_name(name):
-    """Return True for env vars used by Bash function import."""
-    return name.startswith("BASH_FUNC_")
+def _split_path_entries(path_value):
+    """Split a PATH-style string into non-empty entries."""
+    if not path_value:
+        return []
+    return [entry for entry in str(path_value).split(os.pathsep) if entry]
+
+
+def build_trusted_path(env_path="", allowed_cmd_path=None):
+    """Return a deterministic PATH for restricted command resolution."""
+    directories = []
+
+    for entry in _split_path_entries(env_path):
+        directories.append(entry)
+
+    for entry in allowed_cmd_path or []:
+        if entry:
+            directories.append(str(entry))
+
+    for entry in _TRUSTED_RUNTIME_PATH_DIRS:
+        directories.append(entry)
+
+    unique_directories = []
+    seen = set()
+    for entry in directories:
+        if entry in seen:
+            continue
+        seen.add(entry)
+        unique_directories.append(entry)
+
+    return os.pathsep.join(unique_directories) if unique_directories else os.defpath
+
+
+def runtime_search_path(conf=None):
+    """Return the PATH used for restricted lookup and child execution."""
+    if conf and conf.get("runtime_path"):
+        return conf["runtime_path"]
+    return build_trusted_path()
+
+
+def _command_metadata_fingerprint(path):
+    """Return a metadata fingerprint for an executable, or None on stat failure."""
+    try:
+        stat_result = os.stat(path)
+    except OSError:
+        return None
+
+    return {
+        "device": stat_result.st_dev,
+        "inode": stat_result.st_ino,
+        "mode": stat.S_IMODE(stat_result.st_mode),
+        "uid": stat_result.st_uid,
+        "gid": stat_result.st_gid,
+        "size": stat_result.st_size,
+        "mtime_ns": getattr(
+            stat_result, "st_mtime_ns", int(stat_result.st_mtime * 1_000_000_000)
+        ),
+    }
+
+
+def resolve_command_record(executable, conf=None):
+    """Resolve one executable token to a canonical absolute path + metadata."""
+    if not executable:
+        return None
+
+    if "/" in executable:
+        resolved_path = os.path.realpath(executable)
+    else:
+        resolved_path = shutil.which(executable, path=runtime_search_path(conf))
+        if resolved_path is None:
+            for candidate in variables.TRUSTED_SFTP_PROTOCOL_BINARIES:
+                if "/" not in candidate:
+                    continue
+                if os.path.basename(candidate) != executable:
+                    continue
+                if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                    resolved_path = candidate
+                    break
+        if resolved_path is None:
+            return None
+        resolved_path = os.path.realpath(resolved_path)
+
+    if not os.path.isfile(resolved_path) or not os.access(resolved_path, os.X_OK):
+        return None
+
+    fingerprint = _command_metadata_fingerprint(resolved_path)
+    if fingerprint is None:
+        return None
+
+    return {
+        "requested": executable,
+        "path": resolved_path,
+        "fingerprint": fingerprint,
+    }
+
+
+def build_command_resolution_cache(conf):
+    """Resolve and pin executable targets for bare command names in policy."""
+    cache = {}
+    candidates = set()
+
+    for key in ("allowed", "allowed_shell_escape", "overssh"):
+        for entry in conf.get(key, []):
+            if not isinstance(entry, str):
+                continue
+            executable, _argument, _split, _assignments = _parse_command(entry)
+            if executable:
+                candidates.add(executable)
+
+    if conf.get("scp") == 1:
+        candidates.add("scp")
+    candidates.update(variables.TRUSTED_SFTP_PROTOCOL_BINARIES)
+
+    for executable in candidates:
+        if "/" in executable:
+            continue
+        if executable in builtincmd.builtins_list and executable != "ls":
+            continue
+
+        record = resolve_command_record(executable, conf=conf)
+        if record is not None:
+            cache[executable] = record
+
+    return cache
+
+
+def resolve_approved_executable(executable, conf=None):
+    """Return the pinned absolute executable path, or an error reason."""
+    if not executable:
+        return None, "missing"
+
+    if "/" in executable:
+        return executable, None
+
+    expected = (conf or {}).get("command_path_cache", {}).get(executable)
+    if expected is None:
+        return None, "unapproved"
+
+    current = resolve_command_record(executable, conf=conf)
+    if current is None:
+        return None, "missing"
+
+    if (
+        current["path"] != expected["path"]
+        or current["fingerprint"] != expected["fingerprint"]
+    ):
+        return None, "drift"
+
+    return expected["path"], None
+
+
+def pin_command_executable(command, conf=None):
+    """Rewrite one command segment to execute its pinned absolute executable."""
+    executable, _argument, split, assignments = _parse_command(command)
+    if executable is None:
+        return None, None, "parse_error"
+    if not executable:
+        return command, "", None
+
+    if executable in builtincmd.builtins_list and executable != "ls":
+        return command, executable, None
+
+    resolved_path, failure_reason = resolve_approved_executable(executable, conf=conf)
+    if resolved_path is None:
+        return None, executable, failure_reason
+
+    if "/" in executable:
+        return command, executable, None
+
+    token_spans = []
+    index = 0
+    length = len(command)
+
+    while index < length:
+        while index < length and command[index].isspace():
+            index += 1
+        if index >= length:
+            break
+
+        start = index
+        in_single = False
+        in_double = False
+        escaped = False
+
+        while index < length:
+            char = command[index]
+            if escaped:
+                escaped = False
+                index += 1
+                continue
+            if char == "\\" and not in_single:
+                escaped = True
+                index += 1
+                continue
+            if char == "'" and not in_double:
+                in_single = not in_single
+                index += 1
+                continue
+            if char == '"' and not in_single:
+                in_double = not in_double
+                index += 1
+                continue
+            if not in_single and not in_double and char.isspace():
+                break
+            index += 1
+
+        token_spans.append((start, index))
+
+    executable_index = len(assignments)
+    if executable_index >= len(token_spans):
+        return None, executable, "parse_error"
+
+    start, end = token_spans[executable_index]
+    pinned = f"{command[:start]}{resolved_path}{command[end:]}"
+    return pinned, executable, None
 
 
 def _expand_braced_parameter(expr, support_advanced=True):
@@ -521,7 +743,7 @@ def _is_allowed_command(executable, command, conf):
     return executable in conf["allowed"] or command in conf["allowed"]
 
 
-def _command_exists(executable):
+def _command_exists(executable, conf=None):
     """Return True when command token resolves to a runnable command."""
     if not executable:
         return False
@@ -532,7 +754,7 @@ def _command_exists(executable):
     if "/" in executable:
         return os.path.isfile(executable) and os.access(executable, os.X_OK)
 
-    return shutil.which(executable) is not None
+    return shutil.which(executable, path=runtime_search_path(conf)) is not None
 
 
 def handle_builtin_command(full_command, executable, argument, shell_context):
@@ -555,7 +777,29 @@ def handle_builtin_command(full_command, executable, argument, shell_context):
     elif executable == "cd":
         retcode, shell_context.conf = builtincmd.cmd_cd(argument, shell_context.conf)
     elif executable == "ls":
-        retcode = exec_cmd(full_command, conf=shell_context.conf, log=shell_context.log)
+        pinned_command, failed_command, failure_reason = pin_command_executable(
+            full_command,
+            conf=shell_context.conf,
+        )
+        if failure_reason == "drift":
+            shell_context.log.critical(
+                f'lshell: command path changed since session start: "{failed_command}"'
+            )
+            sys.stderr.write(
+                f'lshell: command path changed since session start: "{failed_command}"\n'
+            )
+            return 126, conf
+        if failure_reason is not None:
+            shell_context.log.critical(
+                f'lshell: command not found: "{failed_command}"'
+            )
+            sys.stderr.write(f'lshell: command not found: "{failed_command}"\n')
+            return 127, conf
+        retcode = exec_cmd(
+            pinned_command,
+            conf=shell_context.conf,
+            log=shell_context.log,
+        )
     elif executable == "export":
         retcode, var = builtincmd.cmd_export(full_command)
         if retcode == 1:
@@ -589,7 +833,12 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
     """Execute a command exactly as entered, with support for backgrounding via Ctrl+Z."""
     proc = None
     detached_session = True
-    exec_env = dict(os.environ)
+    exec_env = {
+        key: value
+        for key, value in os.environ.items()
+        if not variables.should_strip_from_exec_env(key)
+    }
+    exec_env["PATH"] = runtime_search_path(conf)
     runtime_limits = containment.get_runtime_limits(conf or {})
     command_timeout = runtime_limits.command_timeout
     unsupported_limits = containment.unsupported_rlimits(runtime_limits)
@@ -605,13 +854,6 @@ def exec_cmd(cmd, background=False, extra_env=None, conf=None, log=None):
             conf[logged_key] = sorted(already_logged.union(pending))
     if extra_env:
         exec_env.update(extra_env)
-    # Prevent non-interactive shell startup file injection.
-    exec_env.pop("BASH_ENV", None)
-    exec_env.pop("ENV", None)
-    # Prevent function import from environment (e.g. BASH_FUNC_* poisoning).
-    for key in list(exec_env):
-        if _is_bash_function_env_name(key):
-            exec_env.pop(key, None)
 
     class CtrlZException(Exception):
         """Custom exception to handle Ctrl+Z (SIGTSTP)."""
@@ -806,6 +1048,7 @@ def parse_ps1(ps1):
     cwd = os.getcwd()
     home = os.path.expanduser("~")
     prompt_symbol = "#" if os.geteuid() == 0 else "$"
+    current_time = localtime()
 
     # Define LPS1 replacement mappings
     replacements = {
@@ -816,11 +1059,11 @@ def parse_ps1(ps1):
         r"\W": os.path.basename(cwd),
         r"\$": prompt_symbol,
         r"\\": "\\",
-        r"\t": strftime("%H:%M:%S", gmtime()),
-        r"\T": strftime("%I:%M:%S", gmtime()),
-        r"\A": strftime("%H:%M", gmtime()),
-        r"\@": strftime("%I:%M:%S%p", gmtime()),
-        r"\d": strftime("%a %b %d", gmtime()),
+        r"\t": strftime("%H:%M:%S", current_time),
+        r"\T": strftime("%I:%M:%S", current_time),
+        r"\A": strftime("%H:%M", current_time),
+        r"\@": strftime("%I:%M:%S%p", current_time),
+        r"\d": strftime("%a %b %d", current_time),
     }
     # Replace each placeholder with its corresponding value
     for placeholder, value in replacements.items():

@@ -27,7 +27,8 @@ class TestHardenInitFunctional(unittest.TestCase):
             with open(output_path, "r", encoding="utf-8") as handle:
                 rendered = handle.read()
             self.assertIn("[default]", rendered)
-            self.assertIn("sftp            : 1", rendered)
+            self.assertIn("sftp            : 0", rendered)
+            self.assertIn("sftp_unsafe_legacy : 0", rendered)
             self.assertIn("strict          : 1", rendered)
 
     def test_harden_init_writes_scoped_group_and_user_sections(self):

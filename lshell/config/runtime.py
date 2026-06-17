@@ -37,10 +37,12 @@ class CheckConfig:
 
     def noexec_library_usable(self, path_noexec):
         """Return True when a noexec library can be safely preloaded."""
-        probe_env = dict(os.environ)
+        probe_env = {
+            key: value
+            for key, value in os.environ.items()
+            if not variables.should_strip_from_exec_env(key)
+        }
         probe_env["LD_PRELOAD"] = path_noexec
-        probe_env.pop("BASH_ENV", None)
-        probe_env.pop("ENV", None)
 
         try:
             probe = subprocess.run(
@@ -85,6 +87,7 @@ class CheckConfig:
         self.get_config_user()
         self.check_env()
         self.set_noexec()
+        self.finalize_command_resolution()
 
     def check_config_file_exists(self, configfile):
         """Check if the configuration file exists, else exit with error"""
@@ -132,13 +135,6 @@ class CheckConfig:
             if option in ["--version"]:
                 utils.version()
 
-        # put the expanded path of configfile and logpath (if exists) in
-        # LSHELL_ARGS environment variable
-        args = ["--config", conf["configfile"]]
-        if "logpath" in conf:
-            args += ["--log", conf["logpath"]]
-        os.environ["LSHELL_ARGS"] = str(args)
-
         # if lshell is invoked using shh autorized_keys file e.g.
         # command="/usr/bin/lshell", ssh-dss ....
         if "SSH_ORIGINAL_COMMAND" in os.environ:
@@ -151,6 +147,11 @@ class CheckConfig:
         if "env_vars" in self.conf:
             env_vars = self.conf["env_vars"]
             for key in env_vars.keys():
+                if variables.is_forbidden_environment_key(key):
+                    self.log.warning(
+                        f"lshell: ignoring forbidden environment variable from config: {key}"
+                    )
+                    continue
                 os.environ[key] = str(env_vars[key])
 
         # Check paths to files that contain env vars
@@ -422,6 +423,12 @@ class CheckConfig:
             sys.exit(1)
         return parsed
 
+    def finalize_command_resolution(self):
+        """Pin bare command names to resolved executables for this session."""
+        self.conf["command_path_cache"] = utils.build_command_resolution_cache(
+            self.conf
+        )
+
     def check_user_integrity(self):
         """This method checks if all the required fields by user are present
         for the present user.
@@ -471,6 +478,7 @@ class CheckConfig:
             "scp_upload",
             "scp_download",
             "sftp",
+            "sftp_unsafe_legacy",
             "overssh",
             "strict",
             "aliases",
@@ -625,21 +633,24 @@ class CheckConfig:
             )
 
         if self.conf["env_path"]:
-            new_path = f"{self.conf['env_path']}:{os.environ['PATH']}"
-
-            # Check if the new path is valid
-            if all(
-                c in string.ascii_letters + string.digits + "/:-_." for c in new_path
-            ) and not new_path.startswith(":"):
-                os.environ["PATH"] = new_path
-            else:
+            if not all(
+                c in string.ascii_letters + string.digits + "/:-_."
+                for c in self.conf["env_path"]
+            ) or self.conf["env_path"].startswith(":"):
                 self.stderr.write(
                     f"lshell: config: env_path must be a valid $PATH: {self.conf['env_path']}\n"
                 )
                 sys.exit(1)
+                return
+
+        self.conf["runtime_path"] = utils.build_trusted_path(
+            env_path=self.conf["env_path"],
+            allowed_cmd_path=self.conf["allowed_cmd_path"],
+        )
+        os.environ["PATH"] = self.conf["runtime_path"]
 
         # append default commands to allowed list
-        self.conf["allowed"] += list(set(builtincmd.builtins_list) - set(["export"]))
+        self.conf["allowed"] += builtincmd.default_builtins_list
 
         # Optionally hide policy introspection commands from users.
         if self.conf.get("policy_commands") != 1:
@@ -656,8 +667,6 @@ class CheckConfig:
         # add all commands present in allowed_cmd_path if specified
         if self.conf["allowed_cmd_path"]:
             for path in self.conf["allowed_cmd_path"]:
-                # add path to PATH env variable
-                os.environ["PATH"] += f":{path}"
                 # find executable file, and add them to allowed commands
                 for item in os.listdir(path):
                     cmd = os.path.join(path, item)

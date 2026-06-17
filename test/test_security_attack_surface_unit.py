@@ -368,9 +368,10 @@ class TestAttackSurface(unittest.TestCase):
         mock_path.side_effect = lambda line, conf, strict=None: (0, conf)
 
         def exec_side_effect(command, background=False, extra_env=None, **_kwargs):
-            if command == "false":
+            executable = os.path.basename(command.split()[0])
+            if executable == "false":
                 return 1
-            if command == "echo recovered":
+            if executable == "echo" and command.endswith(" recovered"):
                 return 0
             return 99
 
@@ -381,8 +382,8 @@ class TestAttackSurface(unittest.TestCase):
         )
 
         self.assertEqual(ret, 0)
-        executed = [call.args[0] for call in mock_exec.call_args_list]
-        self.assertEqual(executed, ["false", "echo recovered"])
+        executed = [os.path.basename(call.args[0].split()[0]) for call in mock_exec.call_args_list]
+        self.assertEqual(executed, ["false", "echo"])
 
     @patch("lshell.sec.check_forbidden_chars")
     @patch("lshell.sec.check_secure")
@@ -443,7 +444,11 @@ class TestAttackSurface(unittest.TestCase):
 
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 1)
-        self.assertEqual(mock_exec.call_args.args[0], "sudo ls")
+        self.assertEqual(
+            os.path.basename(mock_exec.call_args.args[0].split()[0]),
+            "sudo",
+        )
+        self.assertTrue(mock_exec.call_args.args[0].endswith(" ls"))
         self.assertIsNone(
             mock_exec.call_args.kwargs.get("extra_env"),
             msg="allowed_shell_escape should bypass LD_PRELOAD injection",

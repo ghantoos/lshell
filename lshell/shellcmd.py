@@ -5,11 +5,15 @@ security checks, logging, etc.
 """
 
 import cmd
+import ctypes
+import ctypes.util
 import sys
 import os
 import re
 import signal
 import readline
+import shutil
+import shlex
 
 # import lshell specifics
 from lshell.config.runtime import CheckConfig
@@ -21,6 +25,185 @@ from lshell import completion
 from lshell import variables
 from lshell.config import diagnostics as policy_mode
 from lshell import audit
+from lshell import history as history_utils
+
+
+READLINE_HISTORY_SEARCH_BINDINGS = (
+    '"\\e[A": history-search-backward',
+    '"\\eOA": history-search-backward',
+    '"\\e[B": history-search-forward',
+    '"\\eOB": history-search-forward',
+)
+READLINE_INCREMENTAL_SEARCH_BINDINGS = (
+    '"\\C-r": reverse-search-history',
+    '"\\C-s": forward-search-history',
+)
+
+_READLINE_LIB = None
+_READLINE_COMMAND_FUNC = None
+_READLINE_HISTORY_SEARCH_CALLBACKS = []
+_ACTIVE_HISTORY_SEARCH_SHELL = None
+_ACTIVE_COMPLETION_SHELL = None
+
+
+def _classify_scp_direction(command_line):
+    """Return the SCP transfer direction for a forced SSH command.
+
+    Returns ``"download"`` for ``-f``, ``"upload"`` for ``-t``, ``"ambiguous"``
+    when both appear, and ``None`` when the command line does not contain a
+    recognized transfer direction.
+    """
+    try:
+        tokens = shlex.split(command_line, posix=True)
+    except ValueError:
+        return None
+
+    if not tokens or tokens[0] != "scp":
+        return None
+
+    saw_download = False
+    saw_upload = False
+
+    for token in tokens[1:]:
+        if token == "--":
+            break
+        if token == "-" or not token.startswith("-") or token.startswith("--"):
+            break
+
+        for option in token[1:]:
+            if option == "f":
+                saw_download = True
+            elif option == "t":
+                saw_upload = True
+
+    if saw_download and saw_upload:
+        return "ambiguous"
+    if saw_download:
+        return "download"
+    if saw_upload:
+        return "upload"
+    return None
+
+
+def _readline_uses_gnu_backend():
+    """Return True only when Python readline is backed by GNU readline."""
+    doc = readline.__doc__ or ""
+    return "libedit" not in doc.lower()
+
+
+def _get_readline_library():
+    """Return the loaded GNU readline shared library when available."""
+    global _READLINE_LIB, _READLINE_COMMAND_FUNC
+
+    if _READLINE_LIB is not None:
+        return _READLINE_LIB
+
+    if not _readline_uses_gnu_backend():
+        return None
+
+    library_name = ctypes.util.find_library("readline")
+    if not library_name:
+        return None
+
+    try:
+        readline_lib = ctypes.CDLL(library_name)
+    except OSError:
+        return None
+
+    _READLINE_COMMAND_FUNC = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.c_int)
+    readline_lib.rl_bind_keyseq.argtypes = [ctypes.c_char_p, _READLINE_COMMAND_FUNC]
+    readline_lib.rl_bind_keyseq.restype = ctypes.c_int
+    readline_lib.rl_replace_line.argtypes = [ctypes.c_char_p, ctypes.c_int]
+    readline_lib.rl_replace_line.restype = None
+    readline_lib.rl_redisplay.argtypes = []
+    readline_lib.rl_redisplay.restype = None
+
+    _READLINE_LIB = readline_lib
+    return _READLINE_LIB
+
+
+def _replace_readline_buffer(text):
+    """Replace the active readline buffer with text and move cursor to the end."""
+    readline_lib = _get_readline_library()
+    if readline_lib is None:
+        return
+
+    encoded = text.encode("utf-8")
+    readline_lib.rl_replace_line(encoded, 0)
+    encoded_length = len(encoded)
+    ctypes.c_int.in_dll(readline_lib, "rl_point").value = encoded_length
+    ctypes.c_int.in_dll(readline_lib, "rl_end").value = encoded_length
+    readline_lib.rl_redisplay()
+
+
+def _readline_point():
+    """Return the current cursor position in the active readline buffer."""
+    readline_lib = _get_readline_library()
+    if readline_lib is None:
+        return len(readline.get_line_buffer())
+    return ctypes.c_int.in_dll(readline_lib, "rl_point").value
+
+
+def _readline_char_point(text):
+    """Map readline's byte cursor offset to a Python string character index."""
+    point = _readline_point()
+    encoded = text.encode("utf-8")
+    if point >= len(encoded):
+        return len(text)
+    return len(encoded[:point].decode("utf-8", "ignore"))
+
+
+def _dispatch_history_search(backward):
+    """Route readline up/down callbacks to the active shell instance."""
+    shell = _ACTIVE_HISTORY_SEARCH_SHELL
+    if shell is None:
+        return 0
+
+    try:
+        return shell.history_search(backward)
+    except Exception:
+        shell.reset_history_search_state()
+        return 0
+
+
+def _history_search_backward(unused_count, unused_key):
+    """Readline callback for backward prefix history search."""
+    return _dispatch_history_search(backward=True)
+
+
+def _history_search_forward(unused_count, unused_key):
+    """Readline callback for forward prefix history search."""
+    return _dispatch_history_search(backward=False)
+
+
+def _bind_custom_history_search(shell):
+    """Bind arrow keys to lshell-managed prefix history search callbacks."""
+    global _ACTIVE_HISTORY_SEARCH_SHELL
+
+    readline_lib = _get_readline_library()
+    if readline_lib is None or _READLINE_COMMAND_FUNC is None:
+        return False
+
+    backward = _READLINE_COMMAND_FUNC(_history_search_backward)
+    forward = _READLINE_COMMAND_FUNC(_history_search_forward)
+    _READLINE_HISTORY_SEARCH_CALLBACKS[:] = [backward, forward]
+    _ACTIVE_HISTORY_SEARCH_SHELL = shell
+
+    bindings = (
+        (b"\\e[A", backward),
+        (b"\\eOA", backward),
+        (b"\\e[B", forward),
+        (b"\\eOB", forward),
+    )
+    return all(readline_lib.rl_bind_keyseq(keyseq, callback) == 0 for keyseq, callback in bindings)
+
+
+def _display_completion_matches(substitution, matches, longest_match_length):
+    """Render completion matches with a concise, sorted lshell-specific header."""
+    shell = _ACTIVE_COMPLETION_SHELL
+    if shell is None:
+        return
+    shell.display_completion_matches(substitution, matches, longest_match_length)
 
 
 class ShellCmd(cmd.Cmd, object):
@@ -75,6 +258,9 @@ class ShellCmd(cmd.Cmd, object):
 
         # initialize return code
         self.retcode = 0
+        self.reset_history_search_state()
+        self.completion_display_context = "Allowed completions"
+        self.old_display_matches_hook = None
 
         # run overssh, if needed
         self.run_overssh()
@@ -165,6 +351,13 @@ class ShellCmd(cmd.Cmd, object):
                 aliases.pop("ls", None)
             return aliases
 
+        def _is_sftp_protocol_request(command_line):
+            for part in utils.split_commands(command_line):
+                executable, _argument, _split, _assignments = utils._parse_command(part)
+                if executable in variables.TRUSTED_SFTP_PROTOCOL_BINARIES:
+                    return True
+            return False
+
         if "ssh" in self.conf:
             if "SSH_CLIENT" in os.environ and "SSH_TTY" not in os.environ:
                 # Apply aliases consistently for all SSH command paths.
@@ -173,8 +366,8 @@ class ShellCmd(cmd.Cmd, object):
                 ).strip()
 
                 # check if sftp is requested and allowed
-                if "sftp-server" in self.conf["ssh"]:
-                    if self.conf["sftp"] == 1:
+                if _is_sftp_protocol_request(self.conf["ssh"]):
+                    if self.conf["sftp"] == 1 and self.conf.get("sftp_unsafe_legacy") == 1:
                         _with_protocol_in_overssh(
                             variables.TRUSTED_SFTP_PROTOCOL_BINARIES
                         )
@@ -185,6 +378,21 @@ class ShellCmd(cmd.Cmd, object):
                         retcode = _execute_trusted_ssh_protocol(trusted_protocol=True)
                         self.log.error("SFTP disconnect")
                         sys.exit(retcode)
+                    elif self.conf["sftp"] == 1:
+                        message = (
+                            "lshell: refusing legacy SFTP passthrough; "
+                            "set sftp_unsafe_legacy=1 to override or use "
+                            "sshd_config ForceCommand internal-sftp with ChrootDirectory\n"
+                        )
+                        self.log.error("*** legacy SFTP passthrough refused")
+                        audit.log_command_event(
+                            self.conf,
+                            self.conf["ssh"],
+                            allowed=False,
+                            reason="refused legacy SFTP passthrough",
+                        )
+                        sys.stderr.write(message)
+                        sys.exit(1)
                     else:
                         self.log.error("*** forbidden SFTP connection")
                         audit.log_command_event(
@@ -199,8 +407,9 @@ class ShellCmd(cmd.Cmd, object):
                 if self.conf["ssh"].startswith("scp "):
                     if self.conf["scp"] == 1 or "scp" in self.conf["overssh"]:
                         _with_protocol_in_overssh(["scp"])
+                        scp_direction = _classify_scp_direction(self.conf["ssh"])
 
-                        if " -f " in self.conf["ssh"]:
+                        if scp_direction == "download":
                             # case scp download is allowed
                             if self.conf["scp_download"]:
                                 self.log.error(f'SCP: GET "{self.conf["ssh"]}"')
@@ -216,7 +425,7 @@ class ShellCmd(cmd.Cmd, object):
                                     reason="forbidden SCP download",
                                 )
                                 sys.exit(1)
-                        elif " -t " in self.conf["ssh"]:
+                        elif scp_direction == "upload":
                             # case scp upload is allowed
                             if self.conf["scp_upload"]:
                                 if "scpforce" in self.conf:
@@ -243,6 +452,17 @@ class ShellCmd(cmd.Cmd, object):
                                     reason="forbidden SCP upload",
                                 )
                                 sys.exit(1)
+                        else:
+                            self.log.error(
+                                f'SCP: unrecognized transfer direction: "{self.conf["ssh"]}"'
+                            )
+                            audit.log_command_event(
+                                self.conf,
+                                self.conf["ssh"],
+                                allowed=False,
+                                reason="forbidden SCP direction",
+                            )
+                            sys.exit(1)
                         _validate_ssh_command()
                         retcode = _execute_trusted_ssh_protocol(trusted_protocol=False)
                         self.log.error("SCP disconnect")
@@ -337,6 +557,147 @@ class ShellCmd(cmd.Cmd, object):
                     if stop:
                         sys.exit(1)
 
+    def _configure_readline(self):
+        """Initialize readline history, completion, and safe history search."""
+        try:
+            readline.read_history_file(self.conf["history_file"])
+        except IOError:
+            # if history file does not exist
+            try:
+                open(self.conf["history_file"], "w").close()
+                readline.read_history_file(self.conf["history_file"])
+            except IOError:
+                pass
+        readline.set_history_length(self.conf["history_size"])
+        readline.set_completer_delims(readline.get_completer_delims().replace("-", ""))
+        self.old_completer = readline.get_completer()
+        readline.set_completer(self.complete)
+        readline.parse_and_bind(self.completekey + ": complete")
+        if hasattr(readline, "set_completion_display_matches_hook"):
+            global _ACTIVE_COMPLETION_SHELL
+            _ACTIVE_COMPLETION_SHELL = self
+            readline.set_completion_display_matches_hook(_display_completion_matches)
+        for binding in READLINE_INCREMENTAL_SEARCH_BINDINGS:
+            readline.parse_and_bind(binding)
+        if not _bind_custom_history_search(self):
+            for binding in READLINE_HISTORY_SEARCH_BINDINGS:
+                readline.parse_and_bind(binding)
+
+    def reset_history_search_state(self):
+        """Clear state used for prefix history navigation on arrow keys."""
+        self.history_search_state = {
+            "prefix": None,
+            "matches": [],
+            "index": None,
+            "original_line": "",
+        }
+
+    def _collect_history_prefix_matches(self, prefix):
+        """Return unique history entries matching prefix, newest first."""
+        seen = set()
+        matches = []
+        history_length = readline.get_current_history_length()
+        for index in range(history_length, 0, -1):
+            entry = readline.get_history_item(index)
+            if not entry or not entry.startswith(prefix) or entry in seen:
+                continue
+            seen.add(entry)
+            matches.append(entry)
+        return matches
+
+    def history_search(self, backward):
+        """Navigate unique history entries that match the current line prefix."""
+        current_line = readline.get_line_buffer()
+        state = self.history_search_state
+        active_match = None
+        if state["matches"] and state["index"] is not None:
+            active_match = state["matches"][state["index"]]
+
+        continuing = current_line in (state["original_line"], active_match)
+        if not continuing:
+            if not backward:
+                self.reset_history_search_state()
+                return 0
+
+            prefix = current_line[: _readline_char_point(current_line)]
+            matches = self._collect_history_prefix_matches(prefix)
+            if not matches:
+                self.reset_history_search_state()
+                return 0
+
+            self.history_search_state = {
+                "prefix": prefix,
+                "matches": matches,
+                "index": 0,
+                "original_line": current_line,
+            }
+            _replace_readline_buffer(matches[0])
+            return 0
+
+        if backward:
+            if state["index"] < len(state["matches"]) - 1:
+                state["index"] += 1
+                _replace_readline_buffer(state["matches"][state["index"]])
+            return 0
+
+        if state["index"] > 0:
+            state["index"] -= 1
+            _replace_readline_buffer(state["matches"][state["index"]])
+            return 0
+
+        _replace_readline_buffer(state["original_line"])
+        self.reset_history_search_state()
+        return 0
+
+    def _completion_context_label(self, compfunc):
+        """Return a user-facing label for the current completion source."""
+        if compfunc == completion.complete_sudo:
+            return "Allowed sudo commands"
+        if compfunc == completion.complete_change_dir:
+            return "Allowed directories"
+        if compfunc == completion.complete_list_dir:
+            return "Allowed paths"
+        if compfunc == completion.completenames:
+            return "Allowed commands"
+        return "Allowed completions"
+
+    def display_completion_matches(self, substitution, matches, longest_match_length):
+        """Show a compact header and sorted completion candidates."""
+        del substitution
+
+        rendered_matches = sorted(dict.fromkeys(matches), key=lambda item: item.lower())
+        if not rendered_matches:
+            return
+
+        terminal_width = shutil.get_terminal_size((80, 24)).columns
+        column_width = max(longest_match_length + 2, 2)
+        columns = max(1, terminal_width // column_width)
+        lines = []
+        for start in range(0, len(rendered_matches), columns):
+            row = rendered_matches[start : start + columns]
+            if len(row) == 1:
+                lines.append(row[0])
+                continue
+            lines.append("".join(item.ljust(column_width) for item in row).rstrip())
+
+        sys.stdout.write(
+            f"\n[{self.completion_display_context}: {len(rendered_matches)}]\n"
+        )
+        sys.stdout.write("\n".join(lines) + "\n")
+        sys.stdout.flush()
+        readline_lib = _get_readline_library()
+        if readline_lib is not None:
+            readline_lib.rl_redisplay()
+
+    def _prepare_history_before_write(self):
+        """Apply persisted-history policies before writing the history file."""
+        history_utils.prepare_history_for_write()
+
+    def _write_history_file(self):
+        """Persist readline history after applying lshell history policies."""
+        self._prepare_history_before_write()
+        readline.write_history_file(self.conf["history_file"])
+
     def cmdloop(self, intro=None):
         """Repeatedly issue a prompt, accept input, parse an initial prefix
         off the received input, and dispatch to action methods, passing them
@@ -349,22 +710,7 @@ class ShellCmd(cmd.Cmd, object):
 
         self.preloop()
         if self.use_rawinput and self.completekey:
-            try:
-                readline.read_history_file(self.conf["history_file"])
-            except IOError:
-                # if history file does not exist
-                try:
-                    open(self.conf["history_file"], "w").close()
-                    readline.read_history_file(self.conf["history_file"])
-                except IOError:
-                    pass
-            readline.set_history_length(self.conf["history_size"])
-            readline.set_completer_delims(
-                readline.get_completer_delims().replace("-", "")
-            )
-            self.old_completer = readline.get_completer()
-            readline.set_completer(self.complete)
-            readline.parse_and_bind(self.completekey + ": complete")
+            self._configure_readline()
         try:
             if self.intro and isinstance(self.intro, str):
                 self.stdout.write(f"{self.intro}\n")
@@ -381,14 +727,21 @@ class ShellCmd(cmd.Cmd, object):
                 try:
                     # Check background jobs after each command
                     builtincmd.check_background_jobs()
+                    line_from_eof = False
+                    line_from_readline = False
                     if self.cmdqueue:
                         line = self.cmdqueue.pop(0)
                     else:
                         if self.use_rawinput:
+                            global _ACTIVE_HISTORY_SEARCH_SHELL
+                            _ACTIVE_HISTORY_SEARCH_SHELL = self
+                            self.reset_history_search_state()
+                            line_from_readline = True
                             try:
                                 line = input(self.conf["promptprint"])
                             except EOFError:
                                 line = "EOF"
+                                line_from_eof = True
                             except KeyboardInterrupt:
                                 self.stdout.write("\n")
                                 if partial_line:
@@ -406,6 +759,7 @@ class ShellCmd(cmd.Cmd, object):
                             else:
                                 # chop \n
                                 line = line[:-1]
+                        had_partial_line = bool(partial_line)
                         if len(line) > 1 and line.startswith("\\"):
                             # implying previous partial line
                             line = line[:1].replace("\\", "", 1)
@@ -428,6 +782,8 @@ class ShellCmd(cmd.Cmd, object):
                         self.conf["promptprint"] = utils.updateprompt(
                             os.getcwd(), self.conf
                         )
+                        if line_from_readline and not had_partial_line and not line_from_eof:
+                            history_utils.prepare_latest_history_entry(line)
                     line = self.precmd(line)
                     stop = self.onecmd(line)
                     stop = self.postcmd(stop, line)
@@ -449,10 +805,12 @@ class ShellCmd(cmd.Cmd, object):
                         readline.get_completer_delims().replace("-", "")
                     )
                     readline.set_completer(self.old_completer)
+                    if hasattr(readline, "set_completion_display_matches_hook"):
+                        readline.set_completion_display_matches_hook(None)
                 except ImportError:
                     pass
             try:
-                readline.write_history_file(self.conf["history_file"])
+                self._write_history_file()
             except IOError:
                 self.log.error(
                     f"WARN: couldn't write history to file {self.conf['history_file']}\n"
@@ -509,7 +867,11 @@ class ShellCmd(cmd.Cmd, object):
                 # call the lshell allowed commands completion
                 compfunc = completion.completenames
 
-            self.completion_matches = compfunc(self.conf, text, line, begidx, endidx)
+            self.completion_display_context = self._completion_context_label(compfunc)
+            matches = compfunc(self.conf, text, line, begidx, endidx)
+            self.completion_matches = sorted(
+                dict.fromkeys(matches), key=lambda item: item.lower()
+            )
         try:
             return self.completion_matches[state]
         except IndexError:

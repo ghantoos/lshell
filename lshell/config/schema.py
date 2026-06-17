@@ -38,6 +38,7 @@ INT_VALUE_KEYS = {
     "scp_upload",
     "scp_download",
     "sftp",
+    "sftp_unsafe_legacy",
     "strict",
     "history_size",
     "winscp",

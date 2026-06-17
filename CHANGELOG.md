@@ -3,7 +3,7 @@
 Contact: [ghantoos@ghantoos.org](mailto:ghantoos@ghantoos.org)  
 [https://github.com/ghantoos/lshell](https://github.com/ghantoos/lshell)
 
-### v0.12.0 (UNRELEASED)
+### v0.12.0 17/06/2026
 - Packaging/CI: Raised minimum supported Python version to 3.10 (`requires-python >=3.10`), removed EOL Python versions from CI, and aligned docs/package metadata with the new baseline; CI/classifiers now track active CPython release branches 3.10-3.14 (Python 3.6 reached EOL on 23/12/2021).
 - Security: Removed regex-driven shell parsing from the authorization flow.
 - Engine: Migrated security parsing to a deterministic scanner.

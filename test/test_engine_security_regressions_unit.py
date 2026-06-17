@@ -1,6 +1,7 @@
 """Security regression coverage for the canonical engine."""
 
 import os
+import tempfile
 import unittest
 
 from lshell.config.runtime import CheckConfig
@@ -105,6 +106,64 @@ class TestEngineSecurityRegressions(unittest.TestCase):
         self.assertTrue(allowed_decision.allowed)
         self.assertFalse(denied_decision.allowed)
         self.assertEqual(denied_decision.reason.code, reasons.FORBIDDEN_PATH)
+
+    def test_authorizer_blocks_bareword_symlink_operand_for_cat(self):
+        """Canonical authorizer must deny bareword symlinks escaping allowed roots."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-engine-symlink-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+                os.chdir(tmpdir)
+
+                decision = authorizer.authorize_line(
+                    "cat passwdlink",
+                    self._policy(
+                        allowed=["cat"],
+                        strict=1,
+                        path=[f"{tmpdir}|", ""],
+                    ),
+                    mode="policy",
+                    check_current_dir=False,
+                )
+
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason.code, reasons.FORBIDDEN_PATH)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_authorizer_blocks_bareword_symlink_operand_for_text_filters(self):
+        """Canonical authorizer must deny filter file operands escaping allowed roots."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-engine-filter-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+                os.chdir(tmpdir)
+
+                for command in (
+                    "awk 1 passwdlink",
+                    "awk -f passwdlink",
+                    "sed -n 1p passwdlink",
+                    "sed -f passwdlink",
+                    "sort passwdlink",
+                ):
+                    with self.subTest(command=command):
+                        decision = authorizer.authorize_line(
+                            command,
+                            self._policy(
+                                allowed=["awk", "sed", "sort"],
+                                strict=1,
+                                path=[f"{tmpdir}|", ""],
+                            ),
+                            mode="policy",
+                            check_current_dir=False,
+                        )
+
+                        self.assertFalse(decision.allowed)
+                        self.assertEqual(decision.reason.code, reasons.FORBIDDEN_PATH)
+        finally:
+            os.chdir(previous_cwd)
 
     def test_runtime_blocks_forbidden_env_assignment(self):
         """Runtime should keep forbidden env-assignment protection."""

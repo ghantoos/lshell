@@ -159,6 +159,115 @@ class TestSessionInteractionFunctional(unittest.TestCase):
             self._safe_exit(strict)
             strict.close(force=True)
 
+    def test_up_down_arrows_search_history_by_current_prefix(self):
+        """Up/down arrows should recall history entries matching the typed prefix."""
+        def run_sequence(*keys):
+            history_path = None
+            child = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    "w",
+                    encoding="utf-8",
+                    delete=False,
+                    prefix="lshell-history-search-",
+                ) as history_file:
+                    history_file.write("echo alpha\n")
+                    history_file.write("help\n")
+                    history_file.write("echo alpha beta\n")
+                    history_path = history_file.name
+
+                child = self._spawn_shell(
+                    "--allowed \"['echo', 'help']\" "
+                    '--forbidden "[]" '
+                    "--strict 0 "
+                    f"--history_file='{history_path}'"
+                )
+                child.send("echo a")
+                for key in keys:
+                    child.send(key)
+                child.sendline("")
+                child.expect(PROMPT)
+                return child.before.replace("\r", "").replace("\x08", "")
+            finally:
+                if child is not None:
+                    self._safe_exit(child)
+                    child.close(force=True)
+                if history_path and os.path.exists(history_path):
+                    os.unlink(history_path)
+
+        latest_match = run_sequence("\x1b[A")
+        self.assertRegex(latest_match, r"(?m)^alpha beta$")
+
+        older_match = run_sequence("\x1b[A", "\x1b[A")
+        self.assertRegex(older_match, r"(?m)^alpha$")
+
+        forward_match = run_sequence("\x1b[A", "\x1b[A", "\x1b[B")
+        self.assertRegex(forward_match, r"(?m)^alpha beta$")
+
+    def test_history_command_persists_deduplicated_normalized_entries(self):
+        """History output should apply duplicate removal and blank reduction policies."""
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            delete=False,
+            prefix="lshell-history-policies-",
+        ) as history_file:
+            history_path = history_file.name
+
+        child = self._spawn_shell(
+            "--allowed \"['echo', 'history']\" "
+            '--forbidden "[]" '
+            "--strict 0 "
+            f"--history_file='{history_path}'"
+        )
+        try:
+            self._run_command(child, "echo    alpha")
+            self._run_command(child, "echo beta")
+            self._run_command(child, "echo alpha")
+            history_output = self._run_command(child, "history")
+
+            self.assertEqual(history_output.count("echo alpha"), 1)
+            self.assertEqual(history_output.count("echo beta"), 1)
+            self.assertNotIn("echo    alpha", history_output)
+        finally:
+            self._safe_exit(child)
+            child.close(force=True)
+            if os.path.exists(history_path):
+                os.unlink(history_path)
+
+    def test_ctrl_d_does_not_persist_literal_eof_into_history(self):
+        """Ctrl-D should exit cleanly without rewriting the last history entry as EOF."""
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            delete=False,
+            prefix="lshell-history-eof-",
+        ) as history_file:
+            history_file.write("echo seed\n")
+            history_path = history_file.name
+
+        child = self._spawn_shell(
+            "--allowed \"['echo']\" "
+            '--forbidden "[]" '
+            "--strict 0 "
+            f"--history_file='{history_path}'"
+        )
+        try:
+            self._run_command(child, "echo keep")
+            child.sendeof()
+            child.expect(pexpect.EOF)
+        finally:
+            child.close(force=True)
+
+        try:
+            with open(history_path, "r", encoding="utf-8") as handle:
+                persisted = handle.read()
+            self.assertIn("echo keep", persisted)
+            self.assertNotIn("EOF", persisted)
+        finally:
+            if os.path.exists(history_path):
+                os.unlink(history_path)
+
     def test_bg_builtin_reports_not_supported(self):
         """`bg` should report explicit unsupported status to the user."""
         child = self._spawn_shell()
@@ -382,6 +491,57 @@ class TestSessionInteractionFunctional(unittest.TestCase):
                 self._safe_exit(child)
                 child.close(force=True)
 
+    def test_inherited_path_does_not_hijack_allowed_command_resolution(self):
+        """Ambient PATH should not shadow an allowed command with a rogue binary."""
+        with tempfile.TemporaryDirectory(prefix="lshell-path-shadow-") as bindir:
+            script_path = os.path.join(bindir, "ls")
+            with open(script_path, "w", encoding="utf-8") as handle:
+                handle.write("#!/bin/sh\necho PWNED_STARTUP_PATH\n")
+            os.chmod(script_path, 0o700)
+
+            child = self._spawn_shell(
+                "--allowed \"['ls']\" --strict 0",
+                env={"PATH": f"{bindir}:{os.environ.get('PATH', '')}"},
+            )
+            try:
+                output = self._run_command(child, "ls")
+                self.assertNotIn("PWNED_STARTUP_PATH", output)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
+    def test_command_resolution_drift_blocks_bare_command_after_session_start(self):
+        """Replacing an allowlisted bare command mid-session should fail closed."""
+        with tempfile.TemporaryDirectory(prefix="lshell-command-drift-") as bindir:
+            command_name = "lshell_drift_probe"
+            script_path = os.path.join(bindir, command_name)
+            with open(script_path, "w", encoding="utf-8") as handle:
+                handle.write("#!/bin/sh\necho SAFE_START\n")
+            os.chmod(script_path, 0o700)
+
+            child = self._spawn_shell(
+                f'--forbidden "[]" --allowed "[\'{command_name}\']" --env_path {bindir}'
+            )
+            try:
+                initial_output = self._run_command(child, command_name)
+                self.assertIn("SAFE_START", initial_output)
+
+                replacement_path = os.path.join(bindir, f"{command_name}.new")
+                with open(replacement_path, "w", encoding="utf-8") as handle:
+                    handle.write("#!/bin/sh\necho PWNED_AFTER_SWAP\n")
+                os.chmod(replacement_path, 0o700)
+                os.replace(replacement_path, script_path)
+
+                drift_output = self._run_command(child, command_name)
+                self.assertIn(
+                    f'lshell: command path changed since session start: "{command_name}"',
+                    drift_output,
+                )
+                self.assertNotIn("PWNED_AFTER_SWAP", drift_output)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
     def test_malformed_sudo_dash_u_is_denied_and_session_recovers(self):
         """Malformed `sudo -u` forms should be denied without killing the session."""
         child = self._spawn_shell(
@@ -405,8 +565,7 @@ class TestSessionInteractionFunctional(unittest.TestCase):
     def test_lps1_prompt_override_persists_across_prompt_refresh(self):
         """LPS1 environment prompt override should remain stable after commands."""
         custom_prompt = "LSHELL_PROMPT> "
-        env = os.environ.copy()
-        env["LPS1"] = custom_prompt
+        env = {"LPS1": custom_prompt}
 
         child = self._spawn_shell(env=env, prompt=re.escape(custom_prompt))
         try:

@@ -21,6 +21,7 @@ FORBIDDEN_FILE_EXTENSION = "forbidden_file_extension"
 FORBIDDEN_ENV_ASSIGNMENT = "forbidden_env_assignment"
 FORBIDDEN_TRUSTED_PROTOCOL = "forbidden_trusted_protocol"
 COMMAND_NOT_FOUND = "command_not_found"
+COMMAND_PATH_CHANGED = "command_path_changed"
 
 
 def make_reason(code, **details):
@@ -59,6 +60,8 @@ def to_policy_message(reason):
         )
     if code == COMMAND_NOT_FOUND:
         return f"command not found '{details.get('command', '')}'"
+    if code == COMMAND_PATH_CHANGED:
+        return f"command path changed '{details.get('command', '')}'"
     if code == FORBIDDEN_TRUSTED_PROTOCOL:
         return "forbidden trusted SSH protocol command"
 
@@ -94,6 +97,8 @@ def to_audit_reason(reason):
         return "forbidden trusted SSH protocol command: " + details.get("command", "")
     if code == COMMAND_NOT_FOUND:
         return f"command not found: {details.get('command', '')}"
+    if code == COMMAND_PATH_CHANGED:
+        return f"command path changed since session start: {details.get('command', '')}"
 
     return "policy evaluation failed"
 

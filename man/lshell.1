@@ -434,6 +434,16 @@ allow or forbid the use of sftp connection - set to 1 or 0.
 
 WARNING: This option will not work if you are using OpenSSH's \
 internal-sftp service (e.g. when configured in chroot)
+
+WARNING: lshell path restrictions do not inspect per-file requests once the \
+SFTP protocol is handed to sftp-server. Use sshd_config controls such as \
+ChrootDirectory, ForceCommand internal-sftp, DisableForwarding, or read-only \
+SFTP modes to enforce the real filesystem boundary.
+.TP
+.I sftp_unsafe_legacy
+explicit override for legacy sftp-server passthrough. Even when \
+\fBsftp=1\fR, lshell refuses legacy passthrough by default unless this value \
+is set to 1. Prefer SSH-side \fBinternal-sftp\fR plus \fBChrootDirectory\fR.
 .TP
 .I sudo_commands
 a list of the allowed commands that can be used with sudo(8). If set to \
@@ -621,7 +631,8 @@ strict          : 1
 scp             : 0
 scp_upload      : 0
 scp_download    : 0
-sftp            : 1
+sftp            : 0
+sftp_unsafe_legacy : 0
 overssh         : []
 
 [user:alice]
@@ -700,7 +711,8 @@ timer           : 0
 path            : ['/etc', '/usr']
 env_path        : ':/sbin:/usr/bin/'
 scp             : 1 # or 0
-sftp            : 1 # or 0
+sftp            : 0 # keep 1 only with explicit legacy override
+sftp_unsafe_legacy : 0
 overssh         : ['rsync','ls']
 aliases         : {'ls':'ls \-\-color=auto','ll':'ls \-l'}
 

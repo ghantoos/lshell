@@ -3,7 +3,7 @@
 import sys
 import os
 
-__version__ = "0.12.0rc1"
+__version__ = "0.12.0"
 
 # Required config variable list per user
 required_config = ["allowed", "forbidden", "warning_counter"]
@@ -96,6 +96,7 @@ configparams = [
     "scp_upload=",
     "scp_download=",
     "sftp=",
+    "sftp_unsafe_legacy=",
     "overssh=",
     "strict=",
     "scpforce=",
@@ -141,7 +142,35 @@ FORBIDDEN_ENVIRON = (
     "LD_AUDIT",
     "NIS_PATH",
     "PATH",
+    "BASHOPTS",
+    "CDPATH",
+    "GLOBIGNORE",
+    "IFS",
+    "PROMPT_COMMAND",
+    "PS4",
+    "PYTHONPATH",
+    "SHELLOPTS",
 )
+
+EXEC_ENV_REMOVE = tuple(item for item in FORBIDDEN_ENVIRON if item != "PATH") + (
+    "BASH_ENV",
+    "ENV",
+    "LSHELL_ARGS",
+)
+
+
+def is_forbidden_environment_key(name):
+    """Return True when a variable name must not be user-controlled."""
+    return bool(name) and (
+        name in FORBIDDEN_ENVIRON or name.startswith("BASH_FUNC_")
+    )
+
+
+def should_strip_from_exec_env(name):
+    """Return True when a variable must not reach a child shell."""
+    return bool(name) and (
+        name in EXEC_ENV_REMOVE or name.startswith("BASH_FUNC_")
+    )
 
 # Single source of truth for trusted SFTP protocol executables.
 TRUSTED_SFTP_PROTOCOL_BINARIES = (

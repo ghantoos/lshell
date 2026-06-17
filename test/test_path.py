@@ -1,6 +1,7 @@
 """Functional tests for lshell path handling"""
 
 import os
+import re
 import unittest
 from getpass import getuser
 import pexpect
@@ -14,6 +15,11 @@ PROMPT = f"{USER}:~\\$"
 
 class TestFunctions(unittest.TestCase):
     """Functional tests for lshell"""
+
+    @staticmethod
+    def _normalize_ls_error_prefix(text):
+        """Collapse pinned absolute ls paths back to the user-facing command name."""
+        return re.sub(r"^/\S*/ls:", "ls:", text)
 
     def setUp(self):
         """spawn lshell with pexpect and return the child"""
@@ -37,7 +43,7 @@ class TestFunctions(unittest.TestCase):
         self.child.sendline("echo $(uptime)")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
-        self.assertEqual(expected, result)
+        self.assertEqual(expected, self._normalize_ls_error_prefix(result))
 
     def test_external_forbidden_path(self):
         """F09 | external command forbidden path - ls /root"""
@@ -48,7 +54,7 @@ class TestFunctions(unittest.TestCase):
         self.child.sendline("ls ~root")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
-        self.assertEqual(expected, result)
+        self.assertEqual(expected, self._normalize_ls_error_prefix(result))
 
     def test_builtin_cd_forbidden_path(self):
         """F10 | built-in command forbidden path - cd ~root"""
@@ -80,7 +86,7 @@ class TestFunctions(unittest.TestCase):
         self.child.sendline("ls -l .*./.*./etc/passwd")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
-        self.assertEqual(expected, result)
+        self.assertEqual(expected, self._normalize_ls_error_prefix(result))
 
     def test_etc_passwd_3(self):
         """F13(a) | /etc/passwd: empty variable 'ls -l .?/.?/etc/passwd'"""
@@ -88,7 +94,7 @@ class TestFunctions(unittest.TestCase):
         self.child.sendline("ls -l .?/.?/etc/passwd")
         self.child.expect(PROMPT)
         result = self.child.before.decode("utf8").split("\n", 1)[1]
-        self.assertEqual(expected, result)
+        self.assertEqual(expected, self._normalize_ls_error_prefix(result))
 
     def test_etc_passwd_4(self):
         """F13(b) | /etc/passwd: empty variable 'ls -l ../../etc/passwd'"""

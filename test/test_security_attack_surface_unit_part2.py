@@ -886,6 +886,42 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
 
+    def test_check_path_blocks_bareword_symlink_operand_for_file_command(self):
+        """Bareword symlinks must be canonicalized and validated for file commands."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-symlink-deny-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+
+                conf = CheckConfig(
+                    self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                ).returnconf()
+                os.chdir(tmpdir)
+
+                ret, _conf = sec.check_path("cat passwdlink", conf, strict=0)
+                self.assertEqual(ret, 1)
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_check_path_keeps_non_file_command_bareword_symlink_usable(self):
+        """Non-filesystem commands should not treat generic barewords as path operands."""
+        previous_cwd = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory(prefix="lshell-symlink-echo-", dir="/tmp") as tmpdir:
+                link_path = os.path.join(tmpdir, "passwdlink")
+                os.symlink("/etc/passwd", link_path)
+
+                conf = CheckConfig(
+                    self.args + [f"--path=['{tmpdir}']", "--strict=0"]
+                ).returnconf()
+                os.chdir(tmpdir)
+
+                ret, _conf = sec.check_path("echo passwdlink", conf, strict=0)
+                self.assertEqual(ret, 0)
+        finally:
+            os.chdir(previous_cwd)
+
     def test_check_path_rejects_nul_byte_path_without_crashing(self):
         """Malformed NUL-byte path operands should fail closed without exceptions."""
         conf = CheckConfig(

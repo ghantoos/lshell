@@ -294,7 +294,11 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(mock_exec.call_count, 1)
-            self.assertEqual(mock_exec.call_args.args[0], "echo ok")
+            self.assertEqual(
+                os.path.basename(mock_exec.call_args.args[0].split()[0]),
+                "echo",
+            )
+            self.assertTrue(mock_exec.call_args.args[0].endswith(" ok"))
         finally:
             if original is None:
                 os.environ.pop("LSHELL_CHAIN_AND", None)
@@ -318,7 +322,11 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(mock_exec.call_count, 1)
-            self.assertEqual(mock_exec.call_args.args[0], "echo ok")
+            self.assertEqual(
+                os.path.basename(mock_exec.call_args.args[0].split()[0]),
+                "echo",
+            )
+            self.assertTrue(mock_exec.call_args.args[0].endswith(" ok"))
         finally:
             if original is None:
                 os.environ.pop("LSHELL_CHAIN_SEMI", None)
@@ -343,7 +351,13 @@ class TestAttackSurfacePart2(unittest.TestCase):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(mock_exec.call_count, 1)
-            self.assertEqual(mock_exec.call_args.args[0], "echo '$LSHELL_CHAIN_QUOTED'")
+            self.assertEqual(
+                os.path.basename(mock_exec.call_args.args[0].split()[0]),
+                "echo",
+            )
+            self.assertTrue(
+                mock_exec.call_args.args[0].endswith(" '$LSHELL_CHAIN_QUOTED'")
+            )
         finally:
             if original is None:
                 os.environ.pop("LSHELL_CHAIN_QUOTED", None)
@@ -372,7 +386,11 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 1)
         self.assertEqual(
-            mock_exec.call_args.args[0], "bash test/testfiles/login_script.sh"
+            os.path.basename(mock_exec.call_args.args[0].split()[0]),
+            "bash",
+        )
+        self.assertTrue(
+            mock_exec.call_args.args[0].endswith(" test/testfiles/login_script.sh")
         )
 
     def test_check_secure_blocks_braced_variable_expansion_when_forbidden(self):
@@ -771,8 +789,13 @@ class TestAttackSurfacePart2(unittest.TestCase):
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 1)
         self.assertEqual(
-            mock_exec.call_args.args[0],
-            "echo ${LSHELL_MISSING:-fallback} ${#HOME}",
+            os.path.basename(mock_exec.call_args.args[0].split()[0]),
+            "echo",
+        )
+        self.assertTrue(
+            mock_exec.call_args.args[0].endswith(
+                " ${LSHELL_MISSING:-fallback} ${#HOME}"
+            )
         )
 
     def test_cmd_lpath_handles_paths_with_regex_metacharacters(self):
@@ -1053,7 +1076,10 @@ class TestAttackSurfacePart2(unittest.TestCase):
 
         self.assertEqual(ret, 0)
         self.assertEqual(mock_exec.call_count, 2)
-        self.assertEqual(mock_exec.call_args_list[0].args[0], "sftp-server")
+        self.assertEqual(
+            os.path.basename(mock_exec.call_args_list[0].args[0].split()[0]),
+            "sftp-server",
+        )
         self.assertEqual(mock_exec.call_args_list[1].args[0], "/usr/libexec/sftp-server")
 
     def test_check_allowed_file_extensions_allows_existing_directory_target(self):

@@ -510,6 +510,38 @@ class TestSessionInteractionFunctional(unittest.TestCase):
                 self._safe_exit(child)
                 child.close(force=True)
 
+    def test_command_resolution_drift_blocks_bare_command_after_session_start(self):
+        """Replacing an allowlisted bare command mid-session should fail closed."""
+        with tempfile.TemporaryDirectory(prefix="lshell-command-drift-") as bindir:
+            command_name = "lshell_drift_probe"
+            script_path = os.path.join(bindir, command_name)
+            with open(script_path, "w", encoding="utf-8") as handle:
+                handle.write("#!/bin/sh\necho SAFE_START\n")
+            os.chmod(script_path, 0o700)
+
+            child = self._spawn_shell(
+                f'--forbidden "[]" --allowed "[\'{command_name}\']" --env_path {bindir}'
+            )
+            try:
+                initial_output = self._run_command(child, command_name)
+                self.assertIn("SAFE_START", initial_output)
+
+                replacement_path = os.path.join(bindir, f"{command_name}.new")
+                with open(replacement_path, "w", encoding="utf-8") as handle:
+                    handle.write("#!/bin/sh\necho PWNED_AFTER_SWAP\n")
+                os.chmod(replacement_path, 0o700)
+                os.replace(replacement_path, script_path)
+
+                drift_output = self._run_command(child, command_name)
+                self.assertIn(
+                    f'lshell: command path changed since session start: "{command_name}"',
+                    drift_output,
+                )
+                self.assertNotIn("PWNED_AFTER_SWAP", drift_output)
+            finally:
+                self._safe_exit(child)
+                child.close(force=True)
+
     def test_malformed_sudo_dash_u_is_denied_and_session_recovers(self):
         """Malformed `sudo -u` forms should be denied without killing the session."""
         child = self._spawn_shell(

@@ -66,6 +66,20 @@ class TestMessagesUnit(unittest.TestCase):
             "missing: catt",
         )
 
+    def test_command_path_changed_message(self):
+        """Render the command-path-drift message from default and custom config."""
+        conf = {}
+        self.assertEqual(
+            messages.get_message(conf, "command_path_changed", command="ls"),
+            'lshell: command path changed since session start: "ls"',
+        )
+
+        custom_conf = {"messages": {"command_path_changed": "changed: {command}"}}
+        self.assertEqual(
+            messages.get_message(custom_conf, "command_path_changed", command="ls"),
+            "changed: ls",
+        )
+
     def test_forbidden_command_message(self):
         """Render the forbidden command message from default and custom config."""
         conf = {}
@@ -267,6 +281,7 @@ class TestMessagesUnit(unittest.TestCase):
         overrides = {
             "unknown_syntax": "a {command}",
             "command_not_found": "a {command}",
+            "command_path_changed": "a {command}",
             "forbidden_generic": "a {messagetype} {command}",
             "forbidden_command": "a {command}",
             "forbidden_path": "a {command}",

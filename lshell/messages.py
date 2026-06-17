@@ -6,6 +6,7 @@ from string import Formatter
 DEFAULT_MESSAGES = {
     "unknown_syntax": "lshell: unknown syntax: {command}",
     "command_not_found": 'lshell: command not found: "{command}"',
+    "command_path_changed": 'lshell: command path changed since session start: "{command}"',
     "forbidden_generic": 'lshell: forbidden {messagetype}: "{command}"',
     "forbidden_command": 'lshell: forbidden command: "{command}"',
     "forbidden_path": 'lshell: forbidden path: "{command}"',
@@ -24,6 +25,7 @@ DEFAULT_MESSAGES = {
 MESSAGE_FIELDS = {
     "unknown_syntax": {"command"},
     "command_not_found": {"command"},
+    "command_path_changed": {"command"},
     "forbidden_generic": {"messagetype", "command"},
     "forbidden_command": {"command"},
     "forbidden_path": {"command"},

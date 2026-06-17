@@ -117,6 +117,23 @@ def _deny_with_reason(shell_context, command_line, decision):
         sys.stderr.write("lshell: forbidden trusted SSH protocol command\n")
         return 126
 
+    if reason.code == reasons.COMMAND_PATH_CHANGED:
+        command = reason.details.get("command", "")
+        audit.log_command_event(
+            shell_context.conf,
+            command_line,
+            allowed=False,
+            reason=reasons.to_audit_reason(reason),
+        )
+        message = messages.get_message(
+            shell_context.conf,
+            "command_path_changed",
+            command=command,
+        )
+        shell_context.log.critical(message)
+        sys.stderr.write(f"{message}\n")
+        return 126
+
     audit.log_command_event(
         shell_context.conf,
         command_line,
@@ -369,31 +386,43 @@ def execute(decisions, runtime):
             and utils._is_allowed_command(executable_name, part, shell_context.conf)
             for (executable_name, _, _, _), part in zip(parsed_parts, pipeline_parts)
         ):
-            if not trusted_protocol:
-                missing_executable = next(
-                    (
-                        executable_name
-                        for executable_name, _, _, _ in parsed_parts
-                        if executable_name
-                        and executable_name not in builtincmd.builtins_list
-                        and not utils._command_exists(executable_name, shell_context.conf)
-                    ),
-                    None,
+            pinned_pipeline_parts = []
+            for (executable_name, _, _, _), part in zip(parsed_parts, pipeline_parts):
+                pinned_part, failed_command, failure_reason = utils.pin_command_executable(
+                    part,
+                    conf=shell_context.conf,
                 )
-                if missing_executable:
+                if failure_reason is not None:
+                    if failure_reason == "drift":
+                        deny_decision = authorizer.AuthorizationDecision(
+                            False,
+                            reasons.make_reason(
+                                reasons.COMMAND_PATH_CHANGED,
+                                command=failed_command,
+                                line=full_command,
+                            ),
+                            decisions.ast,
+                        )
+                        retcode = _deny_with_reason(shell_context, full_command, deny_decision)
+                        return ExecutionResult(
+                            retcode=retcode,
+                            audit_reason=reasons.to_audit_reason(deny_decision.reason),
+                        )
+
                     command_not_found_message = messages.get_message(
                         shell_context.conf,
                         "command_not_found",
-                        command=missing_executable,
+                        command=failed_command,
                     )
                     audit.log_command_event(
                         shell_context.conf,
                         full_command,
                         allowed=False,
-                        reason=f"command not found: {missing_executable}",
+                        reason=f"command not found: {failed_command}",
                     )
                     shell_context.log.critical(command_not_found_message)
                     return ExecutionResult(retcode=127, audit_reason="command not found")
+                pinned_pipeline_parts.append(pinned_part)
 
             extra_env = None
             allowed_shell_escape = set(shell_context.conf.get("allowed_shell_escape", []))
@@ -411,8 +440,9 @@ def execute(decisions, runtime):
                 allowed=True,
                 reason="allowed by command and path policy",
             )
+            command_to_execute = " | ".join(pinned_pipeline_parts)
             retcode = utils.exec_cmd(
-                full_command,
+                command_to_execute,
                 background=background,
                 extra_env=extra_env,
                 conf=shell_context.conf,

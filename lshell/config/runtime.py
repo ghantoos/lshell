@@ -87,6 +87,7 @@ class CheckConfig:
         self.get_config_user()
         self.check_env()
         self.set_noexec()
+        self.finalize_command_resolution()
 
     def check_config_file_exists(self, configfile):
         """Check if the configuration file exists, else exit with error"""
@@ -421,6 +422,12 @@ class CheckConfig:
             self.log.error(f"lshell: config: history file error: {history_value}")
             sys.exit(1)
         return parsed
+
+    def finalize_command_resolution(self):
+        """Pin bare command names to resolved executables for this session."""
+        self.conf["command_path_cache"] = utils.build_command_resolution_cache(
+            self.conf
+        )
 
     def check_user_integrity(self):
         """This method checks if all the required fields by user are present
